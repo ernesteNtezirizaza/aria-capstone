@@ -123,7 +123,7 @@ def compute_obstacle(slope_deg, elev_norm):
 
 def run():
     os.makedirs(DATA_PROC_DIR, exist_ok=True)
-    print("ARIA V2 — Preprocessing Pipeline")
+    print("ARIA — Preprocessing Pipeline")
     print("=" * 50)
 
     print("[1/9] Loading DEM...")

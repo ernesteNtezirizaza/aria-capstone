@@ -46,7 +46,7 @@ def extract(grid, col, row):
 
 def run():
     os.makedirs(ZONES_DIR, exist_ok=True)
-    print("ARIA V2 — Zone Builder")
+    print("ARIA — Zone Builder")
     print("=" * 50)
 
     terrain  = np.nan_to_num(np.load(os.path.join(DATA_PROC_DIR, "terrain_grid.npy")),    nan=0.0)
