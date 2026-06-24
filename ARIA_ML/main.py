@@ -54,7 +54,7 @@ def main():
     args = parser.parse_args()
 
     print("╔═══════════════════════════════════════════════════════╗")
-    print("║  ARIA — Adaptive Reforestation Intelligence Agent  ║")
+    print("║  ARIA — Adaptive Reforestation Intelligence Agent     ║")
     print("╚═══════════════════════════════════════════════════════╝")
 
     if args.step == "all":
