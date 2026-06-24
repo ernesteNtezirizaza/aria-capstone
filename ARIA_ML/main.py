@@ -45,7 +45,7 @@ def train():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ARIA V2 ML Pipeline")
+    parser = argparse.ArgumentParser(description="ARIA ML Pipeline")
     parser.add_argument(
         "--step",
         choices=["preprocess", "zones", "validate", "train", "all"],

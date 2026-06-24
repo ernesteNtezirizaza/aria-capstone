@@ -1,7 +1,7 @@
 """
 env/reward_function.py
 ======================
-Composite three-tier reward function for ARIA V2.
+Composite three-tier reward function for ARIA.
 
 Tier 1 — Immediate placement reward (every seed drop)
 Tier 2 — Delayed germination reward (via growth engine)

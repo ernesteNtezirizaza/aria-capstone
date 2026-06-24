@@ -1,7 +1,7 @@
 """
 env/rwanda_env.py
 =================
-RwandaReforestEnv — Complete ARIA V2 Gymnasium environment.
+RwandaReforestEnv — Complete ARIA Gymnasium environment.
 
 Implements the full MDP with:
   ✓ Unified Planner + Navigator (one PPO policy)
