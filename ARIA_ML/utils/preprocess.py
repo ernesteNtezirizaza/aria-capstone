@@ -30,7 +30,7 @@ from configs.config import (
     DEM_PATH, SOIL_CLAY_PATH, SOIL_PH_PATH,
     SOIL_SAND_PATH, SOIL_SOC_PATH,
     RAINFALL_DIR, RAINFALL_FILES, LANDCOVER_DIR,
-    WDPA_PATH, SPECIES_PATH, DATA_PROC_DIR,
+    WDPA_PATH, WDPA_PATHS, SPECIES_PATH, DATA_PROC_DIR,
     MAX_SLOPE_DEG, SPECIES, N_CHANNELS
 )
 
@@ -58,7 +58,26 @@ def resample(path, method=Resampling.bilinear):
     return dst
 
 
-def norm(arr, lo=None, hi=None):
+def norm(arr, lo=None, hi=None, name="array"):
+    valid = np.isfinite(arr)
+    n_valid = int(valid.sum())
+    if n_valid == 0:
+        raise ValueError(
+            f"norm(): '{name}' is entirely NaN/inf ({arr.size} cells, "
+            f"0 valid). If this array came straight from resample(), "
+            f"check the source raster's CRS/extent against "
+            f"RWANDA_BOUNDS in config.py. If this array is DERIVED "
+            f"(e.g. via scipy.ndimage filters on another array), check "
+            f"that the upstream array was sanitise()'d first — NaN "
+            f"propagates through filters like uniform_filter and can "
+            f"poison the whole array even from a few edge/nodata cells."
+        )
+    if n_valid < arr.size:
+        pct_nan = 100 * (1 - n_valid / arr.size)
+        if pct_nan > 50:
+            print(f"  WARNING: '{name}' is {pct_nan:.1f}% NaN — "
+                  f"check source raster extent/CRS, or sanitise() "
+                  f"upstream inputs before any spatial filtering")
     lo = lo if lo is not None else np.nanmin(arr)
     hi = hi if hi is not None else np.nanmax(arr)
     if hi == lo:
@@ -72,16 +91,17 @@ def sanitise(arr):
     )
 
 
-def compute_slope(elev_norm):
-    elev_m = elev_norm * (4440 - 858) + 858
+def compute_slope(elev_norm, elev_min, elev_max):
+    """Convert normalised elevation back to metres using actual DEM range."""
+    elev_m = elev_norm * (elev_max - elev_min) + elev_min
     dy, dx = np.gradient(elev_m, RESOLUTION_M, RESOLUTION_M)
     return np.degrees(np.arctan(np.sqrt(dx**2 + dy**2))).astype(np.float32)
 
 
 def compute_soil(clay, ph, sand, soc):
-    ph_r = ph * 140
-    ph_s = np.clip(1.0 - np.abs(ph_r - 65) / 65, 0.0, 1.0)
-    return (0.40*soc + 0.25*ph_s + 0.20*clay + 0.15*(1-sand)).astype(np.float32)
+    # SoilGrids stores pH×10 (e.g. 65 = pH 6.5).
+    ph_score = np.clip(1.0 - np.abs(ph - 0.65) / 0.65, 0.0, 1.0)
+    return (0.40*soc + 0.25*ph_score + 0.20*clay + 0.15*(1-sand)).astype(np.float32)
 
 
 def encode_lc(lc):
@@ -96,7 +116,16 @@ def encode_lc(lc):
 def compute_disturbance():
     from rasterio.features import rasterize
     from shapely.geometry import mapping
-    gdf    = gpd.read_file(WDPA_PATH)
+    import pandas as _pd
+    _parts = []
+    for _wp in WDPA_PATHS:
+        try:
+            _parts.append(gpd.read_file(_wp))
+        except Exception as _e:
+            print(f"  Warning: {_wp}: {_e}")
+    gdf = gpd.GeoDataFrame(
+        _pd.concat(_parts, ignore_index=True), crs=_parts[0].crs
+    ) if _parts else gpd.read_file(WDPA_PATH)
     shapes = [(mapping(g), 1) for g in gdf.geometry if g]
     mask   = rasterize(shapes, (GRID_ROWS, GRID_COLS),
                        transform=REF_TRANSFORM, fill=0, dtype=np.uint8)
@@ -112,11 +141,12 @@ def compute_obstacle(slope_deg, elev_norm):
     Values close to 1.0 = obstacle present.
     """
     slope_obs  = (slope_deg > MAX_SLOPE_DEG).astype(np.float32)
-    # Elevation variance in 3x3 neighbourhood as turbulence proxy
+    # Elevation variance in 3x3 neighbourhood as turbulence proxy.
+    elev_clean = sanitise(elev_norm)
     from scipy.ndimage import uniform_filter
-    elev_local = uniform_filter(elev_norm, size=3)
-    turb       = np.abs(elev_norm - elev_local)
-    turb_norm  = norm(turb)
+    elev_local = uniform_filter(elev_clean, size=3)
+    turb       = np.abs(elev_clean - elev_local)
+    turb_norm  = norm(turb, name="turbulence")
     obstacle   = np.clip(slope_obs * 0.7 + turb_norm * 0.3, 0.0, 1.0)
     return obstacle.astype(np.float32)
 
@@ -128,18 +158,22 @@ def run():
 
     print("[1/9] Loading DEM...")
     elev_raw  = resample(DEM_PATH)
-    elevation = norm(elev_raw, 858, 4440)
+    # Derive elevation range from actual DEM data — no hardcoded 858/4440
+    elev_min  = float(np.nanmin(elev_raw[elev_raw > 0]))   # ignore nodata zeros
+    elev_max  = float(np.nanmax(elev_raw))
+    print(f"       Elevation range: {elev_min:.0f}m – {elev_max:.0f}m (from DEM)")
+    elevation = norm(elev_raw, elev_min, elev_max, name="elevation")
 
     print("[2/9] Computing slope...")
-    slope_deg  = compute_slope(elevation)
-    slope_norm = norm(slope_deg, 0, 90)
+    slope_deg  = compute_slope(elevation, elev_min, elev_max)
+    slope_norm = norm(slope_deg, 0, 90, name="slope")
     np.save(os.path.join(DATA_PROC_DIR, "slope_grid.npy"), slope_deg)
 
     print("[3/9] Loading soil layers...")
-    clay = norm(resample(SOIL_CLAY_PATH))
-    ph   = norm(resample(SOIL_PH_PATH))
-    sand = norm(resample(SOIL_SAND_PATH))
-    soc  = norm(resample(SOIL_SOC_PATH))
+    clay = norm(resample(SOIL_CLAY_PATH), name="soil_clay")
+    ph   = norm(resample(SOIL_PH_PATH), name="soil_ph")
+    sand = norm(resample(SOIL_SAND_PATH), name="soil_sand")
+    soc  = norm(resample(SOIL_SOC_PATH), name="soil_soc")
     soil = compute_soil(clay, ph, sand, soc)
 
     print("[4/9] Loading land cover...")

@@ -3,7 +3,6 @@ utils/zone_builder.py
 =====================
 Slices the full Rwanda terrain into 18 zone sub-grids.
 Each zone: 120×120 cells = 30km×30km at 250m resolution.
-Split: 12 training zones, 6 held-out evaluation zones.
 
 Run: python utils/zone_builder.py
 """
