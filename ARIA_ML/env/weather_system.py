@@ -2,14 +2,18 @@
 env/weather_system.py
 =====================
 Derives weather state from CHIRPS rainfall values.
-No external dataset needed — uses rainfall_stack already loaded.
 """
 
 import numpy as np
 from configs.config import (
     WEATHER_SUNNY, WEATHER_RAINY,
-    RAINFALL_SUNNY_THRESH, N_SEASONS
+    RAINFALL_SUNNY_THRESH, N_SEASONS,
+    SOLAR_CHARGE_RATE, BATTERY_DRAIN_SUNNY, BATTERY_DRAIN_RAIN,
+    MAX_STEPS
 )
+
+# Season length derived from episode length and number of seasons
+_SEASON_LENGTH = MAX_STEPS // N_SEASONS
 
 
 class WeatherSystem:
@@ -46,17 +50,19 @@ class WeatherSystem:
         timestep : int
             Current episode timestep — advances season every 80 steps.
         """
-        # Advance season every 80 steps (500 steps / 6 seasons ≈ 83)
-        self.current_season = (timestep // 83) % N_SEASONS
+        # Advance season based on episode length and number of seasons
+        self.current_season = (timestep // _SEASON_LENGTH) % N_SEASONS
 
         if rainfall_value < RAINFALL_SUNNY_THRESH:
             self.weather_state = WEATHER_SUNNY
-            self.solar_rate    = 0.0015 * (1.0 - rainfall_value / RAINFALL_SUNNY_THRESH)
+            self.solar_rate    = SOLAR_CHARGE_RATE * (
+                1.0 - rainfall_value / RAINFALL_SUNNY_THRESH
+            )
             self.extra_drain   = 0.0
         else:
             self.weather_state = WEATHER_RAINY
             self.solar_rate    = 0.0
-            self.extra_drain   = 0.002  # extra battery drain in rain
+            self.extra_drain   = BATTERY_DRAIN_RAIN - BATTERY_DRAIN_SUNNY
 
     def is_rainy(self) -> bool:
         return self.weather_state == WEATHER_RAINY
@@ -68,6 +74,6 @@ class WeatherSystem:
         """Returns [weather_norm, solar_rate, extra_drain] as float32."""
         return np.array([
             float(self.weather_state),
-            self.solar_rate / 0.0015,   # normalised
-            self.extra_drain / 0.002,   # normalised
+            self.solar_rate / SOLAR_CHARGE_RATE,                          # normalised
+            self.extra_drain / (BATTERY_DRAIN_RAIN - BATTERY_DRAIN_SUNNY + 1e-8),
         ], dtype=np.float32)

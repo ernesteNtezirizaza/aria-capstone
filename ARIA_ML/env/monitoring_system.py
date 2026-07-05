@@ -66,8 +66,6 @@ class MonitoringSystem:
         self.reseed_log    = []    # completed reseedings
 
     def reset(self):
-        # NOTE: do NOT clear between episodes
-        # monitoring persists across missions
         pass
 
     def full_reset(self):

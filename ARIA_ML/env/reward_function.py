@@ -9,7 +9,7 @@ Tier 3 — Mission-level rewards (abort, battery, obstacles)
 """
 
 import numpy as np
-from configs.config import REWARD, SPECIES, N_SPECIES, MIN_SEED_SPACING
+from configs.config import REWARD, SPECIES, N_SPECIES, MIN_SEED_SPACING, MAX_SLOPE_DEG
 
 
 class RewardFunction:
@@ -32,7 +32,7 @@ class RewardFunction:
         w = self.w
         rain_min  = SPECIES[species_id]["rain_min"]
         rain_ok   = max(0.0, rain - rain_min) / (1.0 - rain_min + 1e-6)
-        slope_pen = min(slope_deg / 30.0, 1.0)
+        slope_pen = min(slope_deg / MAX_SLOPE_DEG, 1.0)
 
         # Spacing
         cluster = 0.0
@@ -68,7 +68,6 @@ class RewardFunction:
             + reseed_bon
             + cover_r
             + div_r
-            - w["step_penalty"]
         )
         self.seeded.add((x, y))
 

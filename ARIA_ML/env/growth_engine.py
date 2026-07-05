@@ -69,9 +69,13 @@ class GrowthEngine:
             # Update rain from current season
             s.rain_score = float(rain_map[s.y, s.x])
 
-            # Survival probability
-            score = s.soil_score + s.rain_score - s.slope_score - s.corridor_proximity * 0.5
-            s.survival_prob = sigmoid(score * 2.0)
+            # Survival probability — calibrated so a high-quality seed
+            mature_t   = SPECIES[s.species_id]["mature_steps"]
+            score      = s.soil_score + s.rain_score - s.slope_score - s.corridor_proximity * 0.5
+            quality    = sigmoid(score * 2.0)
+
+            target_cumulative = 0.10 + 0.85 * quality
+            s.survival_prob   = float(target_cumulative ** (1.0 / max(mature_t, 1)))
 
             # Natural mortality
             if self.rng.random() > s.survival_prob:

@@ -4,16 +4,16 @@ env/rwanda_env.py
 RwandaReforestEnv — Complete ARIA Gymnasium environment.
 
 Implements the full MDP with:
-  ✓ Unified Planner + Navigator (one PPO policy)
-  ✓ Solar + Battery energy system
-  ✓ Weather system from CHIRPS data
-  ✓ Rain cover mechanism
-  ✓ Obstacle detection and avoidance
-  ✓ Mission abort and return-to-base
-  ✓ Seed monitoring and reseeding memory
-  ✓ Full drone state machine (7 states)
-  ✓ All 47 discrete actions
-  ✓ 7-component observation space
+  1. Unified Planner + Navigator (one PPO policy)
+  2. Solar + Battery energy system
+  3. Weather system from CHIRPS data
+  4. Rain cover mechanism
+  5. Obstacle detection and avoidance
+  6. Mission abort and return-to-base
+  7. Seed monitoring and reseeding memory
+  8. Full drone state machine (7 states)
+  9. All 47 discrete actions
+  10. 7-component observation space + terrain_stats
 """
 
 import os, sys
@@ -36,15 +36,17 @@ class RwandaReforestEnv(gym.Env):
     """
     Full autonomous drone reforestation environment for Rwanda.
 
-    STATE (7 components)
-    --------------------
-    terrain_window  (11,11,5) — local ecological terrain
+    STATE (8 components — terrain_stats added for generalisation)
+    -------------------------------------------------------------
+    terrain_window  (11,11,5) — local ecological terrain patch
     drone_vector    (10,)     — position + energy + weather + status
     coverage_map    (120,120,1) — seeded cells memory
     lifecycle_map   (120,120,1) — seed growth stages
     disturbance_map (120,120,1) — wildlife risk
     obstacle_map    (120,120,1) — terrain + airspace hazards
     mission_vector  (8,)      — zone quality + mission context
+    terrain_stats   (6,)      — NEW: global terrain features for
+                                generalisation across unseen zones
 
     ACTION SPACE: Discrete(47)
     --------------------------
@@ -53,7 +55,7 @@ class RwandaReforestEnv(gym.Env):
     41    abort → return to base
     42    deploy rain cover
     43    retract rain cover
-    44    increase altitude
+    44    increase altitude (obstacle avoidance)
     45    decrease altitude
     46    emergency land
 
@@ -61,6 +63,7 @@ class RwandaReforestEnv(gym.Env):
     -------------------
     GROUNDED → TAKEOFF → NAVIGATING → SEEDING ↔ OBSTACLE
     SEEDING → RETURNING → LANDING → GROUNDED
+
     """
 
     metadata = {"render_modes": ["rgb_array"]}
@@ -73,7 +76,7 @@ class RwandaReforestEnv(gym.Env):
         seed:           Optional[int] = None,
     ):
         super().__init__()
-        self.zone_id        = zone_id
+        self.zone_id        = zone_id   # array index 0..n_zones-1, or None for random
         self.split          = split
         self.reward_weights = reward_weights
         self._seed          = seed
@@ -82,7 +85,8 @@ class RwandaReforestEnv(gym.Env):
         # Load zone data
         self._load_zones()
 
-        # Observation space
+        # ── Observation space ──────────────────────────────────────
+        # terrain_stats (6,) is new — global features for generalisation
         self.observation_space = spaces.Dict({
             "terrain_window":  spaces.Box(0.0, 1.0,
                 (OBS_WINDOW, OBS_WINDOW, N_CHANNELS), np.float32),
@@ -96,6 +100,8 @@ class RwandaReforestEnv(gym.Env):
             "obstacle_map":    spaces.Box(0.0, 1.0,
                 (ZONE_SIZE, ZONE_SIZE, 1), np.float32),
             "mission_vector":  spaces.Box(0.0, 1.0, (8,), np.float32),
+            # NEW — terrain statistics for cross-zone generalisation
+            "terrain_stats":   spaces.Box(0.0, 1.0, (6,), np.float32),
         })
 
         # Action space: 47 discrete actions
@@ -137,7 +143,7 @@ class RwandaReforestEnv(gym.Env):
 
     def _init_episode_state(self):
         self.x = self.y          = ZONE_SIZE // 2
-        self.altitude            = 1.0      # normalised [0,1]
+        self.altitude            = 1.0
         self.seeds_remaining     = INITIAL_SEEDS
         self.timestep            = 0
         self.season              = 0
@@ -164,11 +170,14 @@ class RwandaReforestEnv(gym.Env):
         self.growth.rng      = self.rng
         self.disturbance.rng = self.rng
 
-        # Select zone
-        if self.zone_id is not None:
-            self.active_zone_idx = self.zone_id - 1
-        else:
+        if self.zone_id is None:
+            # Domain randomisation: new zone every episode
             self.active_zone_idx = int(self.rng.integers(0, self.n_zones))
+        else:
+            # Fixed zone for evaluation — clamp to valid range
+            self.active_zone_idx = int(
+                np.clip(int(self.zone_id), 0, self.n_zones - 1)
+            )
 
         self.terrain    = self.all_terrain[self.active_zone_idx].copy()
         self.dist_grid  = self.all_dist[self.active_zone_idx].copy()
@@ -188,7 +197,7 @@ class RwandaReforestEnv(gym.Env):
         self.energy.reset()
         self.reward_fn.reset()
 
-        self.drone_state = STATE_SEEDING   # start ready to seed
+        self.drone_state = STATE_SEEDING
 
         obs  = self._obs()
         info = {"zone_idx": self.active_zone_idx,
@@ -213,24 +222,25 @@ class RwandaReforestEnv(gym.Env):
         # ── Handle special actions ─────────────────────────────────
 
         if action == EMERGENCY or energy_info["is_critical"]:
-            # Emergency land — battery critical
-            total_r += self.reward_fn.battery_empty()
-            info["emergency_land"] = True
+            if action == EMERGENCY and not energy_info["is_critical"]:
+                total_r += 0.0      # voluntary EMERGENCY: punishment = lost future seeding reward
+            else:
+                total_r += self.reward_fn.battery_empty()  # genuine battery death
+            info["emergency_land"]   = True
+            info["episode_metrics"]  = self._metrics()
+            info["growth_summary"]   = self.growth.summary()
             terminated = True
             truncated  = False
             self.timestep += 1
             return self._obs(), float(total_r), terminated, truncated, info
 
         if action == ABORT_ACTION:
-            # Abort mission — return to base
             zone_score = self._zone_suitability()
             if zone_score < ZONE_MIN_SOIL:
-                # Valid abort — zone is genuinely unsuitable
                 total_r += self.reward_fn.battery_save()
                 info["valid_abort"] = True
             else:
-                # Unnecessary abort — zone was fine
-                total_r += self.reward_fn.bad_abort()
+                total_r += -1.0     # bad abort: small penalty, punishment = lost future reward
                 info["bad_abort"] = True
             self.drone_state  = STATE_RETURNING
             self.abort_triggered = True
@@ -247,20 +257,16 @@ class RwandaReforestEnv(gym.Env):
                         if self.weather.is_sunny()
                         else self.reward_fn.w["cover_wrong"])
 
-        elif action == COVER_RETRACT:
-            self.cover_deployed = False
-            total_r += (self.reward_fn.reward_fn.w["cover_correct"]
-                        if self.weather.is_sunny()
-                        else self.reward_fn.reward_fn.w["cover_wrong"])
-
         elif action == ALT_UP:
+            was_blocked = (self.altitude < 0.5 and
+                           self.obs_grid[self.y, self.x] >= 0.7)
             self.altitude = min(1.0, self.altitude + 0.1)
-            # Check if obstacle cleared
-            if self.obs_grid[self.y, self.x] < 0.5:
+            if was_blocked:
                 total_r += self.reward_fn.obstacle_clear()
                 self.obstacles_avoided += 1
                 self.drone_state = STATE_SEEDING
                 info["obstacle_cleared"] = True
+            # else: no reward for unnecessary altitude increase
 
         elif action == ALT_DOWN:
             self.altitude = max(0.0, self.altitude - 0.1)
@@ -277,16 +283,13 @@ class RwandaReforestEnv(gym.Env):
             new_x = int(np.clip(self.x + dx, 0, ZONE_SIZE - 1))
             new_y = int(np.clip(self.y + dy, 0, ZONE_SIZE - 1))
 
-            # Obstacle check
             if self.obs_grid[new_y, new_x] > 0.7 and self.altitude < 0.5:
                 total_r += self.reward_fn.obstacle_hit()
                 self.drone_state = STATE_OBSTACLE
                 info["obstacle_hit"] = True
-                # Don't move — bounce back
             else:
                 self.x, self.y = new_x, new_y
 
-            # Seed drop if in seeding state and seeds available
             if (self.drone_state == STATE_SEEDING
                     and self.seeds_remaining > 0):
 
@@ -297,14 +300,13 @@ class RwandaReforestEnv(gym.Env):
                 in_p  = prox >= 0.9
                 no_p  = bool(self.no_plant[self.y, self.x])
 
-                # Sanitise
                 soil  = 0.0 if np.isnan(soil)  else soil
                 rain  = 0.0 if np.isnan(rain)  else rain
                 prox  = 0.0 if np.isnan(prox)  else prox
 
                 rain_min   = SPECIES[species_id]["rain_min"]
                 is_suitable = (not no_p and not in_p
-                               and rain >= rain_min and soil >= 0.3)
+                               and rain >= rain_min and soil >= ZONE_MIN_SOIL)
 
                 is_reseed  = (self.y, self.x) in self.reseeding_targets
 
@@ -343,7 +345,6 @@ class RwandaReforestEnv(gym.Env):
             info["returning_battery"] = True
 
         if self.drone_state == STATE_RETURNING:
-            # Navigate toward base
             dx = np.sign(self.base_x - self.x)
             dy = np.sign(self.base_y - self.y)
             self.x = int(np.clip(self.x + dx, 0, ZONE_SIZE - 1))
@@ -353,7 +354,6 @@ class RwandaReforestEnv(gym.Env):
                 self.drone_state = STATE_LANDING
                 self.energy.recharge(0.5)
                 self.missions_completed += 1
-                # Schedule reseeding from monitoring queue
                 targets = self.monitor.get_top_targets(3)
                 for t in targets:
                     self.reseeding_targets.add((t["y"], t["x"]))
@@ -366,7 +366,6 @@ class RwandaReforestEnv(gym.Env):
             _, dr    = self.disturbance.step(self.growth, self.timestep)
             total_r += gr + dr
 
-            # Ingest new failures into monitoring system
             self.monitor.ingest_failures(self.growth.failed_cells.copy())
             self.growth.failed_cells.clear()
 
@@ -401,17 +400,47 @@ class RwandaReforestEnv(gym.Env):
         return float(self.terrain[:, :, 2].mean())
 
     def _sanitise(self, arr):
-        return np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0).astype(np.float32)
+        return np.nan_to_num(
+            arr, nan=0.0, posinf=1.0, neginf=0.0
+        ).astype(np.float32)
+
+    def _terrain_stats(self) -> np.ndarray:
+        """
+        Compute 6 normalised terrain statistics for the active zone.
+
+        These features allow the agent to adapt its strategy to
+        unseen zones without memorising zone-specific patterns.
+        All values are normalised to [0, 1].
+
+        Features:
+          0 — mean elevation  (normalised by 3000m)
+          1 — mean slope      (normalised by 90 degrees)
+          2 — mean soil score (already 0-1)
+          3 — mean rainfall   (already 0-1)
+          4 — mean landcover  (normalised by 10)
+          5 — fraction of plantable cells (no_plant=False)
+        """
+        elev  = float(self.terrain[:, :, CH_ELEVATION].mean()) / 3000.0
+        slope = float(self.terrain[:, :, CH_SLOPE].mean())
+        soil  = float(self.terrain[:, :, CH_SOIL].mean())
+        rain  = float(self.terrain[:, :, CH_RAINFALL].mean())
+        lc    = float(self.terrain[:, :, CH_LANDCOVER].mean()) / 10.0
+        plant = float((~self.no_plant.astype(bool)).mean())  # fraction plantable
+
+        stats = np.array([elev, slope, soil, rain, lc, plant], dtype=np.float32)
+        return np.clip(stats, 0.0, 1.0)
 
     def _obs(self) -> Dict:
         half = OBS_WINDOW // 2
         padded = np.pad(self.terrain,
-                        ((half,half),(half,half),(0,0)), mode="edge")
-        window = padded[self.y:self.y+OBS_WINDOW,
-                        self.x:self.x+OBS_WINDOW]
+                        ((half, half), (half, half), (0, 0)), mode="edge")
+        window = padded[self.y:self.y + OBS_WINDOW,
+                        self.x:self.x + OBS_WINDOW]
 
-        dist_base = float(np.sqrt((self.x-self.base_x)**2
-                                  + (self.y-self.base_y)**2) / (ZONE_SIZE*1.4))
+        dist_base = float(
+            np.sqrt((self.x - self.base_x) ** 2
+                    + (self.y - self.base_y) ** 2) / (ZONE_SIZE * 1.4)
+        )
 
         drone_vec = np.array([
             self.x / (ZONE_SIZE - 1),
@@ -447,11 +476,12 @@ class RwandaReforestEnv(gym.Env):
         return {
             "terrain_window":  self._sanitise(window),
             "drone_vector":    np.clip(drone_vec, 0.0, 1.0),
-            "coverage_map":    self._sanitise(self.coverage_map[:,:,np.newaxis]),
-            "lifecycle_map":   self._sanitise(lc[:,:,np.newaxis]),
-            "disturbance_map": self._sanitise(self.dist_grid[:,:,np.newaxis]),
-            "obstacle_map":    self._sanitise(self.obs_grid[:,:,np.newaxis]),
+            "coverage_map":    self._sanitise(self.coverage_map[:, :, np.newaxis]),
+            "lifecycle_map":   self._sanitise(lc[:, :, np.newaxis]),
+            "disturbance_map": self._sanitise(self.dist_grid[:, :, np.newaxis]),
+            "obstacle_map":    self._sanitise(self.obs_grid[:, :, np.newaxis]),
             "mission_vector":  np.clip(mission_vec, 0.0, 1.0),
+            "terrain_stats":   self._terrain_stats(),
         }
 
     def _metrics(self) -> dict:
@@ -459,41 +489,43 @@ class RwandaReforestEnv(gym.Env):
         if not seeds:
             return {m: 0.0 for m in EVAL_METRICS}
 
-        n_suit  = int((~self.no_plant).sum()
-                      - (self.dist_grid >= 0.9).sum())
+        n_suit   = int((~self.no_plant).sum()
+                       - (self.dist_grid >= 0.9).sum())
         n_seeded = sum(1 for s in seeds if s.is_suitable)
         pct      = n_seeded / max(n_suit, 1)
 
         counts = np.array(list(self.species_counts.values()), dtype=float)
         counts = counts[counts > 0]
-        H = (-np.sum((counts/counts.sum())*np.log(counts/counts.sum()))
+        H = (-np.sum((counts / counts.sum()) * np.log(counts / counts.sum()))
              if len(counts) > 1 else 0.0)
 
-        pos = [(s.x, s.y) for s in seeds]
+        pos  = [(s.x, s.y) for s in seeds]
         viol = sum(
-            1 for i,(x1,y1) in enumerate(pos)
-            for x2,y2 in pos[i+1:]
-            if abs(x1-x2)+abs(y1-y2) < MIN_SEED_SPACING
+            1 for i, (x1, y1) in enumerate(pos)
+            for x2, y2 in pos[i + 1:]
+            if abs(x1 - x2) + abs(y1 - y2) < MIN_SEED_SPACING
         )
 
         return {
-            "pct_suitable_seeded":   round(pct, 4),
-            "mean_soil_score":       round(float(np.mean([s.soil_score for s in seeds])), 4),
-            "species_entropy":       round(float(H), 4),
-            "spacing_violations":    int(viol),
-            "protected_area_seeds":  int(sum(1 for s in seeds if s.in_protected)),
-            "seasonal_rain_score":   round(float(np.mean([s.rain_score for s in seeds])), 4),
-            "reseeding_count":       self.growth.summary()["reseeding_count"],
-            "missions_completed":    self.missions_completed,
-            "battery_empty_events":  self.energy.empty_events,
-            "obstacles_avoided":     self.obstacles_avoided,
+            "pct_suitable_seeded":  round(pct, 4),
+            "mean_soil_score":      round(float(np.mean([s.soil_score for s in seeds])), 4),
+            "species_entropy":      round(float(H), 4),
+            "spacing_violations":   int(viol),
+            "protected_area_seeds": int(sum(1 for s in seeds if s.in_protected)),
+            "seasonal_rain_score":  round(float(np.mean([s.rain_score for s in seeds])), 4),
+            "reseeding_count":      self.growth.summary()["reseeding_count"],
+            "missions_completed":   self.missions_completed,
+            "battery_empty_events": self.energy.empty_events,
+            "obstacles_avoided":    self.obstacles_avoided,
         }
 
     def render(self, mode="rgb_array"):
         canvas = np.zeros((ZONE_SIZE, ZONE_SIZE, 3), dtype=np.uint8)
-        soil   = np.nan_to_num(self.terrain[:,:,2], nan=0.0)
+        soil   = np.nan_to_num(self.terrain[:, :, 2], nan=0.0)
         bg     = (soil * 180).astype(np.uint8)
-        canvas[:,:,0] = bg; canvas[:,:,1] = bg; canvas[:,:,2] = bg
+        canvas[:, :, 0] = bg
+        canvas[:, :, 1] = bg
+        canvas[:, :, 2] = bg
         canvas[self.no_plant]              = [80,  80,  80]
         canvas[self.dist_grid > 0.5, 2]   = 200
         canvas[self.obs_grid  > 0.7, 0]   = 200
@@ -501,8 +533,8 @@ class RwandaReforestEnv(gym.Env):
         for y in range(ZONE_SIZE):
             for x in range(ZONE_SIZE):
                 v = lc[y, x]
-                if   v == -1.0: canvas[y,x] = [180,40,40]
-                elif v > 0:     canvas[y,x] = [20, int(100+v*155), 20]
+                if   v == -1.0: canvas[y, x] = [180, 40, 40]
+                elif v > 0:     canvas[y, x] = [20, int(100 + v * 155), 20]
         canvas[self.y, self.x] = [255, 220, 0]
         return canvas
 
