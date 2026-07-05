@@ -1,0 +1,7 @@
+zone,pct_suitable_seeded,mean_soil_score,species_entropy,spacing_violations,protected_area_seeds,seasonal_rain_score,reseeding_count,missions_completed,battery_empty_events,obstacles_avoided
+zone_0_Congo-Nile_Divide_South,0.0095,0.3746,1.5511,1856.48,0.0,0.2936,5.88,2.6,0.68,0.0
+zone_1_Kivu_Belt_Southwest,0.0136,0.5291,1.5745,1911.92,0.0,0.2934,5.52,3.32,0.58,0.0
+zone_2_Central_Plateau_East,0.0146,0.5268,1.5435,2168.5,0.0,0.26,6.88,2.98,0.64,0.0
+zone_3_Northern_Plateau_East,0.0112,0.3931,1.5688,2183.42,0.0,0.2511,6.52,2.88,0.42,0.0
+zone_4_Eastern_Savanna_South,0.0113,0.5267,1.5049,1579.46,0.0,0.2654,5.16,3.12,0.64,0.0
+zone_5_Southern_Valley_East,0.0107,0.4537,1.5228,1698.0,0.0,0.2731,5.88,3.16,0.78,0.0
