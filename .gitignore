@@ -1,3 +1,55 @@
+# Python / ML
 __pycache__/
+*.py[cod]
+*$py.class
 .env
 aria_env/
+env/
+venv/
+.venv/
+results/*
+!results/metrics/
+!results/plots/
+.ipynb_checkpoints/
+
+# Unity & Archives
+*.zip
+ARIA_Unity/Library/
+ARIA_Unity/Temp/
+ARIA_Unity/Obj/
+ARIA_Unity/Build/
+ARIA_Unity/Builds/
+ARIA_Unity/Logs/
+ARIA_Unity/UserSettings/
+ARIA_Unity/MemoryCaptures/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Crashlogs
+sysinfo.txt
+*.stackdump
+
+# NOTE on the ONNX model file
+# aria_policy.onnx is intentionally NOT ignored -- it's a small
+# (~14.5KB) verified export and is expected to be committed so the
+# project runs out of the box. If your model grows large in a future
+# retrain, consider Git LFS instead of excluding it outright.
