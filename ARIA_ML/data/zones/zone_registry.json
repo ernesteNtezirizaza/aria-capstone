@@ -1,57 +1,21 @@
 [
   {
-    "zone_id": 1,
-    "name": "Virunga Foothills North",
+    "zone_id": 19,
+    "name": "Northwest Highlands",
     "agro_zone": "Northern Highlands",
     "split": "train",
-    "col": 1,
+    "col": 0,
     "row": 0,
     "bounds": {
-      "left": 29.1141,
-      "right": 29.3881,
+      "left": 28.84,
+      "right": 28.8737,
       "top": -1.04,
-      "bottom": -1.3299
+      "bottom": -1.0734
     },
     "array_index": 0,
-    "mean_soil": 0.4298822283744812,
-    "no_plant_pct": 0.14583333333333334,
-    "mean_dist": 0.07507812231779099
-  },
-  {
-    "zone_id": 2,
-    "name": "Northern Plateau West",
-    "agro_zone": "Northern Highlands",
-    "split": "train",
-    "col": 3,
-    "row": 0,
-    "bounds": {
-      "left": 29.6622,
-      "right": 29.9362,
-      "top": -1.04,
-      "bottom": -1.3299
-    },
-    "array_index": 1,
-    "mean_soil": 0.4064709544181824,
-    "no_plant_pct": 0.0625,
-    "mean_dist": 0.2163548469543457
-  },
-  {
-    "zone_id": 3,
-    "name": "Northern Plateau East",
-    "agro_zone": "Northern Highlands",
-    "split": "eval",
-    "col": 5,
-    "row": 0,
-    "bounds": {
-      "left": 30.2103,
-      "right": 30.4843,
-      "top": -1.04,
-      "bottom": -1.3299
-    },
-    "array_index": 0,
-    "mean_soil": 0.3123716115951538,
+    "mean_soil": 0.2539122402667999,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.08389787375926971
+    "mean_dist": 0.008911177515983582
   },
   {
     "zone_id": 4,
@@ -62,14 +26,32 @@
     "row": 1,
     "bounds": {
       "left": 28.84,
-      "right": 29.1141,
-      "top": -1.3299,
-      "bottom": -1.6199
+      "right": 28.8737,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 1,
+    "mean_soil": 0.36099982261657715,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.00921562872827053
+  },
+  {
+    "zone_id": 20,
+    "name": "North Central",
+    "agro_zone": "Northern Highlands",
+    "split": "train",
+    "col": 0,
+    "row": 2,
+    "bounds": {
+      "left": 28.84,
+      "right": 28.8737,
+      "top": -1.1069,
+      "bottom": -1.1403
     },
     "array_index": 2,
-    "mean_soil": 0.4400899112224579,
-    "no_plant_pct": 0.14583333333333334,
-    "mean_dist": 0.08704820275306702
+    "mean_soil": 0.36201241612434387,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.009522159583866596
   },
   {
     "zone_id": 5,
@@ -80,14 +62,14 @@
     "row": 3,
     "bounds": {
       "left": 28.84,
-      "right": 29.1141,
-      "top": -1.9098,
-      "bottom": -2.1997
+      "right": 28.8737,
+      "top": -1.1403,
+      "bottom": -1.1737
     },
     "array_index": 3,
-    "mean_soil": 0.2907779812812805,
-    "no_plant_pct": 0.15972222222222224,
-    "mean_dist": 0.12050144374370575
+    "mean_soil": 0.34924405813217163,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.009826895780861378
   },
   {
     "zone_id": 6,
@@ -98,68 +80,104 @@
     "row": 4,
     "bounds": {
       "left": 28.84,
-      "right": 29.1141,
-      "top": -2.1997,
-      "bottom": -2.4897
+      "right": 28.8737,
+      "top": -1.1737,
+      "bottom": -1.2072
     },
-    "array_index": 1,
-    "mean_soil": 0.31074532866477966,
-    "no_plant_pct": 0.020833333333333336,
-    "mean_dist": 0.31210896372795105
+    "array_index": 0,
+    "mean_soil": 0.3574601113796234,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010125046595931053
   },
   {
-    "zone_id": 7,
-    "name": "Central Plateau NW",
-    "agro_zone": "Central Plateau",
+    "zone_id": 21,
+    "name": "Northeast Highlands West",
+    "agro_zone": "Northern Highlands",
     "split": "train",
-    "col": 2,
-    "row": 1,
+    "col": 0,
+    "row": 5,
     "bounds": {
-      "left": 29.3881,
-      "right": 29.6622,
-      "top": -1.3299,
-      "bottom": -1.6199
+      "left": 28.84,
+      "right": 28.8737,
+      "top": -1.2072,
+      "bottom": -1.2406
     },
     "array_index": 4,
-    "mean_soil": 0.4726751744747162,
-    "no_plant_pct": 1.0694444444444444,
-    "mean_dist": 0.147957444190979
+    "mean_soil": 0.35832592844963074,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010410907678306103
   },
   {
-    "zone_id": 8,
-    "name": "Central Plateau Core",
-    "agro_zone": "Central Plateau",
+    "zone_id": 22,
+    "name": "Northeast Highlands East",
+    "agro_zone": "Northern Highlands",
     "split": "train",
-    "col": 3,
-    "row": 2,
+    "col": 0,
+    "row": 6,
     "bounds": {
-      "left": 29.6622,
-      "right": 29.9362,
-      "top": -1.6199,
-      "bottom": -1.9098
+      "left": 28.84,
+      "right": 28.8737,
+      "top": -1.2406,
+      "bottom": -1.2741
     },
     "array_index": 5,
-    "mean_soil": 0.42133307456970215,
-    "no_plant_pct": 0.4722222222222222,
-    "mean_dist": 0.2004992514848709
+    "mean_soil": 0.35222673416137695,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010677950456738472
   },
   {
-    "zone_id": 9,
-    "name": "Central Plateau East",
+    "zone_id": 1,
+    "name": "Virunga Foothills North",
+    "agro_zone": "Northern Highlands",
+    "split": "train",
+    "col": 1,
+    "row": 0,
+    "bounds": {
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.04,
+      "bottom": -1.0734
+    },
+    "array_index": 6,
+    "mean_soil": 0.36434265971183777,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.00928950123488903
+  },
+  {
+    "zone_id": 23,
+    "name": "Virunga Foothills South",
+    "agro_zone": "Northern Highlands",
+    "split": "train",
+    "col": 1,
+    "row": 1,
+    "bounds": {
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 7,
+    "mean_soil": 0.5262380242347717,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.009636103175580502
+  },
+  {
+    "zone_id": 24,
+    "name": "North Central East",
     "agro_zone": "Central Plateau",
-    "split": "eval",
-    "col": 4,
+    "split": "train",
+    "col": 1,
     "row": 2,
     "bounds": {
-      "left": 29.9362,
-      "right": 30.2103,
-      "top": -1.6199,
-      "bottom": -1.9098
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.1069,
+      "bottom": -1.1403
     },
-    "array_index": 2,
-    "mean_soil": 0.4045405387878418,
-    "no_plant_pct": 0.013888888888888888,
-    "mean_dist": 0.21522420644760132
+    "array_index": 8,
+    "mean_soil": 0.5213838815689087,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.009988360106945038
   },
   {
     "zone_id": 10,
@@ -169,33 +187,15 @@
     "col": 1,
     "row": 3,
     "bounds": {
-      "left": 29.1141,
-      "right": 29.3881,
-      "top": -1.9098,
-      "bottom": -2.1997
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.1403,
+      "bottom": -1.1737
     },
-    "array_index": 6,
-    "mean_soil": 0.24087119102478027,
+    "array_index": 9,
+    "mean_soil": 0.5111673474311829,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.2254941165447235
-  },
-  {
-    "zone_id": 11,
-    "name": "Kivu Belt South",
-    "agro_zone": "Kivu Belt",
-    "split": "train",
-    "col": 2,
-    "row": 4,
-    "bounds": {
-      "left": 29.3881,
-      "right": 29.6622,
-      "top": -2.1997,
-      "bottom": -2.4897
-    },
-    "array_index": 7,
-    "mean_soil": 0.4255200922489166,
-    "no_plant_pct": 0.006944444444444444,
-    "mean_dist": 0.28743112087249756
+    "mean_dist": 0.010341987945139408
   },
   {
     "zone_id": 12,
@@ -205,69 +205,141 @@
     "col": 1,
     "row": 4,
     "bounds": {
-      "left": 29.1141,
-      "right": 29.3881,
-      "top": -2.1997,
-      "bottom": -2.4897
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.1737,
+      "bottom": -1.2072
     },
-    "array_index": 3,
-    "mean_soil": 0.4716510772705078,
-    "no_plant_pct": 0.04861111111111111,
-    "mean_dist": 0.7027550339698792
+    "array_index": 1,
+    "mean_soil": 0.5266535878181458,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010691451840102673
   },
   {
-    "zone_id": 13,
-    "name": "Eastern Savanna North",
+    "zone_id": 25,
+    "name": "Kivu Belt Far North",
+    "agro_zone": "Kivu Belt",
+    "split": "train",
+    "col": 1,
+    "row": 5,
+    "bounds": {
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.2072,
+      "bottom": -1.2406
+    },
+    "array_index": 10,
+    "mean_soil": 0.5305405855178833,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011029896326363087
+  },
+  {
+    "zone_id": 26,
+    "name": "Eastern Rift North",
     "agro_zone": "Eastern Savanna",
     "split": "train",
-    "col": 5,
+    "col": 1,
+    "row": 6,
+    "bounds": {
+      "left": 28.8737,
+      "right": 28.9073,
+      "top": -1.2406,
+      "bottom": -1.2741
+    },
+    "array_index": 11,
+    "mean_soil": 0.519149124622345,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011349193751811981
+  },
+  {
+    "zone_id": 27,
+    "name": "Western Ridge North",
+    "agro_zone": "Western Ridge",
+    "split": "train",
+    "col": 2,
+    "row": 0,
+    "bounds": {
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.04,
+      "bottom": -1.0734
+    },
+    "array_index": 12,
+    "mean_soil": 0.3747622072696686,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.009687467478215694
+  },
+  {
+    "zone_id": 7,
+    "name": "Central Plateau NW",
+    "agro_zone": "Central Plateau",
+    "split": "train",
+    "col": 2,
+    "row": 1,
+    "bounds": {
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 13,
+    "mean_soil": 0.5385845303535461,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010082690045237541
+  },
+  {
+    "zone_id": 28,
+    "name": "Central Plateau Mid",
+    "agro_zone": "Central Plateau",
+    "split": "train",
+    "col": 2,
     "row": 2,
     "bounds": {
-      "left": 30.2103,
-      "right": 30.4843,
-      "top": -1.6199,
-      "bottom": -1.9098
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.1069,
+      "bottom": -1.1403
     },
-    "array_index": 8,
-    "mean_soil": 0.3724660873413086,
+    "array_index": 14,
+    "mean_soil": 0.5274892449378967,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.10488306730985641
+    "mean_dist": 0.010488569736480713
   },
   {
-    "zone_id": 14,
-    "name": "Eastern Savanna Central",
-    "agro_zone": "Eastern Savanna",
+    "zone_id": 29,
+    "name": "Central East Mid",
+    "agro_zone": "Central Plateau",
     "split": "train",
-    "col": 6,
+    "col": 2,
     "row": 3,
     "bounds": {
-      "left": 30.4843,
-      "right": 30.7584,
-      "top": -1.9098,
-      "bottom": -2.1997
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.1403,
+      "bottom": -1.1737
     },
-    "array_index": 9,
-    "mean_soil": 0.32599499821662903,
+    "array_index": 15,
+    "mean_soil": 0.5234369039535522,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.05625954270362854
+    "mean_dist": 0.010900536552071571
   },
   {
-    "zone_id": 15,
-    "name": "Eastern Savanna South",
-    "agro_zone": "Eastern Savanna",
-    "split": "eval",
-    "col": 5,
+    "zone_id": 11,
+    "name": "Kivu Belt South",
+    "agro_zone": "Kivu Belt",
+    "split": "train",
+    "col": 2,
     "row": 4,
     "bounds": {
-      "left": 30.2103,
-      "right": 30.4843,
-      "top": -2.1997,
-      "bottom": -2.4897
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.1737,
+      "bottom": -1.2072
     },
-    "array_index": 4,
-    "mean_soil": 0.31267690658569336,
+    "array_index": 16,
+    "mean_soil": 0.5343631505966187,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.054920412600040436
+    "mean_dist": 0.011312337592244148
   },
   {
     "zone_id": 16,
@@ -277,15 +349,249 @@
     "col": 2,
     "row": 5,
     "bounds": {
-      "left": 29.3881,
-      "right": 29.6622,
-      "top": -2.4897,
-      "bottom": -2.7796
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.2072,
+      "bottom": -1.2406
     },
-    "array_index": 10,
-    "mean_soil": 0.44502896070480347,
+    "array_index": 17,
+    "mean_soil": 0.5440486073493958,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.4264122247695923
+    "mean_dist": 0.011715829372406006
+  },
+  {
+    "zone_id": 30,
+    "name": "Eastern Rift Central",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 2,
+    "row": 6,
+    "bounds": {
+      "left": 28.9073,
+      "right": 28.941,
+      "top": -1.2406,
+      "bottom": -1.2741
+    },
+    "array_index": 18,
+    "mean_soil": 0.5323560833930969,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012100934982299805
+  },
+  {
+    "zone_id": 2,
+    "name": "Northern Plateau West",
+    "agro_zone": "Northern Highlands",
+    "split": "train",
+    "col": 3,
+    "row": 0,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.04,
+      "bottom": -1.0734
+    },
+    "array_index": 19,
+    "mean_soil": 0.36219245195388794,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010103879496455193
+  },
+  {
+    "zone_id": 31,
+    "name": "Western Central",
+    "agro_zone": "Western Ridge",
+    "split": "train",
+    "col": 3,
+    "row": 1,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 20,
+    "mean_soil": 0.5318577885627747,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010554964654147625
+  },
+  {
+    "zone_id": 8,
+    "name": "Central Plateau Core",
+    "agro_zone": "Central Plateau",
+    "split": "train",
+    "col": 3,
+    "row": 2,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.1069,
+      "bottom": -1.1403
+    },
+    "array_index": 21,
+    "mean_soil": 0.5300010442733765,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.01102359313517809
+  },
+  {
+    "zone_id": 32,
+    "name": "Central Plateau South",
+    "agro_zone": "Central Plateau",
+    "split": "train",
+    "col": 3,
+    "row": 3,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.1403,
+      "bottom": -1.1737
+    },
+    "array_index": 22,
+    "mean_soil": 0.5378208160400391,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011505178175866604
+  },
+  {
+    "zone_id": 33,
+    "name": "Kivu Belt Central",
+    "agro_zone": "Kivu Belt",
+    "split": "train",
+    "col": 3,
+    "row": 4,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.1737,
+      "bottom": -1.2072
+    },
+    "array_index": 23,
+    "mean_soil": 0.5415508151054382,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011992903426289558
+  },
+  {
+    "zone_id": 34,
+    "name": "Southern Kivu",
+    "agro_zone": "Kivu Belt",
+    "split": "train",
+    "col": 3,
+    "row": 5,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.2072,
+      "bottom": -1.2406
+    },
+    "array_index": 24,
+    "mean_soil": 0.5462525486946106,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012477313168346882
+  },
+  {
+    "zone_id": 35,
+    "name": "Eastern Rift South",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 3,
+    "row": 6,
+    "bounds": {
+      "left": 28.941,
+      "right": 28.9747,
+      "top": -1.2406,
+      "bottom": -1.2741
+    },
+    "array_index": 25,
+    "mean_soil": 0.5417316555976868,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012946033850312233
+  },
+  {
+    "zone_id": 36,
+    "name": "Southwest Highlands",
+    "agro_zone": "Western Ridge",
+    "split": "train",
+    "col": 4,
+    "row": 0,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.04,
+      "bottom": -1.0734
+    },
+    "array_index": 26,
+    "mean_soil": 0.3603050410747528,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.01053647231310606
+  },
+  {
+    "zone_id": 37,
+    "name": "South Central West",
+    "agro_zone": "Southern Valley",
+    "split": "train",
+    "col": 4,
+    "row": 1,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 27,
+    "mean_soil": 0.5191252827644348,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011051330715417862
+  },
+  {
+    "zone_id": 9,
+    "name": "Central Plateau East",
+    "agro_zone": "Central Plateau",
+    "split": "eval",
+    "col": 4,
+    "row": 2,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.1069,
+      "bottom": -1.1403
+    },
+    "array_index": 2,
+    "mean_soil": 0.5255632996559143,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.011593072675168514
+  },
+  {
+    "zone_id": 38,
+    "name": "South Central",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 4,
+    "row": 3,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.1403,
+      "bottom": -1.1737
+    },
+    "array_index": 28,
+    "mean_soil": 0.5522141456604004,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012157565914094448
+  },
+  {
+    "zone_id": 39,
+    "name": "South Kivu Belt",
+    "agro_zone": "Kivu Belt",
+    "split": "train",
+    "col": 4,
+    "row": 4,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.1737,
+      "bottom": -1.2072
+    },
+    "array_index": 29,
+    "mean_soil": 0.5542073845863342,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012737855315208435
   },
   {
     "zone_id": 17,
@@ -295,32 +601,158 @@
     "col": 4,
     "row": 5,
     "bounds": {
-      "left": 29.9362,
-      "right": 30.2103,
-      "top": -2.4897,
-      "bottom": -2.7796
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.2072,
+      "bottom": -1.2406
     },
-    "array_index": 11,
-    "mean_soil": 0.3769265115261078,
+    "array_index": 30,
+    "mean_soil": 0.5374403595924377,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.06816903501749039
+    "mean_dist": 0.013323366641998291
+  },
+  {
+    "zone_id": 40,
+    "name": "Far East South",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 4,
+    "row": 6,
+    "bounds": {
+      "left": 28.9747,
+      "right": 29.0083,
+      "top": -1.2406,
+      "bottom": -1.2741
+    },
+    "array_index": 31,
+    "mean_soil": 0.5478861927986145,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.013899209909141064
+  },
+  {
+    "zone_id": 3,
+    "name": "Northern Plateau East",
+    "agro_zone": "Northern Highlands",
+    "split": "eval",
+    "col": 5,
+    "row": 0,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.04,
+      "bottom": -1.0734
+    },
+    "array_index": 3,
+    "mean_soil": 0.36450856924057007,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.010981576517224312
+  },
+  {
+    "zone_id": 41,
+    "name": "Southern West",
+    "agro_zone": "Southern Valley",
+    "split": "train",
+    "col": 5,
+    "row": 1,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.0734,
+      "bottom": -1.1069
+    },
+    "array_index": 32,
+    "mean_soil": 0.5066587328910828,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.01156855933368206
+  },
+  {
+    "zone_id": 13,
+    "name": "Eastern Savanna North",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 5,
+    "row": 2,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.1069,
+      "bottom": -1.1403
+    },
+    "array_index": 33,
+    "mean_soil": 0.5161398649215698,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012194846756756306
+  },
+  {
+    "zone_id": 14,
+    "name": "Eastern Savanna Central",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 5,
+    "row": 3,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.1403,
+      "bottom": -1.1737
+    },
+    "array_index": 34,
+    "mean_soil": 0.5300911068916321,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.012857599183917046
+  },
+  {
+    "zone_id": 15,
+    "name": "Eastern Savanna South",
+    "agro_zone": "Eastern Savanna",
+    "split": "eval",
+    "col": 5,
+    "row": 4,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.1737,
+      "bottom": -1.2072
+    },
+    "array_index": 4,
+    "mean_soil": 0.5510424375534058,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.01355055533349514
   },
   {
     "zone_id": 18,
     "name": "Southern Valley East",
     "agro_zone": "Southern Valley",
     "split": "eval",
-    "col": 6,
+    "col": 5,
     "row": 5,
     "bounds": {
-      "left": 30.4843,
-      "right": 30.7584,
-      "top": -2.4897,
-      "bottom": -2.7796
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.2072,
+      "bottom": -1.2406
     },
     "array_index": 5,
-    "mean_soil": 0.35362914204597473,
+    "mean_soil": 0.4812924563884735,
     "no_plant_pct": 0.0,
-    "mean_dist": 0.038522325456142426
+    "mean_dist": 0.014262682758271694
+  },
+  {
+    "zone_id": 42,
+    "name": "Far Southeast",
+    "agro_zone": "Eastern Savanna",
+    "split": "train",
+    "col": 5,
+    "row": 6,
+    "bounds": {
+      "left": 29.0083,
+      "right": 29.042,
+      "top": -1.2406,
+      "bottom": -1.2741
+    },
+    "array_index": 35,
+    "mean_soil": 0.48112866282463074,
+    "no_plant_pct": 0.0,
+    "mean_dist": 0.014976746402680874
   }
 ]
