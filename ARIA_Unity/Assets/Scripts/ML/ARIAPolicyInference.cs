@@ -29,9 +29,10 @@ namespace ARIA.ML
             }
 
             _runtimeModel = ModelLoader.Load(onnxModelAsset);
-            // GPUCompute is generally fastest where supported; swap to
-            // BackendType.CPU if you hit backend-specific issues.
-            _worker = new Worker(_runtimeModel, BackendType.GPUCompute);
+            // WebGL's compute shader support is inconsistent across browsers/hardware
+            // (missing kernels have been observed there), so use the CPU backend for
+            // reliability instead of GPUCompute.
+            _worker = new Worker(_runtimeModel, BackendType.CPU);
             _initialised = true;
         }
 

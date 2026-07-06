@@ -8,4 +8,13 @@
     the build.
   -->
   <assembly fullname="UnityEngine.PhysicsModule" preserve="all" />
+
+  <!--
+    ARIAPolicyInference references Unity.InferenceEngine.ModelAsset directly, so that one
+    type survives stripping, but Resources.Load<ModelAsset>("aria_policy") still returns
+    null in the WebGL build because ModelAsset's deserialization depends on
+    ModelAssetData/ModelAssetWeightsData and other package-internal types that nothing in
+    our own code references by name, so the linker drops them.
+  -->
+  <assembly fullname="Unity.InferenceEngine" preserve="all" />
 </linker>
