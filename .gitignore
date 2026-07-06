@@ -53,3 +53,17 @@ sysinfo.txt
 # (~14.5KB) verified export and is expected to be committed so the
 # project runs out of the box. If your model grows large in a future
 # retrain, consider Git LFS instead of excluding it outright.
+
+# Node / Next.js / ARIA_Web
+ARIA_Web/node_modules/
+ARIA_Web/.next/
+ARIA_Web/.pnp
+ARIA_Web/.pnp.js
+ARIA_Web/coverage/
+ARIA_Web/.vercel
+ARIA_Web/.env
+ARIA_Web/.env.*
+!ARIA_Web/.env.example
+ARIA_Web/build
+ARIA_Web/dist
+*.tsbuildinfo
