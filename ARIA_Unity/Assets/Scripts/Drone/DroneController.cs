@@ -112,7 +112,12 @@ namespace ARIA.Drone
             if (policyInference == null)
                 policyInference = GetComponent<ARIAPolicyInference>();
 
-            ZoneManifest = RealZoneLoader.LoadManifest(manifestFileName);
+            StartCoroutine(InitializeZones());
+        }
+
+        private IEnumerator InitializeZones()
+        {
+            yield return RealZoneLoader.LoadManifestAsync(manifestFileName, manifest => ZoneManifest = manifest);
 
             Debug.Log($"[DroneController] Startup: switchZoneOnEpisodeEnd={switchZoneOnEpisodeEnd}, " +
                 $"autoRestartEpisodes={autoRestartEpisodes}, zones available={ZoneManifest.Count}. " +
@@ -122,23 +127,48 @@ namespace ARIA.Drone
             if (ZoneManifest.Count > 0)
             {
                 int idx = Mathf.Clamp(startingZoneIndex, 0, ZoneManifest.Count - 1);
-                SwitchZone(idx);
+                yield return LoadZoneAndStart(ZoneManifest[idx], idx);
             }
             else
             {
                 // Fallback: single-zone mode, no manifest available.
-                _currentZoneData = RealZoneLoader.Load(out var meta, fallbackZoneFileName);
-                DemoConditions.ApplyObstacleOverlay(_currentZoneData, 0);
-                if (_currentZoneData == null)
+                yield return RealZoneLoader.LoadAsync(fallbackZoneFileName, (zone, meta) =>
                 {
-                    Debug.LogError("[DroneController] Could not load real zone data " +
-                        $"from '{fallbackZoneFileName}'. Episode NOT started -- check that " +
-                        "the file exists under Assets/StreamingAssets/.");
+                    _currentZoneData = zone;
+                    DemoConditions.ApplyObstacleOverlay(_currentZoneData, 0);
+                    if (zone == null)
+                    {
+                        Debug.LogError("[DroneController] Could not load real zone data " +
+                            $"from '{fallbackZoneFileName}'. Episode NOT started -- check that " +
+                            "the file exists under Assets/StreamingAssets/.");
+                        return;
+                    }
+                    CurrentZoneMeta = meta;
+                });
+                if (_currentZoneData != null) StartNewEpisode();
+            }
+        }
+
+        private IEnumerator LoadZoneAndStart(ZoneManifestEntry entry, int index)
+        {
+            yield return RealZoneLoader.LoadAsync(entry.fileName, (zone, meta) =>
+            {
+                if (zone == null)
+                {
+                    Debug.LogError($"[DroneController] Failed to load zone '{entry.fileName}' " +
+                        $"(index {index}) -- staying on the previous zone.");
+                    _switchingZone = false;
                     return;
                 }
+
+                _currentZoneData = zone;
+                DemoConditions.ApplyObstacleOverlay(_currentZoneData, index);
                 CurrentZoneMeta = meta;
+                CurrentZoneIndex = index;
+                _switchingZone = false;
+
                 StartNewEpisode();
-            }
+            });
         }
 
         public void SwitchZone(int index)
@@ -154,23 +184,7 @@ namespace ARIA.Drone
             _episodeActive = false;
             StopAllCoroutines();
 
-            var entry = ZoneManifest[index];
-            var zone = RealZoneLoader.Load(out var meta, entry.fileName);
-            if (zone == null)
-            {
-                Debug.LogError($"[DroneController] Failed to load zone '{entry.fileName}' " +
-                    $"(index {index}) -- staying on the previous zone.");
-                _switchingZone = false;
-                return;
-            }
-
-            _currentZoneData = zone;
-            DemoConditions.ApplyObstacleOverlay(_currentZoneData, index);
-            CurrentZoneMeta = meta;
-            CurrentZoneIndex = index;
-            _switchingZone = false;
-
-            StartNewEpisode();
+            StartCoroutine(LoadZoneAndStart(ZoneManifest[index], index));
         }
 
         public void StartNewEpisode()

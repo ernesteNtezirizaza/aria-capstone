@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 using ARIA.Core;
 
 namespace ARIA.Core
@@ -42,101 +44,113 @@ namespace ARIA.Core
         public List<ZoneManifestEntry> zones;
     }
 
+    // Application.streamingAssetsPath is a URL on WebGL (not a real filesystem path), so
+    // System.IO.File can never read it there -- every load must go through UnityWebRequest.
     public static class RealZoneLoader
     {
-        public static List<ZoneManifestEntry> LoadManifest(string fileName = "zone_manifest.json")
+        public static IEnumerator LoadManifestAsync(string fileName, Action<List<ZoneManifestEntry>> onComplete)
         {
             string path = System.IO.Path.Combine(Application.streamingAssetsPath, fileName);
 
-            if (!System.IO.File.Exists(path))
+            using (var req = UnityWebRequest.Get(path))
             {
-                Debug.LogWarning($"[RealZoneLoader] Manifest not found: {path}. " +
-                    "Zone-switching UI will be unavailable -- only the single " +
-                    "default zone can be loaded. Copy zone_manifest.json (and the " +
-                    "zone JSON files it references) into Assets/StreamingAssets/.");
-                return new List<ZoneManifestEntry>();
+                yield return req.SendWebRequest();
+
+                if (req.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogWarning($"[RealZoneLoader] Manifest not found: {path} ({req.error}). " +
+                        "Zone-switching UI will be unavailable -- only the single " +
+                        "default zone can be loaded. Copy zone_manifest.json (and the " +
+                        "zone JSON files it references) into Assets/StreamingAssets/.");
+                    onComplete(new List<ZoneManifestEntry>());
+                    yield break;
+                }
+
+                var manifest = JsonUtility.FromJson<ZoneManifest>(req.downloadHandler.text);
+
+                if (manifest == null || manifest.zones == null)
+                {
+                    Debug.LogError("[RealZoneLoader] Failed to parse zone_manifest.json.");
+                    onComplete(new List<ZoneManifestEntry>());
+                    yield break;
+                }
+
+                Debug.Log($"[RealZoneLoader] Loaded zone manifest -- {manifest.zones.Count} real zones available.");
+                onComplete(manifest.zones);
             }
-
-            string json = System.IO.File.ReadAllText(path);
-            var manifest = JsonUtility.FromJson<ZoneManifest>(json);
-
-            if (manifest == null || manifest.zones == null)
-            {
-                Debug.LogError("[RealZoneLoader] Failed to parse zone_manifest.json.");
-                return new List<ZoneManifestEntry>();
-            }
-
-            Debug.Log($"[RealZoneLoader] Loaded zone manifest -- {manifest.zones.Count} real zones available.");
-            return manifest.zones;
         }
 
-        public static ZoneData Load(out RealZoneJson meta, string fileName = "aria_zone.json")
+        public static IEnumerator LoadAsync(string fileName, Action<ZoneData, RealZoneJson> onComplete)
         {
             string path = System.IO.Path.Combine(Application.streamingAssetsPath, fileName);
 
-            string json;
-            if (!System.IO.File.Exists(path))
+            using (var req = UnityWebRequest.Get(path))
             {
-                Debug.LogError($"[RealZoneLoader] File not found: {path}. " +
-                    "Did you copy aria_zone.json into Assets/StreamingAssets/?");
-                meta = null;
-                return null;
-            }
+                yield return req.SendWebRequest();
 
-            json = System.IO.File.ReadAllText(path);
-            meta = JsonUtility.FromJson<RealZoneJson>(json);
-
-            if (meta == null)
-            {
-                Debug.LogError("[RealZoneLoader] Failed to parse aria_zone.json.");
-                return null;
-            }
-
-            int size = meta.size;
-            int ch   = meta.nChannels;
-
-            if (size != ARIAConstants.ZONE_SIZE)
-            {
-                Debug.LogWarning($"[RealZoneLoader] Zone size {size} does not match " +
-                    $"ARIAConstants.ZONE_SIZE ({ARIAConstants.ZONE_SIZE}). " +
-                    "Proceeding with the zone's actual size, but downstream code that " +
-                    "assumes ZONE_SIZE everywhere may break.");
-            }
-
-            var zone = new ZoneData(size);
-
-            // terrainFlat index = (y*size + x)*ch + c -- matches export_zone.py exactly
-            int idx = 0;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
+                if (req.result != UnityWebRequest.Result.Success)
                 {
-                    for (int c = 0; c < ch; c++)
+                    Debug.LogError($"[RealZoneLoader] File not found: {path} ({req.error}). " +
+                        "Did you copy aria_zone.json into Assets/StreamingAssets/?");
+                    onComplete(null, null);
+                    yield break;
+                }
+
+                var meta = JsonUtility.FromJson<RealZoneJson>(req.downloadHandler.text);
+
+                if (meta == null)
+                {
+                    Debug.LogError("[RealZoneLoader] Failed to parse aria_zone.json.");
+                    onComplete(null, null);
+                    yield break;
+                }
+
+                int size = meta.size;
+                int ch   = meta.nChannels;
+
+                if (size != ARIAConstants.ZONE_SIZE)
+                {
+                    Debug.LogWarning($"[RealZoneLoader] Zone size {size} does not match " +
+                        $"ARIAConstants.ZONE_SIZE ({ARIAConstants.ZONE_SIZE}). " +
+                        "Proceeding with the zone's actual size, but downstream code that " +
+                        "assumes ZONE_SIZE everywhere may break.");
+                }
+
+                var zone = new ZoneData(size);
+
+                // terrainFlat index = (y*size + x)*ch + c -- matches export_zone.py exactly
+                int idx = 0;
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
                     {
-                        zone.Terrain[y, x, c] = meta.terrainFlat[idx++];
+                        for (int c = 0; c < ch; c++)
+                        {
+                            zone.Terrain[y, x, c] = meta.terrainFlat[idx++];
+                        }
                     }
                 }
+
+                idx = 0;
+                for (int y = 0; y < size; y++)
+                    for (int x = 0; x < size; x++)
+                        zone.DistGrid[y, x] = meta.distGridFlat[idx++];
+
+                idx = 0;
+                for (int y = 0; y < size; y++)
+                    for (int x = 0; x < size; x++)
+                        zone.ObsGrid[y, x] = meta.obsGridFlat[idx++];
+
+                idx = 0;
+                for (int y = 0; y < size; y++)
+                    for (int x = 0; x < size; x++)
+                        zone.NoPlant[y, x] = meta.noPlantFlat[idx++];
+
+                Debug.Log($"[RealZoneLoader] Loaded real zone '{meta.name}' " +
+                    $"({meta.agroZone}, split={meta.split}) -- {size}x{size} cells.");
+
+                onComplete(zone, meta);
             }
-
-            idx = 0;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                    zone.DistGrid[y, x] = meta.distGridFlat[idx++];
-
-            idx = 0;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                    zone.ObsGrid[y, x] = meta.obsGridFlat[idx++];
-
-            idx = 0;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                    zone.NoPlant[y, x] = meta.noPlantFlat[idx++];
-
-            Debug.Log($"[RealZoneLoader] Loaded real zone '{meta.name}' " +
-                $"({meta.agroZone}, split={meta.split}) -- {size}x{size} cells.");
-
-            return zone;
         }
     }
 }

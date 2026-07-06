@@ -1,0 +1,11 @@
+<linker>
+  <!--
+    GameObject.CreatePrimitive() adds Collider components (BoxCollider, SphereCollider,
+    CapsuleCollider, MeshCollider) internally from engine code, with no direct C# reference
+    anywhere in our scripts. Without this, IL2CPP's code stripper removes those managed
+    wrapper classes from the WebGL build, and CreatePrimitive logs
+    "Can't add component because class 'X' doesn't exist!" at runtime instead of failing
+    the build.
+  -->
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all" />
+</linker>
