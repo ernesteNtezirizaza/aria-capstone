@@ -79,7 +79,7 @@ namespace ARIA.Core
             AbortTriggered = false;
             MissionCompleteReturning = false;
             BaseX = ARIAConstants.ZONE_SIZE / 2;
-            BaseY = ARIAConstants.ZONE_SIZE / 2;
+            BaseY = 0; // Bottom edge of the grid, nearest to the helipad
             ReseedingTargets = new HashSet<(int, int)>();
             LastResult = default;
 
