@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Zone {
+  zone_id    Int       @id @default(autoincrement())
+  name       String
+  province   String
+  agro_zone  String
+  area_km2   Float
+  split_type String
+  episodes   Episode[]
+}
+
+model Episode {
+  episode_id           Int      @id @default(autoincrement())
+  zone_id              Int
+  zone                 Zone     @relation(fields: [zone_id], references: [zone_id])
+  agent_type           String
+  total_reward         Float?
+  pct_suitable_seeded  Float?
+  mean_soil_score      Float?
+  species_entropy      Float?
+  spacing_violations   Int?
+  protected_area_seeds Int?
+  timestamp            DateTime @default(now())
+  n_seeds_placed       Int?
+  seeds                Seed[]
+}
+
+model Seed {
+  seed_id           Int      @id @default(autoincrement())
+  episode_id        Int
+  episode           Episode  @relation(fields: [episode_id], references: [episode_id])
+  x_coord           Int
+  y_coord           Int
+  species_id        Int
+  soil_score        Float?
+  rain_score        Float?
+  slope_score       Float?
+  is_suitable       Boolean?
+  in_protected_area Boolean?
+}
