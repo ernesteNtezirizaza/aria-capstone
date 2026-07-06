@@ -11,6 +11,8 @@ results/*
 !results/metrics/
 !results/plots/
 .ipynb_checkpoints/
+ARIA_ML/data/
+ARIA_ML/results/checkpoints/
 
 # Unity & Archives
 *.zip
