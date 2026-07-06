@@ -1,6 +1,0 @@
-species_id,name,germ_steps,mature_steps,rain_min
-0,Eucalyptus globulus,8,60,0.0848
-1,Grevillea robusta,15,100,0.1018
-2,Eucalyptus maculata,8,60,0.1188
-3,Eucalyptus maidenii,8,60,0.1358
-4,Artocarpus heterophyllus,8,60,0.1697
