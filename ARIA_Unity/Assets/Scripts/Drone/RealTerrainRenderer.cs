@@ -78,9 +78,12 @@ namespace ARIA.Drone
             _texture.filterMode = FilterMode.Point;
             _texture.wrapMode = TextureWrapMode.Clamp;
 
-            var mat = new Material(_renderer.sharedMaterial);
-            mat.mainTexture = _texture;
-            _renderer.material = mat;
+            var mat = MaterialHelper.GetDefaultMaterial();
+            if (mat != null)
+            {
+                mat.mainTexture = _texture;
+                _renderer.material = mat;
+            }
         }
 
         public void Build(ZoneData zone)

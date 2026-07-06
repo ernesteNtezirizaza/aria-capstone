@@ -8,18 +8,12 @@ public static class MaterialHelper
     {
         if (_defaultMaterial == null)
         {
-            // Canvas.GetDefaultCanvasMaterial() is built directly into the engine's core C++ binaries.
-            // It is completely immune to WebGL stripping and does not rely on string lookups.
-            // It provides an unlit shader that perfectly supports color tints.
-            _defaultMaterial = Canvas.GetDefaultCanvasMaterial();
-            
-            if (_defaultMaterial == null) 
-            {
-                // Absolute worst case fallback to prevent crashes
-                return null;
-            }
+            // Loaded from Assets/Resources so it always ships with the WebGL build,
+            // and its shader is explicitly listed in GraphicsSettings.m_AlwaysIncludedShaders,
+            // so it can never be stripped regardless of what else is in the scene.
+            _defaultMaterial = Resources.Load<Material>("DummyStandardMaterial");
         }
-        
-        return new Material(_defaultMaterial);
+
+        return _defaultMaterial != null ? new Material(_defaultMaterial) : null;
     }
 }
