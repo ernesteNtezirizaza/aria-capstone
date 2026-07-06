@@ -48,12 +48,6 @@ Thumbs.db
 sysinfo.txt
 *.stackdump
 
-# NOTE on the ONNX model file
-# aria_policy.onnx is intentionally NOT ignored -- it's a small
-# (~14.5KB) verified export and is expected to be committed so the
-# project runs out of the box. If your model grows large in a future
-# retrain, consider Git LFS instead of excluding it outright.
-
 # Node / Next.js / ARIA_Web
 ARIA_Web/node_modules/
 ARIA_Web/.next/
