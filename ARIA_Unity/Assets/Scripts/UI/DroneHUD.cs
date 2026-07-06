@@ -102,20 +102,20 @@ namespace ARIA.UI
         private void BuildDemoControls()
         {
             var panel = MakePanel(transform, new Vector2(1, 1), new Vector2(1, 1),
-                new Vector2(-8, -10), new Vector2(230, 120), new Color(0f, 0.05f, 0f, 1f));
+                new Vector2(-16, -16), new Vector2(260, 140), new Color(0.1f, 0.15f, 0.1f, 0.98f));
 
-            var titleText = MakeText(panel, "DEMO CONTROLS", 12, TextAnchor.UpperCenter,
-                new Vector2(0, -6), new Vector2(0, -6));
-            titleText.color = new Color(0.8f, 0.8f, 0.8f);
+            var titleText = MakeText(panel, "DEMO CONTROLS", 16, TextAnchor.UpperCenter,
+                new Vector2(0, -12), new Vector2(0, -12));
+            titleText.color = new Color(1f, 1f, 1f);
             titleText.fontStyle = FontStyle.Bold;
 
             // Weather mode button -- clicking cycles Sunny(Default) ->
             // AutoCycle -> ForceSunny -> ForceRainy -> Sunny(Default) ...
             var weatherBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(8, -30), new Vector2(-16, 32), new Color(0.15f, 0.15f, 0.05f, 0.95f));
+                new Vector2(12, -40), new Vector2(-24, 40), new Color(0.25f, 0.25f, 0.15f, 1f));
             var weatherBtn = weatherBtnGO.AddComponent<Button>();
             _weatherButtonImg = weatherBtnGO.GetComponent<Image>();
-            _weatherButtonLabel = MakeText(weatherBtnGO, "Weather: Sunny (Default)", 12, TextAnchor.MiddleCenter,
+            _weatherButtonLabel = MakeText(weatherBtnGO, "Weather: Sunny (Default)", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
             weatherBtn.onClick.AddListener(CycleWeatherMode);
 
@@ -123,10 +123,10 @@ namespace ARIA.UI
             // obstacles on/off. ClearObstacles() wipes any existing
             // overlay back to real (all-zero) data when turned off.
             var obstacleBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(8, -68), new Vector2(-16, 32), new Color(0.15f, 0.05f, 0.05f, 0.95f));
+                new Vector2(12, -88), new Vector2(-24, 40), new Color(0.25f, 0.15f, 0.15f, 1f));
             var obstacleBtn = obstacleBtnGO.AddComponent<Button>();
             _obstacleButtonImg = obstacleBtnGO.GetComponent<Image>();
-            _obstacleButtonLabel = MakeText(obstacleBtnGO, "Obstacles: Off", 12, TextAnchor.MiddleCenter,
+            _obstacleButtonLabel = MakeText(obstacleBtnGO, "Obstacles: Off", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
             obstacleBtn.onClick.AddListener(ToggleObstacles);
 
@@ -196,14 +196,14 @@ namespace ARIA.UI
             };
             _weatherButtonLabel.text = modeText;
             _weatherButtonImg.color = DemoConditions.WeatherMode == WeatherMode.RealData
-                ? new Color(0.15f, 0.15f, 0.05f, 0.95f)
+                ? new Color(0.2f, 0.2f, 0.15f, 0.95f)
                 : new Color(0.5f, 0.4f, 0.05f, 0.95f);
 
             _obstacleButtonLabel.text = DemoConditions.ObstacleOverlayEnabled
                 ? "Obstacles: On" : "Obstacles: Off";
             _obstacleButtonImg.color = DemoConditions.ObstacleOverlayEnabled
                 ? new Color(0.6f, 0.15f, 0.1f, 0.95f)
-                : new Color(0.15f, 0.05f, 0.05f, 0.95f);
+                : new Color(0.2f, 0.15f, 0.15f, 0.95f);
         }
 
         private GameObject MakePanel(Transform parent, Vector2 anchorMin, Vector2 anchorMax,
