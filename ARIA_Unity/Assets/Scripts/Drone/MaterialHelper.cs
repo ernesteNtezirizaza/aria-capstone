@@ -8,25 +8,18 @@ public static class MaterialHelper
     {
         if (_defaultMaterial == null)
         {
-            Shader shader = Shader.Find("Standard");
-            if (shader == null) shader = Shader.Find("Mobile/Diffuse");
-            if (shader == null) shader = Shader.Find("Legacy Shaders/Diffuse");
-            if (shader == null) shader = Shader.Find("UI/Default");
-
-            if (shader != null)
+            // Canvas.GetDefaultCanvasMaterial() is built directly into the engine's core C++ binaries.
+            // It is completely immune to WebGL stripping and does not rely on string lookups.
+            // It provides an unlit shader that perfectly supports color tints.
+            _defaultMaterial = Canvas.GetDefaultCanvasMaterial();
+            
+            if (_defaultMaterial == null) 
             {
-                _defaultMaterial = new Material(shader);
-            }
-            else
-            {
-                var temp = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                if (temp.GetComponent<Renderer>().sharedMaterial != null && temp.GetComponent<Renderer>().sharedMaterial.shader != null)
-                {
-                    _defaultMaterial = new Material(temp.GetComponent<Renderer>().sharedMaterial);
-                }
-                Object.Destroy(temp);
+                // Absolute worst case fallback to prevent crashes
+                return null;
             }
         }
+        
         return new Material(_defaultMaterial);
     }
 }
