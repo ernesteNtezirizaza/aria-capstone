@@ -175,7 +175,7 @@ public static class TreeBuilder
     {
         var rend = go.GetComponent<Renderer>();
         if (rend == null) return;
-        var mat = new Material(Shader.Find("Standard"));
+        var mat = MaterialHelper.GetDefaultMaterial();
         mat.color = col;
         rend.material = mat;
     }

@@ -38,7 +38,7 @@ namespace ARIA.Drone
             _shell.transform.localPosition = new Vector3(0f, -0.3f, 0f);
             _shell.transform.localScale = new Vector3(7f, 5f, 7f);
 
-            var mat = new Material(Shader.Find("Standard"));
+            var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = new Color(0.2f, 0.85f, 1f, 0.45f); // translucent bright cyan -- seed drop stays visible through it
             mat.SetFloat("_Mode", 3); // Transparent
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -58,7 +58,7 @@ namespace ARIA.Drone
             _rim.transform.SetParent(parent, false);
             _rim.transform.localPosition = new Vector3(0f, -0.3f, 0f);
             _rim.transform.localScale = new Vector3(7.3f, 0.08f, 7.3f);
-            var rimMat = new Material(Shader.Find("Standard"));
+            var rimMat = MaterialHelper.GetDefaultMaterial();
             rimMat.color = new Color(0.6f, 1f, 1f, 1f);
             rimMat.EnableKeyword("_EMISSION");
             rimMat.SetColor("_EmissionColor", new Color(0.6f, 1.6f, 1.9f));

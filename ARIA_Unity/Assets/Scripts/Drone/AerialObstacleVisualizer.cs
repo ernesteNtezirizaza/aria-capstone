@@ -136,7 +136,7 @@ namespace ARIA.Drone
             float visualDiameter = (footprintRadius * 2 + 1) * cellSize * 0.85f;
             go.transform.localScale = Vector3.one * visualDiameter;
 
-            var mat = new Material(Shader.Find("Standard"));
+            var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = new Color(1f, 0.12f, 0.05f);
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(1.4f, 0.18f, 0.05f)); // bright glow, visible from a distance
@@ -146,7 +146,7 @@ namespace ARIA.Drone
             trail.time = 0.5f;
             trail.startWidth = visualDiameter * 0.6f;
             trail.endWidth = 0.05f;
-            trail.material = new Material(Shader.Find("Standard"));
+            trail.material = MaterialHelper.GetDefaultMaterial();
             trail.startColor = new Color(1f, 0.3f, 0.1f, 0.75f);
             trail.endColor = new Color(1f, 0.3f, 0.1f, 0f);
 

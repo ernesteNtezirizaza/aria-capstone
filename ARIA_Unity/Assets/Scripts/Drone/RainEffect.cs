@@ -79,7 +79,7 @@ namespace ARIA.Drone
             renderer.renderMode = ParticleSystemRenderMode.Stretch;
             renderer.velocityScale = 0.06f;
             renderer.lengthScale = 3f;
-            var mat = new Material(Shader.Find("Standard"));
+            var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = new Color(0.7f, 0.8f, 1f, 0.6f);
             renderer.material = mat;
 

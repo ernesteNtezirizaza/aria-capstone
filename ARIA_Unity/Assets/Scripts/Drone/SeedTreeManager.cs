@@ -151,7 +151,7 @@ namespace ARIA.Drone
             float seedSize = 0.5f * cellSize;
             seedGO.transform.localScale = Vector3.one * seedSize;
             seedGO.transform.position = startPos;
-            var seedMat = new Material(Shader.Find("Standard"));
+            var seedMat = MaterialHelper.GetDefaultMaterial();
             seedMat.color = new Color(0.95f, 0.85f, 0.2f);
             seedMat.EnableKeyword("_EMISSION");
             seedMat.SetColor("_EmissionColor", new Color(1.2f, 1.0f, 0.2f));
@@ -161,7 +161,7 @@ namespace ARIA.Drone
             trail.time = 0.3f;
             trail.startWidth = seedSize * 0.7f;
             trail.endWidth = 0.02f;
-            trail.material = new Material(Shader.Find("Standard"));
+            trail.material = MaterialHelper.GetDefaultMaterial();
             trail.startColor = new Color(1f, 0.9f, 0.3f, 0.8f);
             trail.endColor = new Color(1f, 0.9f, 0.3f, 0f);
 
@@ -205,7 +205,7 @@ namespace ARIA.Drone
             stem.transform.SetParent(sprout.transform, false);
             stem.transform.localScale = new Vector3(0.04f, 0.12f, 0.04f);
             stem.transform.localPosition = new Vector3(0, 0.12f, 0);
-            var stemMat = new Material(Shader.Find("Standard"));
+            var stemMat = MaterialHelper.GetDefaultMaterial();
             stemMat.color = new Color(0.35f, 0.25f, 0.15f);
             stem.GetComponent<Renderer>().material = stemMat;
 
@@ -215,7 +215,7 @@ namespace ARIA.Drone
             leaf.transform.SetParent(sprout.transform, false);
             leaf.transform.localScale = Vector3.one * 0.18f;
             leaf.transform.localPosition = new Vector3(0, 0.26f, 0);
-            var leafMat = new Material(Shader.Find("Standard"));
+            var leafMat = MaterialHelper.GetDefaultMaterial();
             
             Color speciesTint = TreeBuilder.GetCanopyColor(seed.SpeciesId);
             leafMat.color = seed.IsSuitable

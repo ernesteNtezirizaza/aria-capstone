@@ -93,7 +93,7 @@ namespace ARIA.Drone
             // solid obstacle-looking shape.
             go.transform.localScale = new Vector3(1.1f * cellSize, 0.03f, 1.1f * cellSize);
 
-            var mat = new Material(Shader.Find("Standard"));
+            var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = new Color(1f, 0.55f, 0.05f);
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(1.4f, 0.55f, 0.05f));
