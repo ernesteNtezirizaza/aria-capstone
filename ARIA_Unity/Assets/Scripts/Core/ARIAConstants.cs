@@ -38,8 +38,8 @@ namespace ARIA.Core
         public const float BATTERY_DRAIN_SUNNY   = 0.002f;   // per step in sun
         public const float BATTERY_DRAIN_RAIN    = 0.004f;   // per step in rain (2x drain)
         public const float SOLAR_CHARGE_RATE     = 0.002f;   // per step when sunny
-        public const float BATTERY_RETURN_THRESH = 0.10f;    // return to base below this
-        public const float BATTERY_CRITICAL      = 0.05f;    // emergency land below this
+        public const float BATTERY_RETURN_THRESH = 0.05f;    // return to base below this
+        public const float BATTERY_CRITICAL      = 0.00f;    // emergency land below this
 
         // ── Weather ────────────────────
         public const int WEATHER_SUNNY = 0;
