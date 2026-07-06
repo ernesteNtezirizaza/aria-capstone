@@ -22,6 +22,8 @@ ARIA_Unity/Builds/
 ARIA_Unity/Logs/
 ARIA_Unity/UserSettings/
 ARIA_Unity/MemoryCaptures/
+ARIA_Unity/.env
+ARIA_Unity/.env.*
 
 # Visual Studio / Rider / VS Code
 .vs/
