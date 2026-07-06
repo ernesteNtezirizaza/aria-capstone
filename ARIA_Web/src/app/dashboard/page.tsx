@@ -19,15 +19,15 @@ export default async function DashboardPage() {
   const totalSeeds = await prisma.seed.count();
 
   // Calculate average reward
-  const episodesWithReward = episodes.filter(e => e.total_reward !== null);
+  const episodesWithReward = episodes.filter((e: any) => e.total_reward !== null);
   const avgReward = episodesWithReward.length > 0
-    ? episodesWithReward.reduce((acc, curr) => acc + (curr.total_reward || 0), 0) / episodesWithReward.length
+    ? episodesWithReward.reduce((acc: number, curr: any) => acc + (curr.total_reward || 0), 0) / episodesWithReward.length
     : 0;
 
   // Calculate average suitable seeded percentage
-  const episodesWithSuitable = episodes.filter(e => e.pct_suitable_seeded !== null);
+  const episodesWithSuitable = episodes.filter((e: any) => e.pct_suitable_seeded !== null);
   const avgSuitable = episodesWithSuitable.length > 0
-    ? episodesWithSuitable.reduce((acc, curr) => acc + (curr.pct_suitable_seeded || 0), 0) / episodesWithSuitable.length
+    ? episodesWithSuitable.reduce((acc: number, curr: any) => acc + (curr.pct_suitable_seeded || 0), 0) / episodesWithSuitable.length
     : 0;
 
   return (
