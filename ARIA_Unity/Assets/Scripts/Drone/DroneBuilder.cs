@@ -129,15 +129,14 @@ public static class DroneBuilder
     {
         var rend = go.GetComponent<Renderer>();
         if (rend == null) return;
-        var mat = new Material(Shader.Find("Standard"));
+        
+        // Fix: Clone the default material Unity assigned, instead of using Shader.Find
+        var mat = new Material(rend.sharedMaterial);
         mat.color = col;
-        if (col.a < 1f) {
-            mat.SetFloat("_Mode", 3);
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.renderQueue = 3000;
-        }
+        
+        // Remove transparency variant entirely as WebGL strips it, causing pink materials.
+        // We will just leave it opaque.
+        
         rend.material = mat;
     }
 }

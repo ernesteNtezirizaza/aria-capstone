@@ -78,7 +78,7 @@ namespace ARIA.Drone
             _texture.filterMode = FilterMode.Point;
             _texture.wrapMode = TextureWrapMode.Clamp;
 
-            var mat = new Material(Shader.Find("Standard"));
+            var mat = new Material(_renderer.sharedMaterial);
             mat.mainTexture = _texture;
             _renderer.material = mat;
         }
