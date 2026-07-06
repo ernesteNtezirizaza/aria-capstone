@@ -51,7 +51,7 @@ namespace ARIA.Drone
         [Tooltip("World-space size of one terrain cell, for converting " +
                  "grid (x,y) into a Unity world position.")]
         public float cellSize = 1.0f;
-        public float altitudeWorldScale = 26.0f; 
+        public float altitudeWorldScale = 60.0f;
 
         [Header("Cosmetic intro sequence (NOT model-driven, see file header)")]
         public bool  playIntroSequence = true;
@@ -65,6 +65,7 @@ namespace ARIA.Drone
         public string LastActionDesc { get; private set; }
         public StepResult LastResult { get; private set; }
         public int    EpisodeCount    { get; private set; }
+        public float  CumulativeReward { get; private set; }
 
         public RealZoneJson CurrentZoneMeta { get; private set; }
 
@@ -99,6 +100,11 @@ namespace ARIA.Drone
         public System.Action<DroneController> OnIntroFinished;
 
         public System.Action<DroneController> OnBeforeStep;
+
+        void Awake()
+        {
+            altitudeWorldScale = 60.0f; // Force this value to override any serialized Unity Inspector value
+        }
 
         void Start()
         {
@@ -179,6 +185,7 @@ namespace ARIA.Drone
 
             State = new EpisodeState(_currentZoneData, _rng);
             EpisodeCount++;
+            CumulativeReward = 0f;
 
             if (LastEpisodeEndedByMissionComplete)
                 CoverageOverride.Reset();
@@ -334,6 +341,16 @@ namespace ARIA.Drone
             LastResult = result;
             State.LastResult = result; // keep EpisodeState in sync for TerrainRenderer etc.
 
+            // ── Calculate a real-time reward approximation for the dashboard ──
+            if (result.SeedDropped)
+            {
+                CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
+                SpawnSeedVisual();
+            }
+            if (result.ObstacleHit) CumulativeReward -= 1.0f;
+            if (result.ValidAbort) CumulativeReward += 5.0f;
+            if (result.MissionComplete) CumulativeReward += 10.0f;
+
             if (result.MissionComplete) LastEpisodeEndedByMissionComplete = true;
 
             if (suppressSeedingThisStep && State.DroneState == ARIAConstants.STATE_NAVIGATING)
@@ -360,6 +377,7 @@ namespace ARIA.Drone
             if (result.Terminated || result.Truncated)
             {
                 _episodeActive = false;
+                TelemetryManager.Instance?.SendEpisodeTelemetry(State, CumulativeReward);
                 OnEpisodeEnded?.Invoke(this);
 
                 if (result.BatteryDepleted)
@@ -382,7 +400,24 @@ namespace ARIA.Drone
 
         private Vector3 GridToWorld(int gridX, int gridY, float altitude)
         {
-            return new Vector3(gridX * cellSize, altitude * altitudeWorldScale, gridY * cellSize);
+            // Enforce a minimum base height (e.g., 20) so it always hovers far above the ground
+            return new Vector3(gridX * cellSize, 20f + (altitude * altitudeWorldScale), gridY * cellSize);
+        }
+
+        private void SpawnSeedVisual()
+        {
+            GameObject seed = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            seed.transform.position = transform.position - new Vector3(0, 1.5f, 0); // Drop slightly below drone
+            seed.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f); // Visible green balls
+            var renderer = seed.GetComponent<Renderer>();
+            renderer.material.color = new Color(0.1f, 0.9f, 0.2f); // Bright green
+            
+            var rb = seed.AddComponent<Rigidbody>();
+            rb.mass = 1f;
+            rb.linearDamping = 0.5f;
+            
+            // Clean up the seed objects after they hit the ground so they don't clutter the scene
+            Destroy(seed, 4f);
         }
 
         private Vector3 GetHelipadGroundPos()
