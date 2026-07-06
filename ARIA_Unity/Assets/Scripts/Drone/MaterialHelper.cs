@@ -8,9 +8,24 @@ public static class MaterialHelper
     {
         if (_defaultMaterial == null)
         {
-            var temp = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            _defaultMaterial = new Material(temp.GetComponent<Renderer>().sharedMaterial);
-            Object.Destroy(temp);
+            Shader shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Mobile/Diffuse");
+            if (shader == null) shader = Shader.Find("Legacy Shaders/Diffuse");
+            if (shader == null) shader = Shader.Find("UI/Default");
+
+            if (shader != null)
+            {
+                _defaultMaterial = new Material(shader);
+            }
+            else
+            {
+                var temp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                if (temp.GetComponent<Renderer>().sharedMaterial != null && temp.GetComponent<Renderer>().sharedMaterial.shader != null)
+                {
+                    _defaultMaterial = new Material(temp.GetComponent<Renderer>().sharedMaterial);
+                }
+                Object.Destroy(temp);
+            }
         }
         return new Material(_defaultMaterial);
     }
