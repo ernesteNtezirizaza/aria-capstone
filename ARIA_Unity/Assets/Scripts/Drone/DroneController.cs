@@ -224,7 +224,7 @@ namespace ARIA.Drone
             }
         }
 
-        public void RestartAfterBatteryDepletion()
+        public void RestartMission()
         {
             if (_episodeActive) return;
             StartNewEpisode();
@@ -394,7 +394,7 @@ namespace ARIA.Drone
                 TelemetryManager.Instance?.SendEpisodeTelemetry(State, CumulativeReward);
                 OnEpisodeEnded?.Invoke(this);
 
-                if (result.BatteryDepleted)
+                if (result.BatteryDepleted || result.MissionComplete)
                 {
                     AwaitingRestart = true;
                     OnAwaitingRestart?.Invoke(this);
