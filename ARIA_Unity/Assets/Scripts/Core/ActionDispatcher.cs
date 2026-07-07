@@ -37,10 +37,6 @@ namespace ARIA.Core
             var energyInfo = s.Energy.Step(s.Weather);
             s.Season = s.Weather.CurrentSeason;
 
-            // Once the graceful low-battery return-to-base flight has begun, hold the
-            // battery steady (rather than let it keep draining towards a mid-flight
-            // instant termination) so the drone always makes it back to base before
-            // the episode ends -- it gets zeroed out explicitly on arrival instead.
             if (s.BatteryCriticalReturning)
             {
                 s.Energy.SetBattery(batteryBeforeStep);
@@ -157,7 +153,8 @@ namespace ARIA.Core
                     s.Y = newY;
                 }
 
-                if (s.DroneState == ARIAConstants.STATE_SEEDING && s.SeedsRemaining > 0)
+                bool alreadyPlanted = s.CoverageMap[s.Y, s.X] >= 1.0f;
+                if (s.DroneState == ARIAConstants.STATE_SEEDING && s.SeedsRemaining > 0 && !alreadyPlanted)
                 {
                     float soil  = s.Zone.SoilAt(s.Y, s.X);
                     float rain  = s.Zone.Terrain[s.Y, s.X, 3];
@@ -180,6 +177,7 @@ namespace ARIA.Core
                         soil, rain, slope, prox, isSuitable, inProtected);
 
                     s.CoverageMap[s.Y, s.X] = 1.0f;
+                    if (!noPlant) s.CoveredPlantableCells++;
                     s.SpeciesCounts[speciesId]++;
                     s.SeedsRemaining -= 1;
 
@@ -198,7 +196,9 @@ namespace ARIA.Core
 
             bool activelySeeding = s.DroneState == ARIAConstants.STATE_SEEDING
                                  || s.DroneState == ARIAConstants.STATE_NAVIGATING;
-            if (s.SeedsRemaining <= 0 && activelySeeding && !s.MissionCompleteReturning)
+            bool seedsExhausted = s.SeedsRemaining <= 0;
+            bool fullyPlanted = s.PlantableCells > 0 && s.CoveredPlantableCells >= s.PlantableCells;
+            if ((seedsExhausted || fullyPlanted) && activelySeeding && !s.MissionCompleteReturning)
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
                 s.MissionCompleteReturning = true;

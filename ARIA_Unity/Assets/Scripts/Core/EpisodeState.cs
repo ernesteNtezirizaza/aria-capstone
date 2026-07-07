@@ -36,6 +36,9 @@ namespace ARIA.Core
         public bool  MissionCompleteReturning;
         public bool  BatteryCriticalReturning;
 
+        public int   PlantableCells;
+        public int   CoveredPlantableCells;
+
         public StepResult LastResult;
 
         public float[,] CoverageMap;          // [ZONE_SIZE, ZONE_SIZE]
@@ -84,6 +87,12 @@ namespace ARIA.Core
             BaseY = 0; // Bottom edge of the grid, nearest to the helipad
             ReseedingTargets = new HashSet<(int, int)>();
             LastResult = default;
+
+            CoveredPlantableCells = 0;
+            PlantableCells = 0;
+            for (int y = 0; y < ARIAConstants.ZONE_SIZE; y++)
+                for (int x = 0; x < ARIAConstants.ZONE_SIZE; x++)
+                    if (!Zone.NoPlant[y, x]) PlantableCells++;
 
             Growth.Reset();
             Disturbance.Reset();

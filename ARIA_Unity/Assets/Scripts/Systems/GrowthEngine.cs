@@ -190,21 +190,21 @@ namespace ARIA.Systems
 
         private static int SpeciesGermSteps(int speciesId) => speciesId switch
         {
-            0 => 25,  // Eucalyptus globulus  -- fast
-            1 => 30,  // Grevillea robusta    -- moderate
-            2 => 25,  // Eucalyptus maculata  -- fast
-            3 => 25,  // Eucalyptus maidenii  -- fast
-            4 => 45,  // Artocarpus heterophyllus -- slow (jackfruit)
-            _ => 25,
+            0 => 90,   // Eucalyptus globulus  -- fast
+            1 => 110,  // Grevillea robusta    -- moderate
+            2 => 90,   // Eucalyptus maculata  -- fast
+            3 => 100,  // Eucalyptus maidenii  -- fast
+            4 => 160,  // Artocarpus heterophyllus -- slow (jackfruit)
+            _ => 100,
         };
         private static int SpeciesMatureSteps(int speciesId) => speciesId switch
         {
-            0 => 320,
-            1 => 380,
-            2 => 330,
-            3 => 340,
-            4 => 520,
-            _ => 350,
+            0 => 820,
+            1 => 900,
+            2 => 850,
+            3 => 870,
+            4 => 950,
+            _ => 860,
         };
     }
 }

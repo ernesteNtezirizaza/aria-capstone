@@ -21,6 +21,21 @@ public static class TreeBuilder
     private static readonly float[] CanopyWidths  = { 1.3f,  2.0f,  1.35f, 1.15f, 2.6f  };
     private static readonly float[] CanopyHeights = { 2.6f,  1.7f,  2.5f,  2.9f,  1.7f  };
 
+    // Falling-seed appearance -- lets a seed be recognisable as its species before
+    // it ever becomes a sprout, rather than every species dropping an identical marker.
+    private static readonly Color[] SeedColors = {
+        new Color(0.85f, 0.65f, 0.15f),  // 0 Eucalyptus globulus  -- amber seed capsule
+        new Color(0.75f, 0.25f, 0.15f),  // 1 Grevillea robusta    -- reddish-brown
+        new Color(0.80f, 0.70f, 0.20f),  // 2 Eucalyptus maculata  -- tan-gold
+        new Color(0.70f, 0.55f, 0.25f),  // 3 Eucalyptus maidenii  -- muted ochre
+        new Color(0.95f, 0.85f, 0.35f),  // 4 Artocarpus heterophyllus -- pale creamy yellow
+    };
+    private static readonly float[] SeedScales = { 0.85f, 0.9f, 0.85f, 0.9f, 1.35f }; // jackfruit seed is notably larger
+
+    // Sprout (Dropped/Germinating) marker scale -- a rough preview of the eventual
+    // canopy proportions, so early growth stages hint at species too.
+    private static readonly float[] SproutScales = { 0.9f, 1.1f, 0.9f, 0.95f, 1.25f };
+
     public static GameObject Build(int species, float height, bool existing = false)
     {
         species = Mathf.Clamp(species, 0, 4);
@@ -192,5 +207,20 @@ public static class TreeBuilder
     public static Color GetCanopyColor(int species)
     {
         return CanopyColors[Mathf.Clamp(species, 0, 4)];
+    }
+
+    public static Color GetSeedColor(int species)
+    {
+        return SeedColors[Mathf.Clamp(species, 0, 4)];
+    }
+
+    public static float GetSeedScale(int species)
+    {
+        return SeedScales[Mathf.Clamp(species, 0, 4)];
+    }
+
+    public static float GetSproutScale(int species)
+    {
+        return SproutScales[Mathf.Clamp(species, 0, 4)];
     }
 }

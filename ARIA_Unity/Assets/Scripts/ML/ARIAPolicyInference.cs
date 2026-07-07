@@ -29,9 +29,7 @@ namespace ARIA.ML
             }
 
             _runtimeModel = ModelLoader.Load(onnxModelAsset);
-            // WebGL's compute shader support is inconsistent across browsers/hardware
-            // (missing kernels have been observed there), so use the CPU backend for
-            // reliability instead of GPUCompute.
+
             _worker = new Worker(_runtimeModel, BackendType.CPU);
             _initialised = true;
         }

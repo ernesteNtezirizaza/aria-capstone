@@ -27,7 +27,19 @@ namespace ARIA.Drone
 
         [Tooltip("World units/second a dropped seed falls -- duration scales with " +
                  "actual altitude so a drop from higher up visibly takes longer.")]
-        public float fallSpeed = 14f; 
+        public float fallSpeed = 14f;
+
+        [Header("Planting hole & cover")]
+        [Tooltip("Real-world seconds the seed spends sinking into the planting hole " +
+                 "after it lands, before it's covered over.")]
+        public float holeSinkDuration = 0.3f;
+
+        [Tooltip("Real-world seconds for the soil mound to rise up and cover the hole.")]
+        public float coverDuration = 0.35f;
+
+        [Tooltip("Real-world seconds the covered mound sits undisturbed before the " +
+                 "sprout emerges through it.")]
+        public float coveredHoldTime = 0.4f;
 
         [Tooltip("DEPRECATED -- no longer used. Trees now always render at their exact " +
                  "real grid position (see ComputeRenderPos), by request: real " +
@@ -148,13 +160,14 @@ namespace ARIA.Drone
             seedGO.name = "SeedDrop";
             Destroy(seedGO.GetComponent<Collider>());
     
-            float seedSize = 0.5f * cellSize;
+            Color speciesSeedColor = TreeBuilder.GetSeedColor(seed.SpeciesId);
+            float seedSize = 0.5f * cellSize * TreeBuilder.GetSeedScale(seed.SpeciesId);
             seedGO.transform.localScale = Vector3.one * seedSize;
             seedGO.transform.position = startPos;
             var seedMat = MaterialHelper.GetDefaultMaterial();
-            seedMat.color = new Color(0.95f, 0.85f, 0.2f);
+            seedMat.color = speciesSeedColor;
             seedMat.EnableKeyword("_EMISSION");
-            seedMat.SetColor("_EmissionColor", new Color(1.2f, 1.0f, 0.2f));
+            seedMat.SetColor("_EmissionColor", speciesSeedColor * 1.3f);
             seedGO.GetComponent<Renderer>().material = seedMat;
 
             var trail = seedGO.AddComponent<TrailRenderer>();
@@ -162,8 +175,8 @@ namespace ARIA.Drone
             trail.startWidth = seedSize * 0.7f;
             trail.endWidth = 0.02f;
             trail.material = MaterialHelper.GetDefaultMaterial();
-            trail.startColor = new Color(1f, 0.9f, 0.3f, 0.8f);
-            trail.endColor = new Color(1f, 0.9f, 0.3f, 0f);
+            trail.startColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0.8f);
+            trail.endColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0f);
 
             float fallHeight = Mathf.Max(0.1f, startPos.y - groundPos.y);
             float duration = Mathf.Max(dropDuration, fallHeight / fallSpeed);
@@ -178,13 +191,97 @@ namespace ARIA.Drone
                 seedGO.transform.Rotate(Vector3.up, 360f * Time.deltaTime);
                 yield return null;
             }
+
+            // ── Dig a hole and drop the seed into it ──────────────────
+            var hole = SpawnHole(groundPos);
+
+            float sinkDepth = 0.18f * cellSize;
+            Vector3 holeBottom = groundPos + Vector3.down * sinkDepth;
+            float sinkT = 0f;
+            while (sinkT < holeSinkDuration)
+            {
+                sinkT += Time.deltaTime;
+                if (seedGO == null) break;
+                float k = Mathf.Clamp01(sinkT / holeSinkDuration);
+                seedGO.transform.position = Vector3.Lerp(groundPos, holeBottom, k);
+                seedGO.transform.localScale = Vector3.one * seedSize * Mathf.Lerp(1f, 0.4f, k);
+                yield return null;
+            }
             if (seedGO != null) Destroy(seedGO);
+
+            // ── Cover the hole with soil ───────────────────────────────
+            var mound = SpawnSoilMound(groundPos, out Vector3 moundFullScale);
+            float moundT = 0f;
+            while (moundT < coverDuration)
+            {
+                moundT += Time.deltaTime;
+                float k = Mathf.Clamp01(moundT / coverDuration);
+                mound.transform.localScale = Vector3.Lerp(Vector3.zero, moundFullScale, k);
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(coveredHoldTime);
+
             _dropAnimating.Remove(seed.SeedId);
 
-            if (_visuals.ContainsKey(seed.SeedId)) yield break;
+            if (_visuals.ContainsKey(seed.SeedId))
+            {
+                Destroy(hole);
+                Destroy(mound);
+                yield break;
+            }
 
             var visual = SpawnSprout(seed, groundPos);
             _visuals[seed.SeedId] = visual;
+
+            // ── Mound settles away as the sprout emerges through it ────
+            float settleDuration = tweenDuration * 0.5f;
+            Vector3 moundStartScale = mound.transform.localScale;
+            float settleT = 0f;
+            while (settleT < settleDuration)
+            {
+                settleT += Time.deltaTime;
+                float k = Mathf.Clamp01(settleT / settleDuration);
+                mound.transform.localScale = Vector3.Lerp(moundStartScale, Vector3.zero, k);
+                yield return null;
+            }
+            Destroy(mound);
+            Destroy(hole);
+        }
+
+        private GameObject SpawnHole(Vector3 groundPos)
+        {
+            var hole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            hole.name = "PlantingHole";
+            Destroy(hole.GetComponent<Collider>());
+
+            float holeSize = 0.55f * cellSize;
+            hole.transform.localScale = new Vector3(holeSize, 0.015f * cellSize, holeSize);
+            hole.transform.position = groundPos + Vector3.up * 0.005f; // hugs the terrain, avoids z-fighting
+
+            var mat = MaterialHelper.GetDefaultMaterial();
+            mat.color = new Color(0.18f, 0.12f, 0.08f); // dark, freshly-dug earth
+            hole.GetComponent<Renderer>().material = mat;
+            return hole;
+        }
+
+        private GameObject SpawnSoilMound(Vector3 groundPos, out Vector3 fullScale)
+        {
+            var mound = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            mound.name = "SoilMound";
+            Destroy(mound.GetComponent<Collider>());
+
+            float moundWidth = 0.5f * cellSize;
+            float moundHeight = 0.16f * cellSize;
+            fullScale = new Vector3(moundWidth, moundHeight, moundWidth);
+
+            mound.transform.localScale = Vector3.zero;
+            mound.transform.position = groundPos + Vector3.up * (moundHeight * 0.5f);
+
+            var mat = MaterialHelper.GetDefaultMaterial();
+            mat.color = new Color(0.36f, 0.26f, 0.16f); // loose, freshly-turned topsoil
+            mound.GetComponent<Renderer>().material = mat;
+            return mound;
         }
 
         private Vector3 ComputeRenderPos(Vector3 groundPos)
@@ -195,6 +292,7 @@ namespace ARIA.Drone
         private TreeVisual SpawnSprout(Seed seed, Vector3 groundPos)
         {
             Vector3 renderPos = ComputeRenderPos(groundPos);
+            float speciesScale = TreeBuilder.GetSproutScale(seed.SpeciesId);
 
             var sprout = new GameObject($"Sprout_{seed.SeedId}");
             sprout.transform.position = renderPos;
@@ -203,8 +301,8 @@ namespace ARIA.Drone
             stem.name = "Stem";
             Destroy(stem.GetComponent<Collider>());
             stem.transform.SetParent(sprout.transform, false);
-            stem.transform.localScale = new Vector3(0.04f, 0.12f, 0.04f);
-            stem.transform.localPosition = new Vector3(0, 0.12f, 0);
+            stem.transform.localScale = new Vector3(0.04f, 0.12f * speciesScale, 0.04f);
+            stem.transform.localPosition = new Vector3(0, 0.12f * speciesScale, 0);
             var stemMat = MaterialHelper.GetDefaultMaterial();
             stemMat.color = new Color(0.35f, 0.25f, 0.15f);
             stem.GetComponent<Renderer>().material = stemMat;
@@ -213,10 +311,10 @@ namespace ARIA.Drone
             leaf.name = "Leaf";
             Destroy(leaf.GetComponent<Collider>());
             leaf.transform.SetParent(sprout.transform, false);
-            leaf.transform.localScale = Vector3.one * 0.18f;
-            leaf.transform.localPosition = new Vector3(0, 0.26f, 0);
+            leaf.transform.localScale = Vector3.one * 0.18f * speciesScale;
+            leaf.transform.localPosition = new Vector3(0, 0.26f * speciesScale, 0);
             var leafMat = MaterialHelper.GetDefaultMaterial();
-            
+
             Color speciesTint = TreeBuilder.GetCanopyColor(seed.SpeciesId);
             leafMat.color = seed.IsSuitable
                 ? speciesTint
