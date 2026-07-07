@@ -1,8 +1,13 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Activity, Database, Zap, TreePine, Cpu, Network } from 'lucide-react';
+import { ArrowRight, Activity, Database, Zap, TreePine, Cpu, Network, Menu, X } from 'lucide-react';
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-emerald-500/30">
       {/* Background decoration */}
@@ -11,20 +16,22 @@ export default function LandingPage() {
         
         {/* Tree decorative elements */}
         <div className="absolute top-20 left-0 right-0 h-full flex justify-between items-end opacity-[0.03] overflow-hidden pointer-events-none">
-          <TreePine className="w-96 h-96 -ml-20 -mb-20 text-emerald-400" />
-          <TreePine className="w-[30rem] h-[30rem] absolute left-1/4 -mb-32 text-emerald-400" />
-          <TreePine className="w-[40rem] h-[40rem] absolute right-1/4 -mb-40 text-emerald-400" />
-          <TreePine className="w-[35rem] h-[35rem] -mr-32 -mb-24 text-emerald-400" />
+          <TreePine className="w-48 h-48 md:w-96 md:h-96 -ml-20 -mb-20 text-emerald-400" />
+          <TreePine className="w-60 h-60 md:w-[30rem] md:h-[30rem] absolute left-1/4 -mb-32 text-emerald-400" />
+          <TreePine className="w-72 h-72 md:w-[40rem] md:h-[40rem] absolute right-1/4 -mb-40 text-emerald-400" />
+          <TreePine className="w-64 h-64 md:w-[35rem] md:h-[35rem] -mr-32 -mb-24 text-emerald-400" />
         </div>
       </div>
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
-        <div className="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto w-full">
-          <div className="flex items-center">
-            <Image src="/logo/logo.png" alt="ARIA Logo" width={240} height={80} className="object-contain" priority />
+        <div className="flex items-center justify-between px-4 sm:px-8 py-4 max-w-7xl mx-auto w-full">
+          <div className="flex items-center shrink-0">
+            <Image src="/logo/logo.png" alt="ARIA Logo" width={240} height={80} className="object-contain h-10 w-auto sm:h-12 md:h-14" priority />
           </div>
-          <div className="flex items-center gap-6 text-sm font-medium text-slate-300">
+
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
             <a href="/simulation/index.html" className="hover:text-white transition-colors">Simulation</a>
@@ -32,7 +39,30 @@ export default function LandingPage() {
               Go to Dashboard
             </Link>
           </div>
+
+          {/* Mobile menu toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="md:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md px-4 py-4 flex flex-col gap-4 text-sm font-medium text-slate-300">
+            <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Features</Link>
+            <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
+            <a href="/simulation/index.html" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</a>
+            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
+              Go to Dashboard
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}

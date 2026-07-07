@@ -137,34 +137,34 @@ export default function DashboardClient({ episodes, stats }: { episodes: any[], 
       </div>
 
       {/* Recent Episodes Table */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
           <Database className="w-5 h-5 text-slate-400" />
           Recent Episodes Log
         </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
               <tr>
-                <th className="px-6 py-4 font-medium rounded-tl-lg">Episode ID</th>
-                <th className="px-6 py-4 font-medium">Zone</th>
-                <th className="px-6 py-4 font-medium">Agent Type</th>
-                <th className="px-6 py-4 font-medium">Reward</th>
-                <th className="px-6 py-4 font-medium rounded-tr-lg">Time</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tl-lg">Episode ID</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Zone</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Agent Type</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Reward</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tr-lg">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {episodes.slice(0, 10).map((ep) => (
                 <tr key={ep.episode_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4 font-medium">#{ep.episode_id}</td>
-                  <td className="px-6 py-4">{ep.zone?.name || 'Unknown'}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium">#{ep.episode_id}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">{ep.zone?.name || 'Unknown'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium">
                       {ep.agent_type}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-mono">{ep.total_reward?.toFixed(2) || 'N/A'}</td>
-                  <td className="px-6 py-4 text-slate-500">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.total_reward?.toFixed(2) || 'N/A'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500">
                     {new Date(ep.timestamp).toLocaleTimeString()}
                   </td>
                 </tr>
