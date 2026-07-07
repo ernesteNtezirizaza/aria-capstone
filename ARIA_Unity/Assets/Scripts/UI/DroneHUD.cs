@@ -140,7 +140,7 @@ namespace ARIA.UI
             var rt = bar.GetComponent<RectTransform>();
             rt.pivot = new Vector2(0.5f, 0f);
 
-            var label = MakeText(bar, "Battery depleted -- mission paused", 13, TextAnchor.UpperCenter,
+            var label = MakeText(bar, "Mission Complete", 13, TextAnchor.UpperCenter,
                 new Vector2(10, -26), new Vector2(-10, -6));
             label.color = new Color(1f, 0.7f, 0.3f);
             label.fontStyle = FontStyle.Bold;
@@ -153,7 +153,7 @@ namespace ARIA.UI
             btnLabel.fontStyle = FontStyle.Bold;
             _restartButton.onClick.AddListener(() =>
             {
-                if (drone != null) drone.RestartAfterBatteryDepletion();
+                if (drone != null) drone.RestartMission();
                 _restartBar.SetActive(false);
             });
 
