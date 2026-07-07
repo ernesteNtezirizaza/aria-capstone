@@ -32,14 +32,14 @@ namespace ARIA.Drone
         [Header("Planting hole & cover")]
         [Tooltip("Real-world seconds the seed spends sinking into the planting hole " +
                  "after it lands, before it's covered over.")]
-        public float holeSinkDuration = 0.3f;
+        public float holeSinkDuration = 0.45f;
 
         [Tooltip("Real-world seconds for the soil mound to rise up and cover the hole.")]
-        public float coverDuration = 0.35f;
+        public float coverDuration = 0.5f;
 
         [Tooltip("Real-world seconds the covered mound sits undisturbed before the " +
                  "sprout emerges through it.")]
-        public float coveredHoldTime = 0.4f;
+        public float coveredHoldTime = 0.7f;
 
         [Tooltip("DEPRECATED -- no longer used. Trees now always render at their exact " +
                  "real grid position (see ComputeRenderPos), by request: real " +
@@ -255,9 +255,14 @@ namespace ARIA.Drone
             hole.name = "PlantingHole";
             Destroy(hole.GetComponent<Collider>());
 
-            float holeSize = 0.55f * cellSize;
-            hole.transform.localScale = new Vector3(holeSize, 0.015f * cellSize, holeSize);
-            hole.transform.position = groundPos + Vector3.up * 0.005f; // hugs the terrain, avoids z-fighting
+            // The terrain is a flat plane at y=0 (RealTerrainRenderer.GetHeight always
+            // returns 0), so sit this disc entirely ABOVE the surface rather than
+            // straddling/embedding it -- otherwise most of its height is buried and
+            // invisible.
+            float holeWidth = 0.65f * cellSize;
+            float holeHeight = 0.06f * cellSize;
+            hole.transform.localScale = new Vector3(holeWidth, holeHeight * 0.5f, holeWidth);
+            hole.transform.position = groundPos + Vector3.up * (holeHeight * 0.5f);
 
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = new Color(0.18f, 0.12f, 0.08f); // dark, freshly-dug earth
