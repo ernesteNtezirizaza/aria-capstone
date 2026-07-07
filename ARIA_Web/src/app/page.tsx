@@ -34,7 +34,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
-            <a href="/simulation/index.html" className="hover:text-white transition-colors">Simulation</a>
+            <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
             <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
               Go to Dashboard
             </Link>
@@ -57,7 +57,7 @@ export default function LandingPage() {
           <div className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md px-4 py-4 flex flex-col gap-4 text-sm font-medium text-slate-300">
             <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
-            <a href="/simulation/index.html" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</a>
+            <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
             <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
               Go to Dashboard
             </Link>
@@ -92,10 +92,10 @@ export default function LandingPage() {
             View Live Dashboard
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
-          <a href="/simulation/index.html" className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 text-white font-medium transition-all backdrop-blur-sm border border-white/10">
+          <Link href="/simulation" className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 text-white font-medium transition-all backdrop-blur-sm border border-white/10">
             View Simulation
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
           <a href="#features" className="px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 text-white font-medium transition-all backdrop-blur-sm border border-white/10">
             Learn More
           </a>

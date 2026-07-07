@@ -251,23 +251,51 @@ namespace ARIA.Drone
 
         private GameObject SpawnHole(Vector3 groundPos)
         {
-            var hole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            hole.name = "PlantingHole";
-            Destroy(hole.GetComponent<Collider>());
+            var container = new GameObject("PlantingHole");
+            container.transform.position = groundPos;
 
             // The terrain is a flat plane at y=0 (RealTerrainRenderer.GetHeight always
-            // returns 0), so sit this disc entirely ABOVE the surface rather than
-            // straddling/embedding it -- otherwise most of its height is buried and
-            // invisible.
-            float holeWidth = 0.65f * cellSize;
-            float holeHeight = 0.06f * cellSize;
-            hole.transform.localScale = new Vector3(holeWidth, holeHeight * 0.5f, holeWidth);
-            hole.transform.position = groundPos + Vector3.up * (holeHeight * 0.5f);
+            // returns 0) with no real depth to carve into, so the "dug hole" illusion
+            // comes from two things together: a near-black flat disc (reads as a
+            // shadowed pit rather than a raised platform) surrounded by small clumps
+            // of displaced earth piled around its rim, the way a real dig looks.
+            var pit = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pit.name = "Pit";
+            Destroy(pit.GetComponent<Collider>());
+            pit.transform.SetParent(container.transform, false);
 
-            var mat = MaterialHelper.GetDefaultMaterial();
-            mat.color = new Color(0.18f, 0.12f, 0.08f); // dark, freshly-dug earth
-            hole.GetComponent<Renderer>().material = mat;
-            return hole;
+            float pitWidth = 0.6f * cellSize;
+            float pitHeight = 0.02f * cellSize;
+            pit.transform.localScale = new Vector3(pitWidth, pitHeight * 0.5f, pitWidth);
+            pit.transform.localPosition = Vector3.up * (pitHeight * 0.5f);
+
+            var pitMat = MaterialHelper.GetDefaultMaterial();
+            pitMat.color = new Color(0.04f, 0.03f, 0.02f); // near-black, reads as a shadowed pit
+            pit.GetComponent<Renderer>().material = pitMat;
+
+            const int clumpCount = 5;
+            float rimRadius = pitWidth * 0.62f;
+            for (int i = 0; i < clumpCount; i++)
+            {
+                float angle = (360f / clumpCount) * i + Random.Range(-15f, 15f);
+                float rad = angle * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * rimRadius;
+
+                var clump = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                clump.name = "DirtClump";
+                Destroy(clump.GetComponent<Collider>());
+                clump.transform.SetParent(container.transform, false);
+
+                float clumpSize = Random.Range(0.10f, 0.15f) * cellSize;
+                clump.transform.localScale = Vector3.one * clumpSize;
+                clump.transform.localPosition = offset + Vector3.up * (clumpSize * 0.35f);
+
+                var clumpMat = MaterialHelper.GetDefaultMaterial();
+                clumpMat.color = new Color(0.32f, 0.22f, 0.13f); // freshly turned soil
+                clump.GetComponent<Renderer>().material = clumpMat;
+            }
+
+            return container;
         }
 
         private GameObject SpawnSoilMound(Vector3 groundPos, out Vector3 fullScale)

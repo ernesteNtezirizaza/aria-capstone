@@ -10,11 +10,13 @@ public static class TreeBuilder
         new Color(0.58f, 0.54f, 0.48f),  // 3 Eucalyptus maidenii  -- pale blue-grey bark
         new Color(0.32f, 0.20f, 0.10f),  // 4 Artocarpus heterophyllus -- dark thick brown bark
     };
+    // Widely separated hues so all 5 species read as visually distinct at a glance
+    // (the 3 eucalyptus variants used to share nearly the same blue-green tone).
     private static readonly Color[] CanopyColors = {
-        new Color(0.28f, 0.50f, 0.42f),  // 0 Eucalyptus globulus  -- blue-green
+        new Color(0.30f, 0.55f, 0.40f),  // 0 Eucalyptus globulus  -- blue-green
         new Color(0.42f, 0.58f, 0.30f),  // 1 Grevillea robusta    -- silvery yellow-green
-        new Color(0.25f, 0.48f, 0.38f),  // 2 Eucalyptus maculata  -- blue-green (slightly darker)
-        new Color(0.22f, 0.46f, 0.40f),  // 3 Eucalyptus maidenii  -- deep blue-green
+        new Color(0.45f, 0.55f, 0.25f),  // 2 Eucalyptus maculata  -- olive/yellow-green
+        new Color(0.15f, 0.40f, 0.55f),  // 3 Eucalyptus maidenii  -- glaucous blue (real "blue gum" foliage)
         new Color(0.08f, 0.38f, 0.10f),  // 4 Artocarpus heterophyllus -- dense dark green
     };
     private static readonly float[] TrunkWidths   = { 0.16f, 0.17f, 0.16f, 0.15f, 0.26f };
@@ -24,10 +26,10 @@ public static class TreeBuilder
     // Falling-seed appearance -- lets a seed be recognisable as its species before
     // it ever becomes a sprout, rather than every species dropping an identical marker.
     private static readonly Color[] SeedColors = {
-        new Color(0.85f, 0.65f, 0.15f),  // 0 Eucalyptus globulus  -- amber seed capsule
+        new Color(0.85f, 0.60f, 0.10f),  // 0 Eucalyptus globulus  -- deep amber
         new Color(0.75f, 0.25f, 0.15f),  // 1 Grevillea robusta    -- reddish-brown
-        new Color(0.80f, 0.70f, 0.20f),  // 2 Eucalyptus maculata  -- tan-gold
-        new Color(0.70f, 0.55f, 0.25f),  // 3 Eucalyptus maidenii  -- muted ochre
+        new Color(0.65f, 0.75f, 0.15f),  // 2 Eucalyptus maculata  -- yellow-green
+        new Color(0.35f, 0.50f, 0.65f),  // 3 Eucalyptus maidenii  -- blue-grey
         new Color(0.95f, 0.85f, 0.35f),  // 4 Artocarpus heterophyllus -- pale creamy yellow
     };
     private static readonly float[] SeedScales = { 0.85f, 0.9f, 0.85f, 0.9f, 1.35f }; // jackfruit seed is notably larger
