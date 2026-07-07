@@ -33,15 +33,26 @@ namespace ARIA.Core
             float realRain = s.Zone.Terrain[s.Y, s.X, 3];
             float rainVal = DemoConditions.GetEffectiveRainfall(realRain, s.Timestep);
             s.Weather.Step(rainVal, s.Timestep);
+            float batteryBeforeStep = s.Energy.Battery;
             var energyInfo = s.Energy.Step(s.Weather);
             s.Season = s.Weather.CurrentSeason;
 
-            if (action == ARIAConstants.EMERGENCY || energyInfo.IsCritical)
+            // Once the graceful low-battery return-to-base flight has begun, hold the
+            // battery steady (rather than let it keep draining towards a mid-flight
+            // instant termination) so the drone always makes it back to base before
+            // the episode ends -- it gets zeroed out explicitly on arrival instead.
+            if (s.BatteryCriticalReturning)
+            {
+                s.Energy.SetBattery(batteryBeforeStep);
+            }
+
+            if (action == ARIAConstants.EMERGENCY)
             {
                 result.EmergencyLand = true;
                 result.Terminated = true;
                 result.BatteryDepleted = true;
                 s.MissionCompleteReturning = false;
+                s.BatteryCriticalReturning = false;
                 s.Timestep++;
                 return result;
             }
@@ -197,6 +208,7 @@ namespace ARIA.Core
             if (energyInfo.ShouldReturn && activelySeeding)
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
+                s.BatteryCriticalReturning = true;
                 result.ReturningBattery = true;
             }
 
@@ -210,7 +222,6 @@ namespace ARIA.Core
                 if (s.X == s.BaseX && s.Y == s.BaseY)
                 {
                     s.DroneState = ARIAConstants.STATE_LANDING;
-                    s.Energy.Recharge(0.5f);
                     s.MissionsCompleted++;
 
                     // Pull top 3 reseeding targets into the active queue
@@ -222,12 +233,22 @@ namespace ARIA.Core
 
                     if (s.MissionCompleteReturning)
                     {
+                        s.Energy.Recharge(0.5f);
                         result.MissionComplete = true;
                         result.Terminated = true;
                         s.MissionCompleteReturning = false;
                     }
+                    else if (s.BatteryCriticalReturning)
+                    {
+                        // Comes to rest exactly empty, as if it just barely made it back.
+                        s.Energy.SetBattery(0f);
+                        result.BatteryDepleted = true;
+                        result.Terminated = true;
+                        s.BatteryCriticalReturning = false;
+                    }
                     else
                     {
+                        s.Energy.Recharge(0.5f);
                         s.DroneState = ARIAConstants.STATE_SEEDING;
                     }
                 }
