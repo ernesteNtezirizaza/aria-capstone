@@ -34,6 +34,7 @@ namespace ARIA.Core
         public int   ObstaclesAvoided;
 
         public bool  MissionCompleteReturning;
+        public bool  BatteryCriticalReturning;
 
         public StepResult LastResult;
 
@@ -78,6 +79,7 @@ namespace ARIA.Core
             ObstaclesAvoided = 0;
             AbortTriggered = false;
             MissionCompleteReturning = false;
+            BatteryCriticalReturning = false;
             BaseX = ARIAConstants.ZONE_SIZE / 2;
             BaseY = 0; // Bottom edge of the grid, nearest to the helipad
             ReseedingTargets = new HashSet<(int, int)>();
