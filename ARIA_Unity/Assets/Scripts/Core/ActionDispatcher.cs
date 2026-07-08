@@ -33,6 +33,15 @@ namespace ARIA.Core
             float realRain = s.Zone.Terrain[s.Y, s.X, 3];
             float rainVal = DemoConditions.GetEffectiveRainfall(realRain, s.Timestep);
             s.Weather.Step(rainVal, s.Timestep);
+
+            // Sunny again mid-return -- abort the emergency, resume normal operation,
+            // and let the battery recharge instead of staying frozen until landing.
+            if (s.BatteryCriticalReturning && s.Weather.IsSunny())
+            {
+                s.BatteryCriticalReturning = false;
+                s.DroneState = ARIAConstants.STATE_SEEDING;
+            }
+
             float batteryBeforeStep = s.Energy.Battery;
             var energyInfo = s.Energy.Step(s.Weather);
             s.Season = s.Weather.CurrentSeason;
@@ -222,8 +231,13 @@ namespace ARIA.Core
                 s.X = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 s.Y = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
-                // Descend while flying home instead of cruising until an abrupt landing.
-                s.Altitude = Mathf.Max(0f, s.Altitude - ARIAConstants.RETURN_DESCENT_RATE);
+                // Cruise safely above the tree canopy while still over the planted
+                // zone; only descend in the final approach once clear of it, so it
+                // doesn't plough through growing trees on the way back.
+                int distToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
+                s.Altitude = distToBase <= ARIAConstants.RETURN_DESCENT_RANGE
+                    ? Mathf.Clamp01((float)distToBase / ARIAConstants.RETURN_DESCENT_RANGE)
+                    : 1f;
 
                 if (s.X == s.BaseX && s.Y == s.BaseY)
                 {

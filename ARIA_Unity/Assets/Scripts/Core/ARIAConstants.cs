@@ -40,7 +40,7 @@ namespace ARIA.Core
         public const float SOLAR_CHARGE_RATE     = 0.002f;   // per step when sunny
         public const float BATTERY_RETURN_THRESH = 0.05f;    // return to base below this
         public const float BATTERY_CRITICAL      = 0.00f;    // emergency land below this
-        public const float RETURN_DESCENT_RATE   = 0.15f;    // altitude lost per step while returning to base
+        public const int   RETURN_DESCENT_RANGE  = 8;         // start descending this many cells out from base
 
         // ── Weather ────────────────────
         public const int WEATHER_SUNNY = 0;
