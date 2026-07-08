@@ -51,7 +51,8 @@ namespace ARIA.Core
             {
                 (int y, int x) target = default;
                 foreach (var t in s.ReseedingTargets) { target = t; break; } // any queued target -- HashSet has no order guarantee, first is fine
-                return TryStepToward(s, target.x, target.y, out action, out suppressSeeding);
+                int? recommended = s.ReseedSpeciesMap.TryGetValue(target, out int rec) ? rec : (int?)null;
+                return TryStepToward(s, target.x, target.y, out action, out suppressSeeding, recommended);
             }
 
             if (_targets == null || _targets.Count == 0) return false;
@@ -65,7 +66,7 @@ namespace ARIA.Core
             return TryStepToward(s, tx, ty, out action, out suppressSeeding);
         }
 
-        private static bool TryStepToward(EpisodeState s, int tx, int ty, out int action, out bool suppressSeeding)
+        private static bool TryStepToward(EpisodeState s, int tx, int ty, out int action, out bool suppressSeeding, int? forcedSpecies = null)
         {
             action = 0;
             suppressSeeding = false;
@@ -84,7 +85,8 @@ namespace ARIA.Core
             suppressSeeding = chebyshev > 1; // this move won't land exactly on the target yet
 
             int dirIdx = DirIndexFor(dy, dx);
-            int speciesId = BestSpeciesFor(s.Zone, tx, ty);
+            // Reseed targets carry MonitoringSystem's better-suited species recommendation.
+            int speciesId = forcedSpecies ?? BestSpeciesFor(s.Zone, tx, ty);
             action = dirIdx * ARIAConstants.N_SPECIES + speciesId;
             return true;
         }

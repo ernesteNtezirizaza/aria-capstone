@@ -44,6 +44,7 @@ namespace ARIA.Core
         public float[,] CoverageMap;          // [ZONE_SIZE, ZONE_SIZE]
         public Dictionary<int, int> SpeciesCounts;
         public HashSet<(int y, int x)> ReseedingTargets;
+        public Dictionary<(int y, int x), int> ReseedSpeciesMap; // recommended species per reseed target
 
         // ── Subsystems ────────────────────────────────────────────
         public ZoneData        Zone;
@@ -86,6 +87,7 @@ namespace ARIA.Core
             BaseX = ARIAConstants.ZONE_SIZE / 2;
             BaseY = 0; // Bottom edge of the grid, nearest to the helipad
             ReseedingTargets = new HashSet<(int, int)>();
+            ReseedSpeciesMap = new Dictionary<(int, int), int>();
             LastResult = default;
 
             CoveredPlantableCells = 0;
