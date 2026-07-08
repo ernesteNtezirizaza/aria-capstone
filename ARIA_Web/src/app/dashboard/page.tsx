@@ -18,6 +18,19 @@ export default async function DashboardPage() {
   const totalEpisodes = await prisma.episode.count();
   const totalSeeds = await prisma.seed.count();
 
+  // Seed-monitoring: lifecycle stage breakdown + recent failures for the reseed pipeline.
+  const stageCounts = await prisma.seed.groupBy({
+    by: ['stage'],
+    _count: { stage: true },
+  });
+
+  const recentFailures = await prisma.seed.findMany({
+    where: { stage: 'Dead' },
+    orderBy: { seed_id: 'desc' },
+    take: 15,
+    include: { episode: { include: { zone: true } } }
+  });
+
   // Calculate average reward
   const episodesWithReward = episodes.filter((e: any) => e.total_reward !== null);
   const avgReward = episodesWithReward.length > 0
@@ -39,6 +52,10 @@ export default async function DashboardPage() {
           totalSeeds,
           avgReward,
           avgSuitable
+        }}
+        seedMonitoring={{
+          stageCounts,
+          recentFailures
         }}
       />
     </div>
