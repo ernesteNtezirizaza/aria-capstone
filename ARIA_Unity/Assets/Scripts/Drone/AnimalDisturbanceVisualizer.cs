@@ -109,8 +109,18 @@ namespace ARIA.Drone
             goat.RetargetTimer = Random.Range(3f, 6f);
             var living = drone.State.Growth.Living();
             if (living.Count == 0) return;
-            var seed = living[Random.Range(0, living.Count)];
+            var seed = PickWanderTarget(living);
             goat.WanderCenter = GroundPos(seed.X, seed.Y);
+        }
+
+        // Prefer Seedling-stage seeds (already a real, visible growing tree mesh)
+        // over Dropped/Germinating markers, which are too small to read clearly.
+        private Seed PickWanderTarget(List<Seed> living)
+        {
+            List<Seed> seedlings = null;
+            foreach (var s in living)
+                if (s.Stage == SeedStage.Seedling) (seedlings ??= new List<Seed>()).Add(s);
+            return seedlings != null ? seedlings[Random.Range(0, seedlings.Count)] : living[Random.Range(0, living.Count)];
         }
 
         private void EnsureGoatCount()
@@ -120,7 +130,7 @@ namespace ARIA.Drone
 
             while (_goats.Count < maxGoats)
             {
-                var seed = living[Random.Range(0, living.Count)];
+                var seed = PickWanderTarget(living);
                 var go = BuildGoatVisual();
                 var goat = new Goat
                 {
@@ -200,11 +210,11 @@ namespace ARIA.Drone
         {
             var root = new GameObject("Goat");
 
-            float bodyLen = 1.0f * cellSize;
-            float bodyWid = 0.40f * cellSize;
-            float bodyHt  = 0.46f * cellSize;
-            float legLen  = 0.5f * cellSize;
-            float legRad  = 0.05f * cellSize;
+            float bodyLen = 1.8f * cellSize;
+            float bodyWid = 0.70f * cellSize;
+            float bodyHt  = 0.80f * cellSize;
+            float legLen  = 0.85f * cellSize;
+            float legRad  = 0.09f * cellSize;
 
             Color coat = new Color(0.83f, 0.78f, 0.66f); // cream/tan coat
             Color dark = new Color(0.30f, 0.21f, 0.13f); // brown face/legs/horns
@@ -236,8 +246,9 @@ namespace ARIA.Drone
             snout.transform.localScale = new Vector3(bodyWid * 0.32f, bodyWid * 0.24f, bodyWid * 0.34f);
             SetGoatMat(snout, dark);
 
-            AddEar(root, headPos, -1);
-            AddEar(root, headPos, 1);
+            float headSize = bodyWid * 0.62f;
+            AddEar(root, headPos, headSize, -1);
+            AddEar(root, headPos, headSize, 1);
             AddAppendage(root, headPos + Vector3.up * bodyWid * 0.2f, new Vector3(-35, 10, 0), bodyHt * 0.35f, legRad * 0.7f, dark);
             AddAppendage(root, headPos + Vector3.up * bodyWid * 0.2f, new Vector3(-35, -10, 0), bodyHt * 0.35f, legRad * 0.7f, dark);
             AddAppendage(root, headPos + new Vector3(0, -bodyWid * 0.25f, bodyWid * 0.2f), new Vector3(160, 0, 0), bodyHt * 0.2f, legRad * 0.5f, dark);
@@ -254,15 +265,15 @@ namespace ARIA.Drone
             return root;
         }
 
-        private void AddEar(GameObject parent, Vector3 headPos, int side)
+        private void AddEar(GameObject parent, Vector3 headPos, float headSize, int side)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = "Ear";
             go.transform.SetParent(parent.transform, false);
             Destroy(go.GetComponent<Collider>());
-            go.transform.localPosition = headPos + new Vector3(side * 0.18f, 0.02f, -0.02f);
+            go.transform.localPosition = headPos + new Vector3(side * headSize * 0.65f, headSize * 0.08f, -headSize * 0.08f);
             go.transform.localRotation = Quaternion.Euler(0, 0, side * 40f);
-            go.transform.localScale = new Vector3(0.14f, 0.05f, 0.1f);
+            go.transform.localScale = new Vector3(headSize * 0.5f, headSize * 0.18f, headSize * 0.36f);
             SetGoatMat(go, new Color(0.83f, 0.78f, 0.66f));
         }
 
@@ -299,7 +310,7 @@ namespace ARIA.Drone
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = col;
             mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", col * 0.5f);
+            mat.SetColor("_EmissionColor", col * 0.9f);
             rend.material = mat;
         }
 
