@@ -21,6 +21,8 @@ ARIA_Unity/Temp/
 ARIA_Unity/Obj/
 ARIA_Unity/Build/
 ARIA_Unity/Builds/
+ARIA_Unity/BuildOutput/
+ARIA_Unity/build_log.txt
 ARIA_Unity/Logs/
 ARIA_Unity/UserSettings/
 ARIA_Unity/MemoryCaptures/
