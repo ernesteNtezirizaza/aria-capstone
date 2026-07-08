@@ -207,7 +207,8 @@ namespace ARIA.Core
                 s.ReseedSpeciesMap.Clear();
             }
 
-            if (energyInfo.ShouldReturn && activelySeeding)
+            // Sunny weather keeps recharging the battery, so only rain forces an emergency return.
+            if (energyInfo.ShouldReturn && activelySeeding && !s.Weather.IsSunny())
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
                 s.BatteryCriticalReturning = true;
@@ -220,6 +221,9 @@ namespace ARIA.Core
                 int dy = (int)Mathf.Sign(s.BaseY - s.Y);
                 s.X = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 s.Y = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
+
+                // Descend while flying home instead of cruising until an abrupt landing.
+                s.Altitude = Mathf.Max(0f, s.Altitude - ARIAConstants.RETURN_DESCENT_RATE);
 
                 if (s.X == s.BaseX && s.Y == s.BaseY)
                 {
