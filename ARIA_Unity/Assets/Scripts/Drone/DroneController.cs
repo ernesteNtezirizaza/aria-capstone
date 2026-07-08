@@ -405,10 +405,13 @@ namespace ARIA.Drone
             }
         }
 
-        private Vector3 GridToWorld(int gridX, int gridY, float altitude)
+        private Vector3 GridToWorld(int gridX, int gridY, float altitude, bool minHeightFloor = true)
         {
-            // Minimum base height so the drone always hovers clearly above the ground.
-            return new Vector3(gridX * cellSize, 10f + (altitude * altitudeWorldScale), gridY * cellSize);
+            // Minimum base height so the drone always hovers clearly above the ground --
+            // skipped while returning to base so it actually descends to the ground
+            // instead of cruising at this floor for the whole flight home.
+            float y = minHeightFloor ? 10f + (altitude * altitudeWorldScale) : altitude * altitudeWorldScale;
+            return new Vector3(gridX * cellSize, y, gridY * cellSize);
         }
 
         private void SpawnSeedVisual()
@@ -437,13 +440,15 @@ namespace ARIA.Drone
         private void SnapToGridPosition()
         {
             _moveFrom = transform.position;
-            _moveTo = GridToWorld(State.X, State.Y, State.Altitude);
+            bool returning = State.DroneState == ARIAConstants.STATE_RETURNING;
+            _moveTo = GridToWorld(State.X, State.Y, State.Altitude, minHeightFloor: !returning);
             _moveElapsed = 0f;
         }
 
         private void HardSnapToGridPosition()
         {
-            Vector3 pos = GridToWorld(State.X, State.Y, State.Altitude);
+            bool returning = State.DroneState == ARIAConstants.STATE_RETURNING;
+            Vector3 pos = GridToWorld(State.X, State.Y, State.Altitude, minHeightFloor: !returning);
             transform.position = pos;
             _moveFrom = _moveTo = pos;
             _moveElapsed = 0f;
