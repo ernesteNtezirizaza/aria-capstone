@@ -6,10 +6,8 @@ using ARIA.Systems;
 
 namespace ARIA.Drone
 {
-    // Cosmetic insect layer for the "Animal Disturbance" demo toggle. Insects
-    // wander near live seeds and play an eating animation when the real
-    // DisturbanceEngine kills a seed -- DisturbanceEngine stays the sole
-    // authority on which seeds actually die, this only reacts to it.
+    // Cosmetic insect layer: wanders near live seeds, plays an eating animation
+    // when the real DisturbanceEngine kills one. Purely reactive, not authoritative.
     public class AnimalDisturbanceVisualizer : MonoBehaviour
     {
         [Tooltip("Assign the same DroneController driving the episode.")]
@@ -195,16 +193,15 @@ namespace ARIA.Drone
             return new Vector3(worldX, groundY, worldZ);
         }
 
-        // Builds a small beetle/ant-like insect from primitives: oval
-        // abdomen, head, antennae, and three pairs of splayed thin legs.
+        // Small beetle/ant built from primitives: abdomen, head, antennae, 6 legs.
         private GameObject BuildInsectVisual()
         {
             var root = new GameObject("Insect");
 
-            float bodyLen = 0.34f * cellSize;
-            float bodyWid = 0.16f * cellSize;
-            float bodyHt  = 0.12f * cellSize;
-            Color shell = new Color(0.10f, 0.07f, 0.04f); // near-black carapace
+            float bodyLen = 0.44f * cellSize;
+            float bodyWid = 0.20f * cellSize;
+            float bodyHt  = 0.15f * cellSize;
+            Color shell = new Color(0.22f, 0.12f, 0.05f); // dark reddish-brown carapace
 
             var abdomen = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             abdomen.name = "Abdomen";
@@ -256,6 +253,9 @@ namespace ARIA.Drone
             if (rend == null) return;
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = col;
+            // Glow like every other dynamic marker, or these read as invisible from a distance.
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", col * 4f + new Color(0.25f, 0.12f, 0.03f));
             rend.material = mat;
         }
 

@@ -178,9 +178,7 @@ namespace ARIA.Drone
             trail.startColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0.8f);
             trail.endColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0f);
 
-            // Rest ON the surface (pivot is the sphere's centre), not centred AT ground
-            // level -- otherwise half the sphere is already clipped by the opaque
-            // terrain the instant it lands, before the sink animation even starts.
+            // Rest ON the surface, not centred AT it, or half the sphere clips through terrain.
             Vector3 restingPos = groundPos + Vector3.up * (seedSize * 0.5f);
 
             float fallHeight = Mathf.Max(0.1f, startPos.y - restingPos.y);
@@ -200,9 +198,7 @@ namespace ARIA.Drone
             // ── Dig a hole and settle the seed into it ────────────────
             var hole = SpawnHole(groundPos);
 
-            // Stays at/above ground the whole time (never dips below the opaque
-            // terrain) and shrinks to a tiny nub -- reads as sinking into the loose
-            // soil instead of abruptly vanishing.
+            // Shrinks to a tiny nub without dipping below ground -- reads as sinking in.
             Vector3 settledPos = groundPos + Vector3.up * (seedSize * 0.08f);
             float sinkT = 0f;
             while (sinkT < holeSinkDuration)
@@ -372,12 +368,9 @@ namespace ARIA.Drone
 
         private IEnumerator TransitionTo(TreeVisual visual, SeedStage newStage)
         {
-            bool wasTreeStage = visual.LastStage == SeedStage.Seedling
-                              || visual.LastStage == SeedStage.Mature
-                              || visual.LastStage == SeedStage.Dead;
-            bool isTreeStage = newStage == SeedStage.Seedling
-                             || newStage == SeedStage.Mature
-                             || newStage == SeedStage.Dead;
+            // Dead is its own branch below, so an early death just withers the sprout in place.
+            bool wasTreeStage = visual.LastStage == SeedStage.Seedling || visual.LastStage == SeedStage.Mature;
+            bool isTreeStage  = newStage == SeedStage.Seedling || newStage == SeedStage.Mature;
 
             if (!wasTreeStage && isTreeStage)
             {
@@ -399,17 +392,23 @@ namespace ARIA.Drone
 
             visual.LastStage = newStage;
 
-            if (newStage == SeedStage.Dead && visual.TreeObject != null)
-            {
-                foreach (var rend in visual.TreeObject.GetComponentsInChildren<Renderer>())
-                    rend.material.color = Color.Lerp(rend.material.color, new Color(0.35f, 0.3f, 0.25f), 0.7f);
-            }
-
             GameObject target = visual.TreeObject != null ? visual.TreeObject : visual.SproutObject;
             if (target == null) yield break;
 
             float startScale = target.transform.localScale.x;
-            float endScale = isTreeStage ? TreeScale(newStage) : 1f; // sprout always tweens toward its own full size (1)
+            float endScale;
+
+            if (newStage == SeedStage.Dead)
+            {
+                // Grey out and shrink the existing marker in place -- reads as "died here".
+                foreach (var rend in target.GetComponentsInChildren<Renderer>())
+                    rend.material.color = Color.Lerp(rend.material.color, new Color(0.35f, 0.3f, 0.25f), 0.7f);
+                endScale = startScale * 0.4f;
+            }
+            else
+            {
+                endScale = isTreeStage ? TreeScale(newStage) : 1f; // sprout tweens toward its own full size (1)
+            }
 
             float t = 0f;
             while (t < tweenDuration)
