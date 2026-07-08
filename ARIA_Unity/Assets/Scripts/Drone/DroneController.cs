@@ -25,17 +25,10 @@ namespace ARIA.Drone
         public int startingZoneIndex = 2; // Central Plateau East, if using the 9-zone export from this conversation
 
         [Header("Zone transitions")]
-        [Tooltip("If true, moves to the next zone in the manifest ONLY when the " +
-                 "current mission genuinely concludes (seeds depleted, battery-" +
-                 "critical emergency landing, or max-steps truncation) -- a real " +
-                 "simulation event, not a timer. IMPORTANT: the trained model's " +
-                 "47-action space is entirely within-episode (direction, species, " +
-                 "hover, abort, cover, altitude, emergency) -- it has no 'visit " +
-                 "zone N' action. Zone assignment happens at the environment/reset " +
-                 "level in the real Python training setup too, not as a model " +
-                 "decision. This flag controls an ORCHESTRATION layer around the " +
-                 "model, not something the model itself decides.")]
-        public bool switchZoneOnEpisodeEnd = true;
+        [Tooltip("Auto-advance to the next zone when an episode truncates. Defaults false " +
+                 "since the Demo Controls HUD now has a manual zone button, and auto-cycling " +
+                 "would otherwise pull the view away from a manually chosen zone.")]
+        public bool switchZoneOnEpisodeEnd = false;
 
         [Header("Simulation speed")]
         [Tooltip("Seconds between each policy step. Lower = faster demo, " +

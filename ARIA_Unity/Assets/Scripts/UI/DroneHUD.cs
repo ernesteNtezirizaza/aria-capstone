@@ -19,7 +19,7 @@ namespace ARIA.UI
         private Text _seedsText;
         private Text _queuedText;
 
-        private Text _weatherButtonLabel, _obstacleButtonLabel, _animalButtonLabel;
+        private Text _weatherButtonLabel, _obstacleButtonLabel, _animalButtonLabel, _zoneButtonLabel;
         private Image _weatherButtonImg, _obstacleButtonImg, _animalButtonImg;
 
         private GameObject _restartBar;
@@ -102,7 +102,7 @@ namespace ARIA.UI
         private void BuildDemoControls()
         {
             var panel = MakePanel(transform, new Vector2(1, 1), new Vector2(1, 1),
-                new Vector2(-16, -16), new Vector2(260, 188), new Color(0.1f, 0.15f, 0.1f, 0.98f));
+                new Vector2(-16, -16), new Vector2(260, 236), new Color(0.1f, 0.15f, 0.1f, 0.98f));
 
             var titleText = MakeText(panel, "DEMO CONTROLS", 16, TextAnchor.UpperCenter,
                 new Vector2(0, -12), new Vector2(0, -12));
@@ -135,6 +135,14 @@ namespace ARIA.UI
             _animalButtonLabel = MakeText(animalBtnGO, "Animal Disturbance: Off", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
             animalBtn.onClick.AddListener(ToggleAnimalDisturbance);
+
+            // Zone button -- cycles through every real zone in the manifest.
+            var zoneBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(12, -184), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
+            var zoneBtn = zoneBtnGO.AddComponent<Button>();
+            _zoneButtonLabel = MakeText(zoneBtnGO, "Zone: --", 14, TextAnchor.MiddleCenter,
+                new Vector2(6, 0), new Vector2(-6, 0));
+            zoneBtn.onClick.AddListener(CycleZone);
 
             RefreshDemoControlLabels();
         }
@@ -195,6 +203,13 @@ namespace ARIA.UI
             RefreshDemoControlLabels();
         }
 
+        private void CycleZone()
+        {
+            if (drone == null || drone.ZoneManifest == null || drone.ZoneManifest.Count <= 1) return;
+            drone.SwitchZone((drone.CurrentZoneIndex + 1) % drone.ZoneManifest.Count);
+            if (_zoneButtonLabel != null) _zoneButtonLabel.text = "Zone: Switching...";
+        }
+
         private void RefreshDemoControlLabels()
         {
             string modeText = DemoConditions.WeatherMode switch
@@ -220,6 +235,19 @@ namespace ARIA.UI
             _animalButtonImg.color = DemoConditions.AnimalDisturbanceEnabled
                 ? new Color(0.55f, 0.35f, 0.05f, 0.95f)
                 : new Color(0.2f, 0.15f, 0.1f, 0.95f);
+
+            if (_zoneButtonLabel != null)
+            {
+                if (drone != null && drone.ZoneManifest != null && drone.ZoneManifest.Count > 0 && drone.CurrentZoneIndex >= 0)
+                {
+                    string zoneName = drone.CurrentZoneMeta != null ? drone.CurrentZoneMeta.name : "Zone";
+                    _zoneButtonLabel.text = $"Zone: {zoneName} ({drone.CurrentZoneIndex + 1}/{drone.ZoneManifest.Count})";
+                }
+                else
+                {
+                    _zoneButtonLabel.text = "Zone: --";
+                }
+            }
         }
 
         private GameObject MakePanel(Transform parent, Vector2 anchorMin, Vector2 anchorMax,
@@ -262,6 +290,8 @@ namespace ARIA.UI
             {
                 DemoConditions.ApplyObstacleOverlay(d.State.Zone, d.CurrentZoneIndex);
             }
+
+            RefreshDemoControlLabels(); // picks up the new zone name/index once a switch completes
         }
 
         private void HandleAwaitingRestart(DroneController d)
