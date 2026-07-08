@@ -107,30 +107,30 @@ namespace ARIA.Drone
         private void RetargetGoat(Goat goat)
         {
             goat.RetargetTimer = Random.Range(3f, 6f);
-            var living = drone.State.Growth.Living();
-            if (living.Count == 0) return;
-            var seed = PickWanderTarget(living);
+            var alive = drone.State.Growth.Alive();
+            if (alive.Count == 0) return;
+            var seed = PickWanderTarget(alive);
             goat.WanderCenter = GroundPos(seed.X, seed.Y);
         }
 
-        // Prefer Seedling-stage seeds (already a real, visible growing tree mesh)
-        // over Dropped/Germinating markers, which are too small to read clearly.
-        private Seed PickWanderTarget(List<Seed> living)
+        // Prefer Seedling/Mature seeds (a real, visible tree mesh) over
+        // Dropped/Germinating markers, which are too small to read clearly.
+        private Seed PickWanderTarget(List<Seed> alive)
         {
-            List<Seed> seedlings = null;
-            foreach (var s in living)
-                if (s.Stage == SeedStage.Seedling) (seedlings ??= new List<Seed>()).Add(s);
-            return seedlings != null ? seedlings[Random.Range(0, seedlings.Count)] : living[Random.Range(0, living.Count)];
+            List<Seed> visible = null;
+            foreach (var s in alive)
+                if (s.Stage == SeedStage.Seedling || s.Stage == SeedStage.Mature) (visible ??= new List<Seed>()).Add(s);
+            return visible != null ? visible[Random.Range(0, visible.Count)] : alive[Random.Range(0, alive.Count)];
         }
 
         private void EnsureGoatCount()
         {
-            var living = drone.State.Growth.Living();
-            if (living.Count == 0) return;
+            var alive = drone.State.Growth.Alive();
+            if (alive.Count == 0) return;
 
             while (_goats.Count < maxGoats)
             {
-                var seed = PickWanderTarget(living);
+                var seed = PickWanderTarget(alive);
                 var go = BuildGoatVisual();
                 var goat = new Goat
                 {
@@ -181,16 +181,18 @@ namespace ARIA.Drone
                 yield return null;
             }
 
-            // Head-down munch -- a few quick dips/scale pulses over the seed.
+            // Head-down munch -- a few big, slow dips/scale pulses so the "attack" reads
+            // clearly instead of a subtle twitch that's easy to miss.
             Vector3 baseScale = goat.Go.transform.localScale;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (goat.Go == null) yield break;
-                goat.Go.transform.localScale = baseScale * 1.1f;
-                yield return new WaitForSeconds(0.12f);
-                goat.Go.transform.localScale = baseScale;
-                yield return new WaitForSeconds(0.12f);
+                goat.Go.transform.localScale = baseScale * 1.35f;
+                yield return new WaitForSeconds(0.18f);
+                goat.Go.transform.localScale = baseScale * 0.9f;
+                yield return new WaitForSeconds(0.18f);
             }
+            goat.Go.transform.localScale = baseScale;
 
             goat.Eating = false;
             RetargetGoat(goat);
@@ -216,8 +218,8 @@ namespace ARIA.Drone
             float legLen  = 0.85f * cellSize;
             float legRad  = 0.09f * cellSize;
 
-            Color coat = new Color(0.83f, 0.78f, 0.66f); // cream/tan coat
-            Color dark = new Color(0.30f, 0.21f, 0.13f); // brown face/legs/horns
+            Color coat = new Color(0.07f, 0.07f, 0.08f); // black coat
+            Color dark = new Color(0.03f, 0.03f, 0.03f); // near-black face/legs/horns
 
             float bodyCenterY = legLen + bodyHt * 0.5f;
 
@@ -274,7 +276,7 @@ namespace ARIA.Drone
             go.transform.localPosition = headPos + new Vector3(side * headSize * 0.65f, headSize * 0.08f, -headSize * 0.08f);
             go.transform.localRotation = Quaternion.Euler(0, 0, side * 40f);
             go.transform.localScale = new Vector3(headSize * 0.5f, headSize * 0.18f, headSize * 0.36f);
-            SetGoatMat(go, new Color(0.83f, 0.78f, 0.66f));
+            SetGoatMat(go, new Color(0.07f, 0.07f, 0.08f));
         }
 
         // Vertical leg from the body down to the ground.
@@ -310,7 +312,9 @@ namespace ARIA.Drone
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = col;
             mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", col * 0.9f);
+            // Fixed rim tint rather than a multiply -- a near-black coat would
+            // otherwise emit almost nothing and disappear against the terrain again.
+            mat.SetColor("_EmissionColor", col * 0.9f + new Color(0.10f, 0.10f, 0.12f));
             rend.material = mat;
         }
 

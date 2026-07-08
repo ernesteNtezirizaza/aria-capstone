@@ -32,22 +32,33 @@ namespace ARIA.Systems
 
         public void Step(GrowthEngine growth, int timestep)
         {
-            foreach (var seed in growth.Living())
+            var alive = growth.Alive();
+            if (alive.Count == 0) return;
+
+            // Corridor proximity is 0 for most seeds, which zeroes out their
+            // probability entirely -- so guarantee at least one real kill per
+            // check while the demo toggle is on, instead of it rarely firing.
+            Kill(growth, alive[_rng.Next(alive.Count)], timestep);
+
+            foreach (var seed in alive)
             {
                 float p = DISTURBANCE_BASE_PROB * seed.CorridorProximity;
                 if (p > 0f && (float)_rng.NextDouble() < p)
-                {
-                    growth.Kill(seed.SeedId, timestep, "disturbance");
-                    var e = new DisturbanceEvent
-                    {
-                        SeedId = seed.SeedId,
-                        X = seed.X, Y = seed.Y,
-                        Timestep = timestep,
-                        Proximity = seed.CorridorProximity,
-                    };
-                    Events.Add(e);
-                }
+                    Kill(growth, seed, timestep);
             }
+        }
+
+        private void Kill(GrowthEngine growth, Seed seed, int timestep)
+        {
+            if (seed.Stage == SeedStage.Dead) return; // may have just been killed above
+            growth.Kill(seed.SeedId, timestep, "disturbance");
+            Events.Add(new DisturbanceEvent
+            {
+                SeedId = seed.SeedId,
+                X = seed.X, Y = seed.Y,
+                Timestep = timestep,
+                Proximity = seed.CorridorProximity,
+            });
         }
     }
 }

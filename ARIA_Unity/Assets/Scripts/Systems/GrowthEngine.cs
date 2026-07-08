@@ -143,11 +143,13 @@ namespace ARIA.Systems
             }
         }
 
-        /// <summary>Mirrors growth_engine.py kill() -- used by the disturbance system.</summary>
+        /// <summary>Kills a seed at any living stage, including Mature -- used by the
+        /// disturbance system, since goats can fell an already-grown tree too. Natural
+        /// mortality in Step() still leaves Mature trees alone.</summary>
         public void Kill(int seedId, int timestep, string reason = "disturbance")
         {
             if (!Seeds.TryGetValue(seedId, out var s)) return;
-            if (s.Stage == SeedStage.Dead || s.Stage == SeedStage.Mature) return;
+            if (s.Stage == SeedStage.Dead) return;
 
             s.Stage = SeedStage.Dead;
             FailedCells.Add(new FailedCell
@@ -184,6 +186,17 @@ namespace ARIA.Systems
             var result = new List<Seed>();
             foreach (var s in Seeds.Values)
                 if (s.Stage != SeedStage.Dead && s.Stage != SeedStage.Mature)
+                    result.Add(s);
+            return result;
+        }
+
+        /// <summary>Everything not yet dead, including Mature trees -- used wherever
+        /// goats/disturbance should be able to threaten already-grown trees too.</summary>
+        public List<Seed> Alive()
+        {
+            var result = new List<Seed>();
+            foreach (var s in Seeds.Values)
+                if (s.Stage != SeedStage.Dead)
                     result.Add(s);
             return result;
         }
