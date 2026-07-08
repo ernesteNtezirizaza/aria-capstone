@@ -391,7 +391,7 @@ namespace ARIA.Drone
             if (result.Terminated || result.Truncated)
             {
                 _episodeActive = false;
-                TelemetryManager.Instance?.SendEpisodeTelemetry(State, CumulativeReward);
+                TelemetryManager.Instance?.SendEpisodeTelemetry(State, CumulativeReward, CurrentZoneMeta);
                 OnEpisodeEnded?.Invoke(this);
 
                 if (result.BatteryDepleted || result.MissionComplete)

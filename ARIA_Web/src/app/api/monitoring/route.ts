@@ -48,7 +48,11 @@ export async function POST(request: Request) {
             rain_score: s.rain_score,
             slope_score: s.slope_score,
             is_suitable: s.is_suitable,
-            in_protected_area: s.in_protected_area
+            in_protected_area: s.in_protected_area,
+            stage: s.stage,
+            fail_reason: s.fail_reason || null,
+            dropped_at: s.dropped_at,
+            failed_at: s.failed_at >= 0 ? s.failed_at : null
           }))
         }
       }

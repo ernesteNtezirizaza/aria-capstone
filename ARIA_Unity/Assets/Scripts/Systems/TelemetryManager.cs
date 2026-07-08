@@ -40,6 +40,12 @@ namespace ARIA.Systems
         public float slope_score;
         public bool is_suitable;
         public bool in_protected_area;
+        // Seed-monitoring: lifecycle stage + failure info, so the dashboard can
+        // show what happened to each seed and why the drone rescheduled it.
+        public string stage;
+        public string fail_reason;
+        public int dropped_at;
+        public int failed_at;
     }
 
     [System.Serializable]
@@ -76,23 +82,25 @@ namespace ARIA.Systems
         /// <summary>
         /// Gathers statistics from the EpisodeState and sends them via HTTP POST to the Web Dashboard.
         /// </summary>
-        public void SendEpisodeTelemetry(EpisodeState state, float finalReward)
+        public void SendEpisodeTelemetry(EpisodeState state, float finalReward, RealZoneJson zoneMeta = null)
         {
-            StartCoroutine(PostTelemetryCoroutine(state, finalReward));
+            StartCoroutine(PostTelemetryCoroutine(state, finalReward, zoneMeta));
         }
 
-        private IEnumerator PostTelemetryCoroutine(EpisodeState state, float finalReward)
+        private IEnumerator PostTelemetryCoroutine(EpisodeState state, float finalReward, RealZoneJson zoneMeta)
         {
-            // Build the payload
+            // Build the payload -- zone name/agro-zone/split come from the real
+            // loaded zone file when available; province/area have no real-data
+            // source yet, so they stay as placeholder constants.
             TelemetryPayload payload = new TelemetryPayload
             {
                 zone = new TelemetryZone
                 {
-                    name = "Simulated Zone Alpha",
+                    name = zoneMeta != null ? zoneMeta.name : "Simulated Zone Alpha",
                     province = "Kigali",
-                    agro_zone = "Highlands",
+                    agro_zone = zoneMeta != null ? zoneMeta.agroZone : "Highlands",
                     area_km2 = 150.5f,
-                    split_type = "Grid"
+                    split_type = zoneMeta != null ? zoneMeta.split : "Grid"
                 },
                 episode = new TelemetryEpisode
                 {
@@ -152,26 +160,46 @@ namespace ARIA.Systems
             return count > 0 ? sum / count : 0f;
         }
 
+        // Reports every seed the drone actually dropped this episode, with its
+        // real lifecycle stage and (for dead seeds) why/when it failed --
+        // sourced from the monitoring system's persistent failure log rather
+        // than fabricated placements.
         private List<TelemetrySeed> BuildSeedList(EpisodeState state)
         {
             var seedList = new List<TelemetrySeed>();
-            int numSeeds = (int)ARIAConstants.INITIAL_SEEDS - (int)state.SeedsRemaining;
-            
-            // Generate some representative seed placements across the plantable terrain
-            for(int i = 0; i < numSeeds; i++)
+            foreach (var seed in state.Growth.Seeds.Values)
             {
-                int rx = Random.Range(5, state.Zone.Size - 5);
-                int ry = Random.Range(5, state.Zone.Size - 5);
+                string failReason = null;
+                int failedAt = -1;
+                if (seed.Stage == SeedStage.Dead)
+                {
+                    // Most recent matching log entry -- FailedCellsLog persists
+                    // across the whole run, so scan from the end for freshness.
+                    for (int i = state.Monitor.FailedCellsLog.Count - 1; i >= 0; i--)
+                    {
+                        var f = state.Monitor.FailedCellsLog[i];
+                        if (f.X == seed.X && f.Y == seed.Y && f.SpeciesTried == seed.SpeciesId)
+                        {
+                            failReason = f.Reason;
+                            failedAt = f.FailedAt;
+                            break;
+                        }
+                    }
+                }
 
                 seedList.Add(new TelemetrySeed {
-                    x_coord = rx,
-                    y_coord = ry,
-                    species_id = Random.Range(0, ARIAConstants.N_SPECIES),
-                    soil_score = state.Zone.SoilAt(ry, rx),
-                    rain_score = state.Zone.Terrain[ry, rx, 3],
-                    slope_score = state.Zone.Terrain[ry, rx, 1],
-                    is_suitable = !state.Zone.NoPlant[ry, rx],
-                    in_protected_area = state.Zone.DistGrid[ry, rx] > 0.8f
+                    x_coord = seed.X,
+                    y_coord = seed.Y,
+                    species_id = seed.SpeciesId,
+                    soil_score = seed.SoilScore,
+                    rain_score = seed.RainScore,
+                    slope_score = seed.SlopeScore,
+                    is_suitable = seed.IsSuitable,
+                    in_protected_area = seed.InProtected,
+                    stage = seed.Stage.ToString(),
+                    fail_reason = failReason,
+                    dropped_at = seed.DroppedAt,
+                    failed_at = failedAt,
                 });
             }
             return seedList;

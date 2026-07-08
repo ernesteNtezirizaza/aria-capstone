@@ -44,4 +44,9 @@ model Seed {
   slope_score       Float?
   is_suitable       Boolean?
   in_protected_area Boolean?
+  // Seed-monitoring: lifecycle stage + failure info for the reseed pipeline.
+  stage             String?
+  fail_reason       String?
+  dropped_at        Int?
+  failed_at         Int?
 }
