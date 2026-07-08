@@ -19,10 +19,15 @@ export default async function DashboardPage() {
   const totalSeeds = await prisma.seed.count();
 
   // Seed-monitoring: lifecycle stage breakdown + recent failures for the reseed pipeline.
-  const stageCounts = await prisma.seed.groupBy({
-    by: ['stage'],
-    _count: { stage: true },
-  });
+  // Aggregated in JS rather than via Prisma groupBy -- groupBy on a nullable column
+  // errored against the pg driver adapter used here (poisoned the whole request).
+  const allStages = await prisma.seed.findMany({ select: { stage: true } });
+  const stageCountMap: Record<string, number> = {};
+  for (const s of allStages) {
+    const key = s.stage || 'Unknown';
+    stageCountMap[key] = (stageCountMap[key] || 0) + 1;
+  }
+  const stageCounts = Object.entries(stageCountMap).map(([stage, count]) => ({ stage, count }));
 
   const recentFailures = await prisma.seed.findMany({
     where: { stage: 'Dead' },

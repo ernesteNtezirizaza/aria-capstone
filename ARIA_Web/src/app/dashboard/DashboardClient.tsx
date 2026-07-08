@@ -25,8 +25,8 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
   }));
 
   const stageData = (seedMonitoring?.stageCounts || [])
-    .filter((s) => s.stage)
-    .map((s) => ({ name: s.stage as string, value: s._count.stage as number }));
+    .filter((s) => s.stage && s.stage !== 'Unknown')
+    .map((s) => ({ name: s.stage as string, value: s.count as number }));
   const recentFailures = seedMonitoring?.recentFailures || [];
 
   return (
