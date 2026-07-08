@@ -188,23 +188,28 @@ namespace ARIA.Systems
             return result;
         }
 
+        // Zones now switch at episode end (DroneController.switchZoneOnEpisodeEnd), and an
+        // episode can end well before MAX_STEPS=1000 once the zone is fully planted -- so
+        // growth needs to comfortably reach Mature with time to spare inside a typical
+        // episode, not just before a full 1000-step budget, or the forest never looks
+        // "grown" before the zone switches away underneath it.
         private static int SpeciesGermSteps(int speciesId) => speciesId switch
         {
-            0 => 90,   // Eucalyptus globulus  -- fast
-            1 => 110,  // Grevillea robusta    -- moderate
-            2 => 90,   // Eucalyptus maculata  -- fast
-            3 => 100,  // Eucalyptus maidenii  -- fast
-            4 => 160,  // Artocarpus heterophyllus -- slow (jackfruit)
-            _ => 100,
+            0 => 40,  // Eucalyptus globulus  -- fast
+            1 => 50,  // Grevillea robusta    -- moderate
+            2 => 40,  // Eucalyptus maculata  -- fast
+            3 => 45,  // Eucalyptus maidenii  -- fast
+            4 => 70,  // Artocarpus heterophyllus -- slow (jackfruit)
+            _ => 45,
         };
         private static int SpeciesMatureSteps(int speciesId) => speciesId switch
         {
-            0 => 820,
-            1 => 900,
-            2 => 850,
-            3 => 870,
-            4 => 950,
-            _ => 860,
+            0 => 350,
+            1 => 400,
+            2 => 370,
+            3 => 380,
+            4 => 450,
+            _ => 380,
         };
     }
 }
