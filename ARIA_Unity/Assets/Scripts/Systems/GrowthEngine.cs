@@ -143,9 +143,7 @@ namespace ARIA.Systems
             }
         }
 
-        /// <summary>Kills a seed at any living stage, including Mature -- used by the
-        /// disturbance system, since goats can fell an already-grown tree too. Natural
-        /// mortality in Step() still leaves Mature trees alone.</summary>
+        // Unlike natural mortality in Step(), this can kill a Mature tree too (goats).
         public void Kill(int seedId, int timestep, string reason = "disturbance")
         {
             if (!Seeds.TryGetValue(seedId, out var s)) return;
@@ -190,8 +188,7 @@ namespace ARIA.Systems
             return result;
         }
 
-        /// <summary>Everything not yet dead, including Mature trees -- used wherever
-        /// goats/disturbance should be able to threaten already-grown trees too.</summary>
+        // Everything not yet dead, including Mature -- used wherever disturbance can threaten trees.
         public List<Seed> Alive()
         {
             var result = new List<Seed>();
@@ -201,11 +198,8 @@ namespace ARIA.Systems
             return result;
         }
 
-        // Zones now switch at episode end (DroneController.switchZoneOnEpisodeEnd), and an
-        // episode can end well before MAX_STEPS=1000 once the zone is fully planted -- so
-        // growth needs to comfortably reach Mature with time to spare inside a typical
-        // episode, not just before a full 1000-step budget, or the forest never looks
-        // "grown" before the zone switches away underneath it.
+        // Episodes can end well before MAX_STEPS once fully planted, so growth must reach
+        // Mature with time to spare, not just within the full step budget.
         private static int SpeciesGermSteps(int speciesId) => speciesId switch
         {
             0 => 40,  // Eucalyptus globulus  -- fast

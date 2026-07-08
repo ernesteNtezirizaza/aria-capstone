@@ -61,12 +61,9 @@ namespace ARIA.UI
             drone.OnAwaitingRestart -= HandleAwaitingRestart;
         }
 
-        // ── Layout construction ──────────────────────────────────────
-
         private void BuildLayout()
         {
-            // Small standalone battery display -- top-left, deliberately
-            // compact (not a large metrics block) so it can't cover the terrain.
+            // Deliberately compact so it can't cover the terrain.
             var batteryPanel = MakePanel(transform, new Vector2(0, 1), new Vector2(0, 1),
                 new Vector2(10, -10), new Vector2(220, 34), new Color(0f, 0.05f, 0f, 1f));
             _batteryText = MakeText(batteryPanel, "Battery: --", 15, TextAnchor.MiddleCenter,
@@ -127,7 +124,6 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             obstacleBtn.onClick.AddListener(ToggleObstacles);
 
-            // Animal disturbance toggle -- insects that can kill nearby seeds.
             var animalBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -136), new Vector2(-24, 40), new Color(0.2f, 0.15f, 0.1f, 1f));
             var animalBtn = animalBtnGO.AddComponent<Button>();
@@ -279,8 +275,6 @@ namespace ARIA.UI
             rt.offsetMin = offsetMin; rt.offsetMax = offsetMax;
             return t;
         }
-
-        // ── Real data wiring ─────────────────────────────────────────
 
         private void HandleEpisodeStarted(DroneController d)
         {

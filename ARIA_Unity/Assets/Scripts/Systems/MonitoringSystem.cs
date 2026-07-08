@@ -10,7 +10,7 @@ namespace ARIA.Systems
         public List<FailedCell> ReseedQueue     = new List<FailedCell>();
         public List<(int x, int y)> ReseedLog   = new List<(int, int)>();
 
-        public void Reset() { /* deliberately empty -- see docstring */ }
+        public void Reset() { /* no-op -- monitoring persists across episodes */ }
 
         public void FullReset()
         {

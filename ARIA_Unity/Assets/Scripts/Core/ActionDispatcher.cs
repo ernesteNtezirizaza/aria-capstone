@@ -34,8 +34,7 @@ namespace ARIA.Core
             float rainVal = DemoConditions.GetEffectiveRainfall(realRain, s.Timestep);
             s.Weather.Step(rainVal, s.Timestep);
 
-            // Sunny again mid-return -- abort the emergency, resume normal operation,
-            // and let the battery recharge instead of staying frozen until landing.
+            // Weather cleared mid-return -- cancel the emergency and let the battery recharge.
             if (s.BatteryCriticalReturning && s.Weather.IsSunny())
             {
                 s.BatteryCriticalReturning = false;
@@ -62,7 +61,6 @@ namespace ARIA.Core
                 return result;
             }
 
-            // ── ABORT_ACTION ──────────────────────────────────────────
             if (action == ARIAConstants.ABORT_ACTION)
             {
                 float zoneScore = s.ZoneSuitability();
@@ -125,9 +123,9 @@ namespace ARIA.Core
 
                     if (DemoConditions.ObstacleOverlayEnabled)
                     {
-                        int cwIdx  = FindDirectionIndex(dx, -dy);   // rotate blocked heading 90 deg clockwise
-                        int ccwIdx = FindDirectionIndex(-dx, dy);   // rotate blocked heading 90 deg counter-clockwise
-                        int revIdx = FindDirectionIndex(-dy, -dx);  // full reverse -- tried last
+                        int cwIdx  = FindDirectionIndex(dx, -dy);   // 90 deg clockwise
+                        int ccwIdx = FindDirectionIndex(-dx, dy);   // 90 deg counter-clockwise
+                        int revIdx = FindDirectionIndex(-dy, -dx);  // reverse, tried last
 
                         Span<int> tryOrder = stackalloc int[8];
                         int n = 0;
@@ -231,9 +229,7 @@ namespace ARIA.Core
                 s.X = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 s.Y = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
-                // Cruise safely above the tree canopy while still over the planted
-                // zone; only descend in the final approach once clear of it, so it
-                // doesn't plough through growing trees on the way back.
+                // Cruise above canopy until clear of the planted zone, then descend.
                 int distToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
                 s.Altitude = distToBase <= ARIAConstants.RETURN_DESCENT_RANGE
                     ? Mathf.Clamp01((float)distToBase / ARIAConstants.RETURN_DESCENT_RANGE)
@@ -244,8 +240,6 @@ namespace ARIA.Core
                     s.DroneState = ARIAConstants.STATE_LANDING;
                     s.MissionsCompleted++;
 
-                    // Pull top 3 reseeding targets into the active queue, carrying
-                    // the recommended replacement species along with each cell.
                     var targets = s.Monitor.GetTopTargets(3);
                     foreach (var t in targets)
                     {
@@ -264,7 +258,6 @@ namespace ARIA.Core
                     }
                     else if (s.BatteryCriticalReturning)
                     {
-                        // Comes to rest exactly empty, as if it just barely made it back.
                         s.Energy.SetBattery(0f);
                         result.BatteryDepleted = true;
                         result.Terminated = true;
@@ -289,7 +282,6 @@ namespace ARIA.Core
                 s.Growth.FailedCells.Clear();
             }
 
-            // ── Timestep advance + termination check ──────────────────
             s.Timestep++;
             result.Truncated = s.Timestep >= ARIAConstants.MAX_STEPS;
 

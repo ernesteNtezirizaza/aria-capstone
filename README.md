@@ -38,7 +38,7 @@ The system combats deforestation by deploying a trained DRL policy that chooses 
 ARIA is a decoupled, three-part system:
 
 ### 1. `ARIA_ML` (PPO + CNN Agent)
-The core intelligence of the system. We use **Proximal Policy Optimization (PPO)** combined with a **Convolutional Neural Network (CNN)** terrain extractor.
+The core intelligence of the system. I use **Proximal Policy Optimization (PPO)** combined with a **Convolutional Neural Network (CNN)** terrain extractor.
 - **Tech Stack:** Python, PyTorch, Stable-Baselines3, ONNX
 - **Functionality:** Trains against a custom Gym environment modeling terrain, weather, energy, growth, and disturbance, then exports the trained policy to ONNX for runtime inference.
 
@@ -71,7 +71,7 @@ cd aria-capstone
 ```
 
 ### Step 2: Set up the ARIA_Web Dashboard
-The web dashboard acts as the telemetry receiver and hosts the pre-built WebGL simulation. It requires a PostgreSQL database (we recommend [Neon](https://neon.tech)).
+The web dashboard acts as the telemetry receiver and hosts the pre-built WebGL simulation. It requires a PostgreSQL database (I recommend [Neon](https://neon.tech)).
 
 ```bash
 cd ARIA_Web
@@ -196,7 +196,7 @@ The project's central objective, an autonomous agent that plans *and* navigates 
 
 Two objectives were partially rather than fully met:
 - **Reseed pipeline visibility.** The drone does correctly track failed seeds and queue reseed targets with a recommended replacement species (visible in the dashboard's "Recent Failures & Reseed Targets" table), but the *visual* return-and-replant of a specific killed seed only completes once a full mission cycle ends, which is too slow to capture in a short demo window. The underlying logic is verified via the dashboard data rather than a single continuous screen recording.
-- **Cross-hardware performance.** Testing covered desktop Chromium at two viewport sizes; we did not get to profile WebGL frame rates on lower-spec hardware or verify behavior on Firefox/Safari's WebGL implementations, which can differ from Chromium's.
+- **Cross-hardware performance.** Testing covered desktop Chromium at two viewport sizes; I did not get to profile WebGL frame rates on lower-spec hardware or verify behavior on Firefox/Safari's WebGL implementations, which can differ from Chromium's.
 
 ## Discussion
 
@@ -216,25 +216,56 @@ The disturbance/reseeding loop is the other high-impact piece, since it is what 
 
 ```text
 aria-capstone/
-├── ARIA_ML/               # Deep Reinforcement Learning models and training scripts
-│   ├── env/               # Custom Gym environment (terrain, energy, weather, growth, disturbance)
-│   ├── training/           # PPO + CNN training loop and configuration
-│   └── export_to_onnx.py  # Exports the trained policy for use in Unity
-├── ARIA_Unity/             # Unity3D simulation project (source)
-│   └── Assets/Scripts/     # Core sim (C# port of ARIA_ML/env), Drone, Systems, UI
-├── ARIA_Web/               # Next.js web application and API
-│   ├── prisma/             # Database schema
-│   ├── public/simulation/  # Pre-built WebGL bundle served by the web app
-│   └── src/                # React components, dashboard UI, and API routes
-├── docs/testing/screenshots/  # Testing evidence referenced above
+├── ARIA_ML/                        # Deep reinforcement learning: training + environment
+│   ├── configs/                    # Training/environment configuration
+│   ├── data/                       # raw/, processed/, zones/ -- terrain data used to build zones
+│   ├── env/                        # Custom Gym environment (one file per subsystem)
+│   │   ├── rwanda_env.py           # Top-level Gym environment
+│   │   ├── growth_engine.py        # Seed lifecycle simulation
+│   │   ├── energy_system.py        # Battery/solar model
+│   │   ├── weather_system.py       # Weather/season model
+│   │   ├── disturbance_engine.py   # Animal disturbance model
+│   │   ├── monitoring_system.py    # Failure tracking + reseed recommendation
+│   │   ├── reward_function.py      # Reward shaping
+│   │   └── cnn_extractor.py        # CNN terrain feature extractor for the PPO policy
+│   ├── notebook/                   # Interactive training/exploration notebook
+│   ├── results/                    # checkpoints/, metrics/, plots/ from training runs
+│   ├── training/train_ppo.py       # PPO training entrypoint
+│   ├── utils/                      # preprocess.py, zone_builder.py
+│   ├── export_to_onnx.py           # Exports the trained policy for use in Unity
+│   ├── main.py
+│   └── requirements.txt
+├── ARIA_Unity/                     # Unity3D simulation project (source)
+│   ├── Assets/
+│   │   ├── Editor/BuildScript.cs   # Headless WebGL build entrypoint
+│   │   ├── Resources/              # aria_policy.onnx, default materials
+│   │   ├── Scenes/MainScene.unity
+│   │   ├── Scripts/
+│   │   │   ├── Core/                # ARIAConstants, EpisodeState, ActionDispatcher, CoverageOverride, ZoneData, RealZoneLoader, DemoConditions
+│   │   │   ├── Drone/                # DroneController, SeedTreeManager, AnimalDisturbanceVisualizer, AerialObstacleVisualizer, TreeBuilder, RealTerrainRenderer, SceneBootstrapper, etc.
+│   │   │   ├── Systems/              # GrowthEngine, EnergySystem, WeatherSystem, DisturbanceEngine, MonitoringSystem, TelemetryManager
+│   │   │   ├── ML/                   # ARIAPolicyInference (Unity Inference Engine), ActionSelector
+│   │   │   └── UI/DroneHUD.cs        # Demo Controls + HUD
+│   │   └── StreamingAssets/          # aria_policy.onnx, real zone JSON files, zone_manifest.json
+│   └── Packages/, ProjectSettings/   # Unity project configuration
+├── ARIA_Web/                       # Next.js web application and API
+│   ├── prisma/schema.prisma        # Database schema
+│   ├── public/
+│   │   ├── logo/                   # ARIA branding
+│   │   └── simulation/Build/       # Pre-built WebGL bundle (.data.gz/.wasm.gz/.framework.js.gz) served by the web app
+│   └── src/
+│       ├── app/
+│       │   ├── page.tsx            # Landing page
+│       │   ├── simulation/page.tsx # Embedded WebGL simulation
+│       │   ├── dashboard/          # page.tsx (data fetching) + DashboardClient.tsx (charts/tables)
+│       │   └── api/monitoring/route.ts  # Telemetry ingestion endpoint (Unity -> Postgres)
+│       └── lib/prisma.ts           # Prisma client (driver adapter setup)
+├── docs/testing/screenshots/       # Testing evidence referenced above
 ├── LICENSE
 └── README.md
 ```
 
 ---
-
-## Contributing
-As this is a capstone project, contributions are closed for the academic grading period. However, feel free to fork the repository for your own research in autonomous drone operations and reinforcement learning.
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

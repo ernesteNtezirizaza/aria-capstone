@@ -32,7 +32,7 @@ namespace ARIA.Core
             {
                 var row = new List<(int, int)>();
                 for (int x = halfX; x < size; x += X_SPACING)
-                    row.Add((x, y)); // full-grid sweep -- see COVERAGE FIX note above
+                    row.Add((x, y));
                 if (reverse) row.Reverse(); // serpentine/boustrophedon sweep
                 reverse = !reverse;
                 _targets.AddRange(row);

@@ -6,8 +6,7 @@ using ARIA.Systems;
 
 namespace ARIA.Drone
 {
-    // Cosmetic goat layer: wanders near live seeds, plays an eating animation
-    // when the real DisturbanceEngine kills one. Purely reactive, not authoritative.
+    // Cosmetic goat layer, purely reactive to real DisturbanceEngine kills.
     public class AnimalDisturbanceVisualizer : MonoBehaviour
     {
         [Tooltip("Assign the same DroneController driving the episode.")]
@@ -113,8 +112,7 @@ namespace ARIA.Drone
             goat.WanderCenter = GroundPos(seed.X, seed.Y);
         }
 
-        // Prefer Seedling/Mature seeds (a real, visible tree mesh) over
-        // Dropped/Germinating markers, which are too small to read clearly.
+        // Prefer Seedling/Mature seeds (a visible tree mesh) over tiny Dropped/Germinating markers.
         private Seed PickWanderTarget(List<Seed> alive)
         {
             List<Seed> visible = null;
@@ -181,8 +179,7 @@ namespace ARIA.Drone
                 yield return null;
             }
 
-            // Head-down munch -- a few big, slow dips/scale pulses so the "attack" reads
-            // clearly instead of a subtle twitch that's easy to miss.
+            // A few big scale pulses so the "attack" reads clearly, not a subtle twitch.
             Vector3 baseScale = goat.Go.transform.localScale;
             for (int i = 0; i < 4; i++)
             {
@@ -206,8 +203,6 @@ namespace ARIA.Drone
             return new Vector3(worldX, groundY, worldZ);
         }
 
-        // Real-world goat built from primitives: torso, head, snout, ears,
-        // horns, chin beard, 4 legs, and a short tail.
         private GameObject BuildGoatVisual()
         {
             var root = new GameObject("Goat");
@@ -312,8 +307,7 @@ namespace ARIA.Drone
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = col;
             mat.EnableKeyword("_EMISSION");
-            // Fixed rim tint rather than a multiply -- a near-black coat would
-            // otherwise emit almost nothing and disappear against the terrain again.
+            // Fixed rim tint, not a multiply -- a near-black coat would otherwise emit nothing.
             mat.SetColor("_EmissionColor", col * 0.9f + new Color(0.10f, 0.10f, 0.12f));
             rend.material = mat;
         }

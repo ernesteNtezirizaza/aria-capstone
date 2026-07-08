@@ -2,14 +2,14 @@ namespace ARIA.Core
 {
     public static class ARIAConstants
     {
-        // ── Zone / grid ──────────────────────────────────────────
+        // Zone / grid
         public const int ZONE_SIZE   = 120;   // each zone = 120x120 cells
         public const int OBS_WINDOW  = 11;    // local terrain patch size
         public const int N_CHANNELS  = 5;     // terrain_window channels
         public const int N_SPECIES   = 5;
         public const int N_ACTIONS   = 47;
 
-        // ── Action indices ─────────────
+        // Action indices
         public const int HOVER_ACTION  = 40;
         public const int ABORT_ACTION  = 41;
         public const int COVER_DEPLOY  = 42;
@@ -18,7 +18,7 @@ namespace ARIA.Core
         public const int ALT_DOWN      = 45;
         public const int EMERGENCY     = 46;
 
-        // ── Drone state machine ────────
+        // Drone state machine
         public const int STATE_GROUNDED   = 0;
         public const int STATE_TAKEOFF    = 1;
         public const int STATE_NAVIGATING = 2;
@@ -28,11 +28,11 @@ namespace ARIA.Core
         public const int STATE_OBSTACLE   = 6;
         public const int N_STATES         = 7;
 
-        // ── Episode ───────────────────────────────────────────────
+        // Episode
         public const int   MAX_STEPS     = 1000;
         public const float INITIAL_SEEDS = 500f; // used to normalise seeds_remaining in drone_vector
 
-        // ── Battery / energy ───────────
+        // Battery / energy
         public const float BATTERY_MAX           = 1.0f;
         public const float BATTERY_INIT          = 1.0f;
         public const float BATTERY_DRAIN_SUNNY   = 0.002f;   // per step in sun
@@ -42,7 +42,7 @@ namespace ARIA.Core
         public const float BATTERY_CRITICAL      = 0.00f;    // emergency land below this
         public const int   RETURN_DESCENT_RANGE  = 8;         // start descending this many cells out from base
 
-        // ── Weather ────────────────────
+        // Weather
         public const int WEATHER_SUNNY = 0;
         public const int WEATHER_RAINY = 1;
 

@@ -22,7 +22,7 @@ namespace ARIA.Drone
         public string fallbackZoneFileName = "aria_zone.json";
 
         [Tooltip("Which manifest entry to start on (index into zone_manifest.json's list).")]
-        public int startingZoneIndex = 2; // Central Plateau East, if using the 9-zone export from this conversation
+        public int startingZoneIndex = 2; // Central Plateau East
 
         [Header("Zone transitions")]
         [Tooltip("Auto-advance to the next zone when an episode truncates. Defaults false " +
@@ -46,13 +46,12 @@ namespace ARIA.Drone
         public float cellSize = 1.0f;
         public float altitudeWorldScale = 30.0f;
 
-        [Header("Cosmetic intro sequence (NOT model-driven, see file header)")]
+        [Header("Cosmetic intro sequence (not model-driven)")]
         public bool  playIntroSequence = true;
         public float takeoffDuration    = 3.0f; 
         public float navigatingDuration = 1.5f; 
         public AnimationCurve takeoffEase = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-        // ── Runtime state ─────────────────────────────────────────
         public EpisodeState State { get; private set; }
         public int    LastAction      { get; private set; }
         public string LastActionDesc { get; private set; }
@@ -96,7 +95,7 @@ namespace ARIA.Drone
 
         void Awake()
         {
-            altitudeWorldScale = 30.0f; // Force this value to override any serialized Unity Inspector value
+            altitudeWorldScale = 30.0f; // override any stale serialized Inspector value
         }
 
         void Start()
@@ -241,7 +240,7 @@ namespace ARIA.Drone
             transform.rotation = Quaternion.LookRotation(climbDirection, Vector3.up);
             _moveFrom = _moveTo = transform.position;
 
-            // ── PHASE 1: vertical liftoff -- straight up, no forward ──
+            // Phase 1: vertical liftoff, straight up
             float liftoffDuration = Mathf.Max(0.6f, takeoffDuration * 0.3f);
             float liftoffHeight = 4f * cellSize;
             Vector3 liftoffPos = groundPos + Vector3.up * liftoffHeight;
@@ -255,7 +254,7 @@ namespace ARIA.Drone
             }
             transform.position = liftoffPos;
 
-            // ── PHASE 2: forward + upward climb into hover position ──
+            // Phase 2: forward + upward climb into hover position
             float climbDuration = Mathf.Max(0.4f, takeoffDuration - liftoffDuration);
             t = 0f;
             while (t < climbDuration)
@@ -348,7 +347,6 @@ namespace ARIA.Drone
             LastResult = result;
             State.LastResult = result; // keep EpisodeState in sync for TerrainRenderer etc.
 
-            // ── Calculate a real-time reward approximation for the dashboard ──
             if (result.SeedDropped)
             {
                 CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
@@ -407,9 +405,7 @@ namespace ARIA.Drone
 
         private Vector3 GridToWorld(int gridX, int gridY, float altitude, bool minHeightFloor = true)
         {
-            // Minimum base height so the drone always hovers clearly above the ground --
-            // skipped while returning to base so it actually descends to the ground
-            // instead of cruising at this floor for the whole flight home.
+            // Skipped while returning to base so the drone actually descends to the ground.
             float y = minHeightFloor ? 10f + (altitude * altitudeWorldScale) : altitude * altitudeWorldScale;
             return new Vector3(gridX * cellSize, y, gridY * cellSize);
         }
@@ -417,16 +413,15 @@ namespace ARIA.Drone
         private void SpawnSeedVisual()
         {
             GameObject seed = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            seed.transform.position = transform.position - new Vector3(0, 1.5f, 0); // Drop slightly below drone
-            seed.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f); // Visible green balls
+            seed.transform.position = transform.position - new Vector3(0, 1.5f, 0);
+            seed.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f);
             var renderer = seed.GetComponent<Renderer>();
-            renderer.material.color = new Color(0.1f, 0.9f, 0.2f); // Bright green
-            
+            renderer.material.color = new Color(0.1f, 0.9f, 0.2f);
+
             var rb = seed.AddComponent<Rigidbody>();
             rb.mass = 1f;
             rb.linearDamping = 0.5f;
-            
-            // Clean up the seed objects after they hit the ground so they don't clutter the scene
+
             Destroy(seed, 4f);
         }
 

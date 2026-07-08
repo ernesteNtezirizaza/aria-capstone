@@ -20,7 +20,6 @@ namespace ARIA.Core
 
     public class EpisodeState
     {
-        // ── Drone position / status ──────────────────────────────
         public int   X, Y;
         public float Altitude;
         public float SeedsRemaining;
@@ -46,7 +45,6 @@ namespace ARIA.Core
         public HashSet<(int y, int x)> ReseedingTargets;
         public Dictionary<(int y, int x), int> ReseedSpeciesMap; // recommended species per reseed target
 
-        // ── Subsystems ────────────────────────────────────────────
         public ZoneData        Zone;
         public GrowthEngine    Growth;
         public DisturbanceEngine Disturbance;
@@ -160,7 +158,6 @@ namespace ARIA.Core
             int half = win / 2;
             int ch   = ARIAConstants.N_CHANNELS;
 
-            // ── terrain_window: edge-padded local patch ──────────
             obs.TerrainWindow = new float[win * win * ch];
             int idx = 0;
             for (int wy = 0; wy < win; wy++)
@@ -174,7 +171,6 @@ namespace ARIA.Core
                 }
             }
 
-            // ── drone_vector (10,) -- exact formula order from _obs() ──
             float distBase = Mathf.Sqrt(
                 (X - BaseX) * (X - BaseX) + (Y - BaseY) * (Y - BaseY))
                 / (size * 1.4f);
@@ -193,13 +189,11 @@ namespace ARIA.Core
                 Mathf.Clamp01((float)DroneState / 6f),
             };
 
-            // ── coverage_map / lifecycle_map / disturbance_map / obstacle_map ──
             obs.CoverageMap    = FlattenSingleChannel(CoverageMap);
             obs.LifecycleMap   = FlattenSingleChannel(Growth.LifecycleMap());
             obs.DisturbanceMap = FlattenSingleChannel(Zone.DistGrid);
             obs.ObstacleMap    = FlattenSingleChannel(Zone.ObsGrid);
 
-            // ── mission_vector (8,) -- exact formula order from _obs() ──
             float zoneScore  = ZoneSuitability();
             float rainMean   = MeanOfChannel(3);
             float coveredPct = MeanOf2D(CoverageMap);
@@ -220,7 +214,6 @@ namespace ARIA.Core
                 Mathf.Clamp01(isReseed),
             };
 
-            // ── terrain_stats (6,) ────────────────────────────────
             obs.TerrainStats = TerrainStats();
 
             return obs;

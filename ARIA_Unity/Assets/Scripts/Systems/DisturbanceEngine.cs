@@ -1,8 +1,3 @@
-// DisturbanceEngine.cs
-// ====================
-// Faithful port of env/disturbance_engine.py -- animal disturbance
-// near protected area boundaries kills seeds probabilistically.
-
 using System.Collections.Generic;
 using ARIA.Core;
 
@@ -35,9 +30,7 @@ namespace ARIA.Systems
             var alive = growth.Alive();
             if (alive.Count == 0) return;
 
-            // Corridor proximity is 0 for most seeds, which zeroes out their
-            // probability entirely -- so guarantee at least one real kill per
-            // check while the demo toggle is on, instead of it rarely firing.
+            // Corridor proximity is 0 for most seeds, so guarantee one real kill per check.
             Kill(growth, alive[_rng.Next(alive.Count)], timestep);
 
             foreach (var seed in alive)

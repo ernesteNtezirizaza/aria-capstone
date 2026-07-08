@@ -41,13 +41,7 @@ namespace ARIA.Drone
                  "sprout emerges through it.")]
         public float coveredHoldTime = 1.5f;
 
-        [Tooltip("DEPRECATED -- no longer used. Trees now always render at their exact " +
-                 "real grid position (see ComputeRenderPos), by request: real " +
-                 "reforestation plantings are laid out in precise, orderly rows, not " +
-                 "randomly scattered, and the coverage sweep's spacing (see " +
-                 "CoverageOverride.cs) already keeps real positions well clear of each " +
-                 "other, so cosmetic jitter was no longer solving any actual overlap " +
-                 "problem -- it was only ever making an already-correct grid look messier.")]
+        [Tooltip("DEPRECATED -- no longer used. Trees render at their exact grid position.")]
         public float jitterRange = 0f;
 
         private class TreeVisual
@@ -65,8 +59,7 @@ namespace ARIA.Drone
         private readonly Dictionary<int, TreeVisual> _visuals = new Dictionary<int, TreeVisual>();
         private readonly HashSet<int> _dropAnimating = new HashSet<int>();
 
-        // Real tree scale by stage -- only used from Seedling onward,
-        // since Dropped/Germinating now use the separate sprout marker.
+        // Only used from Seedling onward -- Dropped/Germinating use the sprout marker instead.
         private static float TreeScale(SeedStage stage)
         {
             switch (stage)
@@ -195,7 +188,6 @@ namespace ARIA.Drone
                 yield return null;
             }
 
-            // ── Dig a hole and settle the seed into it ────────────────
             var hole = SpawnHole(groundPos);
 
             // Shrinks to a tiny nub without dipping below ground -- reads as sinking in.
@@ -212,7 +204,6 @@ namespace ARIA.Drone
             }
             if (seedGO != null) Destroy(seedGO);
 
-            // ── Cover the hole with soil ───────────────────────────────
             var mound = SpawnSoilMound(groundPos, out Vector3 moundFullScale);
             float moundT = 0f;
             while (moundT < coverDuration)
@@ -237,7 +228,6 @@ namespace ARIA.Drone
             var visual = SpawnSprout(seed, groundPos);
             _visuals[seed.SeedId] = visual;
 
-            // ── Mound settles away as the sprout emerges through it ────
             float settleDuration = tweenDuration * 0.5f;
             Vector3 moundStartScale = mound.transform.localScale;
             float settleT = 0f;

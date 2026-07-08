@@ -76,9 +76,7 @@ namespace ARIA.Systems
             Battery = Mathf.Min(ARIAConstants.BATTERY_INIT, Battery + amount);
         }
 
-        /// <summary>Directly overrides the battery level, e.g. to hold it steady during
-        /// the return-to-base flight after a critical-battery event, or to zero it out
-        /// once the drone comes to rest at base.</summary>
+        // Holds the battery steady during a critical-battery return, or zeroes it on landing.
         public void SetBattery(float value)
         {
             Battery = Mathf.Clamp(value, 0f, ARIAConstants.BATTERY_MAX);
