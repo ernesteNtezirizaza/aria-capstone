@@ -165,7 +165,7 @@ export default function DashboardClient({ episodes, stats }: { episodes: any[], 
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.total_reward?.toFixed(2) || 'N/A'}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500">
-                    {new Date(ep.timestamp).toLocaleTimeString()}
+                    {new Date(ep.timestamp).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })}
                   </td>
                 </tr>
               ))}
