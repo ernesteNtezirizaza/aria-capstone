@@ -32,11 +32,11 @@ public static class TreeBuilder
         new Color(0.35f, 0.50f, 0.65f),  // 3 Eucalyptus maidenii  -- blue-grey
         new Color(0.95f, 0.85f, 0.35f),  // 4 Artocarpus heterophyllus -- pale creamy yellow
     };
-    private static readonly float[] SeedScales = { 0.85f, 0.9f, 0.85f, 0.9f, 1.35f }; // jackfruit seed is notably larger
+    private static readonly float[] SeedScales = { 0.45f, 0.5f, 0.45f, 0.5f, 0.75f }; // jackfruit seed is notably larger
 
     // Sprout (Dropped/Germinating) marker scale -- a rough preview of the eventual
     // canopy proportions, so early growth stages hint at species too.
-    private static readonly float[] SproutScales = { 0.9f, 1.1f, 0.9f, 0.95f, 1.25f };
+    private static readonly float[] SproutScales = { 0.5f, 0.6f, 0.5f, 0.55f, 0.7f };
 
     public static GameObject Build(int species, float height, bool existing = false)
     {

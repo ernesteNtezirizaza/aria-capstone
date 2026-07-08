@@ -178,7 +178,12 @@ namespace ARIA.Drone
             trail.startColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0.8f);
             trail.endColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0f);
 
-            float fallHeight = Mathf.Max(0.1f, startPos.y - groundPos.y);
+            // Rest ON the surface (pivot is the sphere's centre), not centred AT ground
+            // level -- otherwise half the sphere is already clipped by the opaque
+            // terrain the instant it lands, before the sink animation even starts.
+            Vector3 restingPos = groundPos + Vector3.up * (seedSize * 0.5f);
+
+            float fallHeight = Mathf.Max(0.1f, startPos.y - restingPos.y);
             float duration = Mathf.Max(dropDuration, fallHeight / fallSpeed);
 
             float t = 0f;
@@ -187,24 +192,26 @@ namespace ARIA.Drone
                 t += Time.deltaTime;
                 if (seedGO == null) { _dropAnimating.Remove(seed.SeedId); yield break; }
                 float easedK = (t / duration) * (t / duration); // gravity-style ease
-                seedGO.transform.position = Vector3.Lerp(startPos, groundPos, easedK);
+                seedGO.transform.position = Vector3.Lerp(startPos, restingPos, easedK);
                 seedGO.transform.Rotate(Vector3.up, 360f * Time.deltaTime);
                 yield return null;
             }
 
-            // ── Dig a hole and drop the seed into it ──────────────────
+            // ── Dig a hole and settle the seed into it ────────────────
             var hole = SpawnHole(groundPos);
 
-            float sinkDepth = 0.18f * cellSize;
-            Vector3 holeBottom = groundPos + Vector3.down * sinkDepth;
+            // Stays at/above ground the whole time (never dips below the opaque
+            // terrain) and shrinks to a tiny nub -- reads as sinking into the loose
+            // soil instead of abruptly vanishing.
+            Vector3 settledPos = groundPos + Vector3.up * (seedSize * 0.08f);
             float sinkT = 0f;
             while (sinkT < holeSinkDuration)
             {
                 sinkT += Time.deltaTime;
                 if (seedGO == null) break;
                 float k = Mathf.Clamp01(sinkT / holeSinkDuration);
-                seedGO.transform.position = Vector3.Lerp(groundPos, holeBottom, k);
-                seedGO.transform.localScale = Vector3.one * seedSize * Mathf.Lerp(1f, 0.4f, k);
+                seedGO.transform.position = Vector3.Lerp(restingPos, settledPos, k);
+                seedGO.transform.localScale = Vector3.one * seedSize * Mathf.Lerp(1f, 0.12f, k);
                 yield return null;
             }
             if (seedGO != null) Destroy(seedGO);
