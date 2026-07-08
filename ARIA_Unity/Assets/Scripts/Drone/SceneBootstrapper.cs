@@ -115,6 +115,11 @@ namespace ARIA.Drone
             reseedVisualizer.cellSize = cellSize;
             reseedVisualizer.Bind(droneObj.GetComponent<DroneController>());
 
+            var animalVisualizer = terrainObj.AddComponent<AnimalDisturbanceVisualizer>();
+            animalVisualizer.terrainRenderer = renderer;
+            animalVisualizer.cellSize = cellSize;
+            animalVisualizer.Bind(droneObj.GetComponent<DroneController>());
+
             return (obstacleVisualizer, reseedVisualizer);
         }
 

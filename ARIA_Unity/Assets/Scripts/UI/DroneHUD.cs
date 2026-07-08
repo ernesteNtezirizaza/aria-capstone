@@ -19,8 +19,8 @@ namespace ARIA.UI
         private Text _seedsText;
         private Text _queuedText;
 
-        private Text _weatherButtonLabel, _obstacleButtonLabel;
-        private Image _weatherButtonImg, _obstacleButtonImg;
+        private Text _weatherButtonLabel, _obstacleButtonLabel, _animalButtonLabel;
+        private Image _weatherButtonImg, _obstacleButtonImg, _animalButtonImg;
 
         private GameObject _restartBar;
         private Button _restartButton;
@@ -102,15 +102,14 @@ namespace ARIA.UI
         private void BuildDemoControls()
         {
             var panel = MakePanel(transform, new Vector2(1, 1), new Vector2(1, 1),
-                new Vector2(-16, -16), new Vector2(260, 140), new Color(0.1f, 0.15f, 0.1f, 0.98f));
+                new Vector2(-16, -16), new Vector2(260, 188), new Color(0.1f, 0.15f, 0.1f, 0.98f));
 
             var titleText = MakeText(panel, "DEMO CONTROLS", 16, TextAnchor.UpperCenter,
                 new Vector2(0, -12), new Vector2(0, -12));
             titleText.color = new Color(1f, 1f, 1f);
             titleText.fontStyle = FontStyle.Bold;
 
-            // Weather mode button -- clicking cycles Sunny(Default) ->
-            // AutoCycle -> ForceSunny -> ForceRainy -> Sunny(Default) ...
+            // Weather button -- cycles Sunny(Default) -> ForceSunny -> ForceRainy.
             var weatherBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -40), new Vector2(-24, 40), new Color(0.25f, 0.25f, 0.15f, 1f));
             var weatherBtn = weatherBtnGO.AddComponent<Button>();
@@ -119,9 +118,7 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             weatherBtn.onClick.AddListener(CycleWeatherMode);
 
-            // Obstacle toggle button -- click to turn synthetic
-            // obstacles on/off. ClearObstacles() wipes any existing
-            // overlay back to real (all-zero) data when turned off.
+            // Obstacle toggle -- ClearObstacles() resets to real data when turned off.
             var obstacleBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -88), new Vector2(-24, 40), new Color(0.25f, 0.15f, 0.15f, 1f));
             var obstacleBtn = obstacleBtnGO.AddComponent<Button>();
@@ -129,6 +126,15 @@ namespace ARIA.UI
             _obstacleButtonLabel = MakeText(obstacleBtnGO, "Obstacles: Off", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
             obstacleBtn.onClick.AddListener(ToggleObstacles);
+
+            // Animal disturbance toggle -- insects that can kill nearby seeds.
+            var animalBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(12, -136), new Vector2(-24, 40), new Color(0.2f, 0.15f, 0.1f, 1f));
+            var animalBtn = animalBtnGO.AddComponent<Button>();
+            _animalButtonImg = animalBtnGO.GetComponent<Image>();
+            _animalButtonLabel = MakeText(animalBtnGO, "Animal Disturbance: Off", 14, TextAnchor.MiddleCenter,
+                new Vector2(6, 0), new Vector2(-6, 0));
+            animalBtn.onClick.AddListener(ToggleAnimalDisturbance);
 
             RefreshDemoControlLabels();
         }
@@ -165,8 +171,7 @@ namespace ARIA.UI
         {
             DemoConditions.WeatherMode = DemoConditions.WeatherMode switch
             {
-                WeatherMode.RealData   => WeatherMode.AutoCycle,
-                WeatherMode.AutoCycle  => WeatherMode.ForceSunny,
+                WeatherMode.RealData   => WeatherMode.ForceSunny,
                 WeatherMode.ForceSunny => WeatherMode.ForceRainy,
                 _                      => WeatherMode.RealData,
             };
@@ -184,12 +189,17 @@ namespace ARIA.UI
             RefreshDemoControlLabels();
         }
 
+        private void ToggleAnimalDisturbance()
+        {
+            DemoConditions.AnimalDisturbanceEnabled = !DemoConditions.AnimalDisturbanceEnabled;
+            RefreshDemoControlLabels();
+        }
+
         private void RefreshDemoControlLabels()
         {
             string modeText = DemoConditions.WeatherMode switch
             {
                 WeatherMode.RealData   => "Weather: Sunny (Default)",
-                WeatherMode.AutoCycle  => "Weather: Auto-Cycle",
                 WeatherMode.ForceSunny => "Weather: Force Sunny",
                 WeatherMode.ForceRainy => "Weather: Force Rainy",
                 _ => "Weather: ?",
@@ -204,6 +214,12 @@ namespace ARIA.UI
             _obstacleButtonImg.color = DemoConditions.ObstacleOverlayEnabled
                 ? new Color(0.6f, 0.15f, 0.1f, 0.95f)
                 : new Color(0.2f, 0.15f, 0.15f, 0.95f);
+
+            _animalButtonLabel.text = DemoConditions.AnimalDisturbanceEnabled
+                ? "Animal Disturbance: On" : "Animal Disturbance: Off";
+            _animalButtonImg.color = DemoConditions.AnimalDisturbanceEnabled
+                ? new Color(0.55f, 0.35f, 0.05f, 0.95f)
+                : new Color(0.2f, 0.15f, 0.1f, 0.95f);
         }
 
         private GameObject MakePanel(Transform parent, Vector2 anchorMin, Vector2 anchorMax,

@@ -185,6 +185,7 @@ namespace ARIA.Core
                     {
                         s.Monitor.MarkReseeded(s.X, s.Y);
                         s.ReseedingTargets.Remove((s.Y, s.X));
+                        s.ReseedSpeciesMap.Remove((s.Y, s.X));
                     }
 
                     result.SeedDropped = true;
@@ -203,6 +204,7 @@ namespace ARIA.Core
                 s.DroneState = ARIAConstants.STATE_RETURNING;
                 s.MissionCompleteReturning = true;
                 s.ReseedingTargets.Clear();
+                s.ReseedSpeciesMap.Clear();
             }
 
             if (energyInfo.ShouldReturn && activelySeeding)
@@ -224,10 +226,14 @@ namespace ARIA.Core
                     s.DroneState = ARIAConstants.STATE_LANDING;
                     s.MissionsCompleted++;
 
-                    // Pull top 3 reseeding targets into the active queue
+                    // Pull top 3 reseeding targets into the active queue, carrying
+                    // the recommended replacement species along with each cell.
                     var targets = s.Monitor.GetTopTargets(3);
                     foreach (var t in targets)
+                    {
                         s.ReseedingTargets.Add((t.Y, t.X));
+                        s.ReseedSpeciesMap[(t.Y, t.X)] = t.RecommendedSpecies;
+                    }
 
                     result.Landed = true;
 
@@ -258,7 +264,8 @@ namespace ARIA.Core
             {
                 float[,] rainMap = ExtractChannel(s.Zone, 3);
                 s.Growth.Step(s.Timestep, rainMap);
-                s.Disturbance.Step(s.Growth, s.Timestep);
+                if (DemoConditions.AnimalDisturbanceEnabled)
+                    s.Disturbance.Step(s.Growth, s.Timestep);
 
                 s.Monitor.IngestFailures(new System.Collections.Generic.List<FailedCell>(s.Growth.FailedCells));
                 s.Growth.FailedCells.Clear();

@@ -5,19 +5,16 @@ namespace ARIA.Core
 {
     public enum WeatherMode
     {
-        RealData,    
-        AutoCycle,   
-        ForceSunny,  
-        ForceRainy,  
+        RealData,
+        ForceSunny,
+        ForceRainy,
     }
 
     public static class DemoConditions
     {
         public static WeatherMode WeatherMode = WeatherMode.RealData;
         public static bool ObstacleOverlayEnabled = false;
-
-        [Tooltip("Real simulation steps per full sunny<->rainy cycle, when WeatherMode.AutoCycle is active.")]
-        public static int WeatherCyclePeriod = 40;
+        public static bool AnimalDisturbanceEnabled = false;
 
         public static float GetEffectiveRainfall(float realRainfall, int timestep)
         {
@@ -28,14 +25,6 @@ namespace ARIA.Core
 
                 case WeatherMode.ForceRainy:
                     return ARIAConstants.RAINFALL_SUNNY_THRESH + 0.08f;
-
-                case WeatherMode.AutoCycle:
-                {
-                    float t = (timestep % WeatherCyclePeriod) / (float)WeatherCyclePeriod;
-                    float triangle = 1f - Mathf.Abs(2f * t - 1f); // 0 -> 1 -> 0
-                    float amplitude = 0.08f;
-                    return ARIAConstants.RAINFALL_SUNNY_THRESH - amplitude + triangle * amplitude * 2f;
-                }
 
                 case WeatherMode.RealData:
                 default:
