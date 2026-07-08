@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -98,26 +97,27 @@ namespace ARIA.Core
             return 0; // dy/dx are always in {-1,0,1} from Math.Sign, so this never actually falls through
         }
 
-        // Real rainfall data is a smoothly-interpolated, low-frequency field (bilinear
-        // resample of a coarse satellite product), so always picking the single most
-        // rain-demanding species a cell can support collapses to one species across
-        // huge contiguous areas of a zone. Instead, rotate deterministically by grid
-        // position through every species the cell's rainfall can actually support --
-        // still ecologically constrained (never plants a species short on rain), but
-        // visibly mixes the 5 species instead of monoculture patches.
         private static int BestSpeciesFor(ZoneData zone, int x, int y)
         {
             float rain = zone.Terrain[y, x, 3];
             if (float.IsNaN(rain)) rain = 0f;
 
-            Span<int> eligible = stackalloc int[ARIAConstants.N_SPECIES];
             int count = 0;
             for (int i = 0; i < ARIAConstants.N_SPECIES; i++)
-                if (rain >= ARIAConstants.SPECIES_RAIN_MIN[i]) eligible[count++] = i;
+                if (rain >= ARIAConstants.SPECIES_RAIN_MIN[i]) count++;
             if (count == 0) return 0;
 
-            int idx = (x * 7 + y * 13) % count;
-            return eligible[idx];
+            int target = (x * 7 + y * 13) % count;
+            int seen = 0;
+            for (int i = 0; i < ARIAConstants.N_SPECIES; i++)
+            {
+                if (rain >= ARIAConstants.SPECIES_RAIN_MIN[i])
+                {
+                    if (seen == target) return i;
+                    seen++;
+                }
+            }
+            return 0;
         }
 
         public static void Reset()

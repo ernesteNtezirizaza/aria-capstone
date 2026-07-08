@@ -248,7 +248,6 @@ namespace ARIA.Core
                     }
                     else
                     {
-                        s.Energy.Recharge(0.5f);
                         s.DroneState = ARIAConstants.STATE_SEEDING;
                     }
                 }

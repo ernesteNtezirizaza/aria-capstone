@@ -32,14 +32,14 @@ namespace ARIA.Drone
         [Header("Planting hole & cover")]
         [Tooltip("Real-world seconds the seed spends sinking into the planting hole " +
                  "after it lands, before it's covered over.")]
-        public float holeSinkDuration = 0.45f;
+        public float holeSinkDuration = 0.7f;
 
         [Tooltip("Real-world seconds for the soil mound to rise up and cover the hole.")]
-        public float coverDuration = 0.5f;
+        public float coverDuration = 0.8f;
 
         [Tooltip("Real-world seconds the covered mound sits undisturbed before the " +
                  "sprout emerges through it.")]
-        public float coveredHoldTime = 0.7f;
+        public float coveredHoldTime = 1.5f;
 
         [Tooltip("DEPRECATED -- no longer used. Trees now always render at their exact " +
                  "real grid position (see ComputeRenderPos), by request: real " +
@@ -254,26 +254,21 @@ namespace ARIA.Drone
             var container = new GameObject("PlantingHole");
             container.transform.position = groundPos;
 
-            // The terrain is a flat plane at y=0 (RealTerrainRenderer.GetHeight always
-            // returns 0) with no real depth to carve into, so the "dug hole" illusion
-            // comes from two things together: a near-black flat disc (reads as a
-            // shadowed pit rather than a raised platform) surrounded by small clumps
-            // of displaced earth piled around its rim, the way a real dig looks.
             var pit = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             pit.name = "Pit";
             Destroy(pit.GetComponent<Collider>());
             pit.transform.SetParent(container.transform, false);
 
-            float pitWidth = 0.6f * cellSize;
-            float pitHeight = 0.02f * cellSize;
+            float pitWidth = 0.95f * cellSize;
+            float pitHeight = 0.03f * cellSize;
             pit.transform.localScale = new Vector3(pitWidth, pitHeight * 0.5f, pitWidth);
             pit.transform.localPosition = Vector3.up * (pitHeight * 0.5f);
 
             var pitMat = MaterialHelper.GetDefaultMaterial();
-            pitMat.color = new Color(0.04f, 0.03f, 0.02f); // near-black, reads as a shadowed pit
+            pitMat.color = new Color(0.03f, 0.02f, 0.015f); // near-black, reads as a shadowed pit
             pit.GetComponent<Renderer>().material = pitMat;
 
-            const int clumpCount = 5;
+            const int clumpCount = 7;
             float rimRadius = pitWidth * 0.62f;
             for (int i = 0; i < clumpCount; i++)
             {
@@ -286,7 +281,7 @@ namespace ARIA.Drone
                 Destroy(clump.GetComponent<Collider>());
                 clump.transform.SetParent(container.transform, false);
 
-                float clumpSize = Random.Range(0.10f, 0.15f) * cellSize;
+                float clumpSize = Random.Range(0.16f, 0.24f) * cellSize;
                 clump.transform.localScale = Vector3.one * clumpSize;
                 clump.transform.localPosition = offset + Vector3.up * (clumpSize * 0.35f);
 

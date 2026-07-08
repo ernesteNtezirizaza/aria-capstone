@@ -35,7 +35,7 @@ namespace ARIA.Drone
                  "level in the real Python training setup too, not as a model " +
                  "decision. This flag controls an ORCHESTRATION layer around the " +
                  "model, not something the model itself decides.")]
-        public bool switchZoneOnEpisodeEnd = false;
+        public bool switchZoneOnEpisodeEnd = true;
 
         [Header("Simulation speed")]
         [Tooltip("Seconds between each policy step. Lower = faster demo, " +
@@ -51,7 +51,7 @@ namespace ARIA.Drone
         [Tooltip("World-space size of one terrain cell, for converting " +
                  "grid (x,y) into a Unity world position.")]
         public float cellSize = 1.0f;
-        public float altitudeWorldScale = 60.0f;
+        public float altitudeWorldScale = 30.0f;
 
         [Header("Cosmetic intro sequence (NOT model-driven, see file header)")]
         public bool  playIntroSequence = true;
@@ -103,7 +103,7 @@ namespace ARIA.Drone
 
         void Awake()
         {
-            altitudeWorldScale = 60.0f; // Force this value to override any serialized Unity Inspector value
+            altitudeWorldScale = 30.0f; // Force this value to override any serialized Unity Inspector value
         }
 
         void Start()
@@ -414,8 +414,8 @@ namespace ARIA.Drone
 
         private Vector3 GridToWorld(int gridX, int gridY, float altitude)
         {
-            // Enforce a minimum base height (e.g., 20) so it always hovers far above the ground
-            return new Vector3(gridX * cellSize, 20f + (altitude * altitudeWorldScale), gridY * cellSize);
+            // Minimum base height so the drone always hovers clearly above the ground.
+            return new Vector3(gridX * cellSize, 10f + (altitude * altitudeWorldScale), gridY * cellSize);
         }
 
         private void SpawnSeedVisual()
