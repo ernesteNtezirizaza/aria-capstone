@@ -71,7 +71,7 @@ cd aria-capstone
 ```
 
 ### Step 2: Set up the ARIA_Web Dashboard
-The web dashboard acts as the telemetry receiver and hosts the pre-built WebGL simulation. It requires a PostgreSQL database (we recommend [Neon](https://neon.tech)).
+The web dashboard acts as the telemetry receiver and hosts the pre-built WebGL simulation. It requires a PostgreSQL database (I recommend [Neon](https://neon.tech)).
 
 ```bash
 cd ARIA_Web
@@ -138,7 +138,7 @@ The production environment is fully separate from local development: the web app
 - **Hosting:** Vercel, connected directly to the GitHub repository. Every push to `master` triggers a new build and deploy automatically (`prisma generate && next build`).
 - **Database:** Neon serverless PostgreSQL, accessed through Prisma 7's `@prisma/adapter-pg` driver adapter (not Prisma's default query engine binary), so schema changes are applied via `npx prisma db push` against the production connection string.
 - **Simulation build:** the Unity project is built headlessly to WebGL (`Unity.exe -batchmode -nographics -quit -executeMethod BuildScript.BuildWebGL`), producing pre-gzipped `.data.gz` / `.wasm.gz` / `.framework.js.gz` assets. These are committed into `ARIA_Web/public/simulation/Build/` and served as static files by Vercel with `Content-Encoding: gzip`, so the browser downloads a compressed WebGL build without any server-side transcoding step.
-- **Telemetry ingestion:** the Unity build (running in the visitor's browser) posts episode/seed telemetry directly to the deployed Next.js REST API, which writes to the same Neon database the dashboard reads from, so the dashboard reflects real traffic from anyone currently running the simulation, not seeded/mock data.
+- **Telemetry ingestion:** the Unity build (running in the browser) posts episode/seed telemetry directly to the deployed Next.js REST API, which writes to the same Neon database the dashboard reads from, so the dashboard reflects real traffic from anyone currently running the simulation, not seeded/mock data.
 
 ### Deployment Steps
 1. Build the WebGL bundle from `ARIA_Unity` and copy the output into `ARIA_Web/public/simulation/`.
@@ -161,9 +161,7 @@ All testing below was performed directly against the **live production deploymen
 ### Testing Strategies Used
 - **Functional/manual testing**: exercising each of the 7 core features via the in-sim "Demo Controls" panel, which forces specific conditions (weather, obstacles, disturbance, zone) on demand rather than waiting for them to occur naturally.
 - **Boundary/edge-case testing**: forcing battery to its critical threshold under both rainy and sunny weather to verify the two different emergency-response paths (return-and-land vs. keep-seeding-while-recharging).
-- **Regression testing via automated browser scripts** (Playwright): scripted clicks against the deployed app to reproducibly capture each feature state and catch UI regressions after code changes.
-- **Cross-device/responsive testing**: verified the dashboard layout on both a 1440px desktop viewport and a 390px mobile viewport.
-- **Data variation testing**: ran multiple episodes across different zones (`Central Plateau East`, `Northern Plateau East`) to confirm terrain, seed counts, and reward calculations vary correctly with zone data rather than being hardcoded.
+- **Data variation testing**: ran multiple episodes across different zones (`Central Plateau East`, `Northern Plateau East`) to confirm terrain, seed counts, and reward calculations vary correctly with zone data.
 
 ### Evidence
 
@@ -194,9 +192,8 @@ All testing below was performed directly against the **live production deploymen
 
 The project's central objective, an autonomous agent that plans *and* navigates a reforestation mission end-to-end while adapting to live environmental disturbance, was achieved. The deployed system demonstrates all seven planned functionalities running against a live PPO+CNN policy, not scripted animations: the dashboard's `1,182` seeds placed and `96.42` average reward across `12` episodes are computed from real inference runs, not fixture data.
 
-Two objectives were partially rather than fully met:
+One objective was partially rather than fully met:
 - **Reseed pipeline visibility.** The drone does correctly track failed seeds and queue reseed targets with a recommended replacement species (visible in the dashboard's "Recent Failures & Reseed Targets" table), but the *visual* return-and-replant of a specific killed seed only completes once a full mission cycle ends, which is too slow to capture in a short demo window. The underlying logic is verified via the dashboard data rather than a single continuous screen recording.
-- **Cross-hardware performance.** Testing covered desktop Chromium at two viewport sizes; we did not get to profile WebGL frame rates on lower-spec hardware or verify behavior on Firefox/Safari's WebGL implementations, which can differ from Chromium's.
 
 ## Discussion
 
@@ -207,7 +204,7 @@ The disturbance/reseeding loop is the other high-impact piece, since it is what 
 ## Recommendations
 
 - **For the community/future contributors:** the Python (`ARIA_ML`) and C# (`ARIA_Unity`) environments are independently maintained ports of the same simulation rules; any change to reward shaping, energy drain, or growth timing must be mirrored in both to keep the trained policy valid in the live simulation. A shared, language-agnostic config (e.g. JSON) for these constants would remove this duplication risk.
-- **Future work:** extend the reseed pipeline so a killed seed's replant is visible immediately (e.g. an on-demand micro-mission) rather than only at the next full mission return, and add a real multi-drone coordination mode, since the current architecture assumes a single agent per zone.
+- **Future work:** extend the reseed pipeline so a killed seed's replant is visible immediately (e.g. an on-demand micro-mission) rather than only at the next full mission return, since the current architecture assumes a single agent per zone.
 - **Deployment:** before any real-world pilot, the terrain/weather inputs would need to move from procedurally generated zones to actual satellite/soil-sensor data feeds, which the `Zone` data model already supports structurally.
 
 ---
