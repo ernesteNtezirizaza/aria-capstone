@@ -14,7 +14,7 @@ namespace ARIA.Core
         public float[] LifecycleMap;    // [ZONE_SIZE * ZONE_SIZE * 1]
         public float[] DisturbanceMap;  // [ZONE_SIZE * ZONE_SIZE * 1]
         public float[] ObstacleMap;     // [ZONE_SIZE * ZONE_SIZE * 1]
-        public float[] MissionVector;   // [8]
+        public float[] MissionVector;   // [11] -- was [8], added nearest-reseed-target direction/distance
         public float[] TerrainStats;    // [6]
     }
 
@@ -52,12 +52,12 @@ namespace ARIA.Core
         public WeatherSystem   Weather;
         public EnergySystem    Energy;
 
-        public EpisodeState(ZoneData zone, System.Random rng)
+        public EpisodeState(ZoneData zone, System.Random rng, SpeciesRecommender speciesRecommender = null)
         {
             Zone        = zone;
             Growth      = new GrowthEngine(ARIAConstants.ZONE_SIZE, rng);
             Disturbance = new DisturbanceEngine(rng);
-            Monitor     = new MonitoringSystem();
+            Monitor     = new MonitoringSystem(speciesRecommender);
             Weather     = new WeatherSystem();
             Energy      = new EnergySystem();
             ResetEpisode(rng);
@@ -199,8 +199,34 @@ namespace ARIA.Core
             float coveredPct = MeanOf2D(CoverageMap);
             float failedN    = Mathf.Min(Monitor.QueueSize() / 50f, 1f);
             float reseedN    = Mathf.Min(ReseedingTargets.Count / 10f, 1f);
-            float abortScore = zoneScore < ARIAConstants.ZONE_MIN_SOIL ? 1f : 0f;
+            float abortScore = zoneScore < ARIAConstants.ZONE_MIN_SUITABILITY ? 1f : 0f;
             float isReseed    = ReseedingTargets.Count > 0 ? 1f : 0f;
+
+            // Previously the policy only ever saw a COUNT of queued reseed
+            // targets, never where they actually are -- it had no way to
+            // learn "navigate back to a failed cell", matching the same gap
+            // found and fixed on the Python training side. Must produce the
+            // exact same 11-dim mission_vector shape the exported ONNX
+            // policy was actually trained on, or live inference breaks.
+            float relDy = 0f, relDx = 0f, manhattanDist = 1f; // no target -> neutral direction, "far" sentinel
+            if (ReseedingTargets.Count > 0)
+            {
+                int bestDist = int.MaxValue;
+                foreach (var t in ReseedingTargets)
+                {
+                    int d = Mathf.Abs(t.y - Y) + Mathf.Abs(t.x - X);
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        relDy = (float)(t.y - Y) / ARIAConstants.ZONE_SIZE;   // roughly [-1, 1]
+                        relDx = (float)(t.x - X) / ARIAConstants.ZONE_SIZE;
+                    }
+                }
+                manhattanDist = (float)bestDist / (2f * ARIAConstants.ZONE_SIZE);
+            }
+            float reseedDy   = Mathf.Clamp01((relDy + 1f) / 2f);   // 0.5 = same row as drone
+            float reseedDx   = Mathf.Clamp01((relDx + 1f) / 2f);   // 0.5 = same column as drone
+            float reseedDist = Mathf.Clamp01(manhattanDist);
 
             obs.MissionVector = new float[]
             {
@@ -212,6 +238,7 @@ namespace ARIA.Core
                 Mathf.Clamp01(abortScore),
                 Mathf.Clamp01(MissionsCompleted / 10f),
                 Mathf.Clamp01(isReseed),
+                reseedDy, reseedDx, reseedDist,
             };
 
             obs.TerrainStats = TerrainStats();

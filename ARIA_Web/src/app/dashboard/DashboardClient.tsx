@@ -190,7 +190,8 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                   <th className="px-3 py-2 font-medium">Zone</th>
                   <th className="px-3 py-2 font-medium">Cell</th>
                   <th className="px-3 py-2 font-medium">Reason</th>
-                  <th className="px-3 py-2 font-medium">Failed @ Step</th>
+                  <th className="px-3 py-2 font-medium">Failed At</th>
+                  <th className="px-3 py-2 font-medium">Step</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -204,7 +205,10 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                         {s.fail_reason || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-slate-500">{s.failed_at ?? 'N/A'}</td>
+                    <td className="px-3 py-2 text-slate-500">
+                      {s.failed_at ? new Date(s.failed_at).toLocaleString() : 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 text-slate-400 font-mono text-xs">{s.failed_at_step ?? 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

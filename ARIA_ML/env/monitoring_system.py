@@ -1,49 +1,16 @@
 """
-env/disturbance_engine.py
-=========================
-Animal disturbance near protected area boundaries.
-"""
-
-import numpy as np
-from configs.config import DISTURBANCE_BASE_PROB, REWARD
-
-
-class DisturbanceEngine:
-    def __init__(self, rng=None):
-        self.rng    = rng or np.random.default_rng()
-        self.events = []
-
-    def reset(self):
-        self.events.clear()
-
-    def step(self, growth_engine, timestep):
-        events, reward = [], 0.0
-        for seed in growth_engine.living():
-            p = DISTURBANCE_BASE_PROB * seed.corridor_proximity
-            if p > 0 and self.rng.random() < p:
-                penalty = growth_engine.kill(seed.seed_id, timestep, "disturbance")
-                extra   = -REWARD["w_disturbance"]
-                reward += penalty + extra
-                e = {"seed_id": seed.seed_id, "x": seed.x, "y": seed.y,
-                     "timestep": timestep, "proximity": seed.corridor_proximity}
-                events.append(e)
-                self.events.append(e)
-        return events, reward
-
-    def summary(self):
-        return {
-            "total_disturbance_events": len(self.events),
-            "seeds_destroyed":          len(self.events),
-        }
-
-
-"""
 env/monitoring_system.py
 ========================
 Records all failed seeds and builds a reseeding priority queue.
-When called at mission end, recommends which cells to reseed
-and which species to try next based on failure analysis.
+When called at mission end, recommends which cells to reseed, which
+species to try next, and how urgently -- using a learned SpeciesRecommender
+(see env/species_recommender.py) rather than hardcoded rules, and closing
+the loop with realised outcomes: when a replanted seed later matures or
+dies again, that result feeds back into the recommender.
 """
+
+from configs.config import SPECIES
+from env.species_recommender import SpeciesRecommender
 
 
 class MonitoringSystem:
@@ -54,16 +21,28 @@ class MonitoringSystem:
       - Location (x, y)
       - Species tried
       - Failure reason
-      - Terrain scores at time of failure
+      - Terrain scores at time of failure (soil, rain, slope, corridor
+        proximity -- the same features the reward function scores placement
+        on)
 
-    When a reseeding mission is planned, recommends the next
-    best species based on soil and rainfall at that cell.
+    When a reseeding mission is planned, recommends the next species to
+    try via a learned SpeciesRecommender, and prioritises the queue by that
+    same model's predicted survival score (not a separate hardcoded
+    soil+rain formula) -- then, once that reseed either matures or dies
+    again, updates the recommender with what actually happened, so both
+    "which species" and "how urgent" are genuinely learned rather than
+    hand-coded.
     """
 
-    def __init__(self):
+    def __init__(self, recommender: SpeciesRecommender = None, epsilon: float = 0.15):
         self.failed_cells  = []    # raw failure records
         self.reseed_queue  = []    # prioritised reseeding targets
         self.reseed_log    = []    # completed reseedings
+        self.recommender   = recommender if recommender is not None else SpeciesRecommender()
+        self.epsilon        = epsilon
+        # (x, y) -> {"features": np.ndarray, "species": int} for reseeds
+        # that have been dropped but not yet resolved (matured or died again).
+        self.pending_reseeds = {}
 
     def reset(self):
         pass
@@ -72,57 +51,97 @@ class MonitoringSystem:
         self.failed_cells.clear()
         self.reseed_queue.clear()
         self.reseed_log.clear()
+        self.pending_reseeds.clear()
 
     def ingest_failures(self, failed_cells: list):
-        """Called at episode end to add new failures to the queue."""
+        """Called periodically to add new failures to the queue."""
         for fc in failed_cells:
-            # Avoid duplicates
             key = (fc["x"], fc["y"])
-            existing = [r for r in self.reseed_queue
-                        if (r["x"], r["y"]) == key]
+
+            # If this cell was a pending reseed, its replacement just
+            # failed too -- that's a real (negative) outcome for the
+            # species we recommended last time. Feed it back before
+            # recommending again for this cell.
+            pending = self.pending_reseeds.pop(key, None)
+            if pending is not None:
+                self.recommender.update(pending["features"], outcome=0.0)
+
+            existing = [r for r in self.reseed_queue if (r["x"], r["y"]) == key]
             if not existing:
-                fc["recommended_species"] = self._recommend(fc)
-                fc["priority"] = self._priority(fc)
+                species_id, feats, predicted_survival = self._recommend(fc)
+                fc["recommended_species"] = species_id
+                fc["_recommend_features"] = feats
+                fc["predicted_survival"]  = predicted_survival
+                # Priority IS the recommender's predicted survival score for
+                # the species it just picked here, not a separate hardcoded
+                # formula. "Which cell to reseed first" and "will the species
+                # we'd plant there survive" are the same underlying question,
+                # so they now share one learned number instead of two
+                # disconnected ones (soil+rain average vs. the recommender).
+                fc["priority"] = predicted_survival
                 self.reseed_queue.append(fc)
             self.failed_cells.append(fc)
 
-        # Sort by priority (highest first)
         self.reseed_queue.sort(key=lambda x: x["priority"], reverse=True)
 
-    def _recommend(self, fc: dict) -> int:
+    def resolve_matured(self, matured_positions: list):
         """
-        Recommend next species to try at a failed cell.
+        Called once per monitoring interval with the (x, y) of every seed
+        that matured this step. Any position that was a pending reseed is
+        a real success outcome for the species we recommended -- feed it
+        back into the recommender.
+        """
+        for (x, y) in matured_positions:
+            pending = self.pending_reseeds.pop((x, y), None)
+            if pending is not None:
+                self.recommender.update(pending["features"], outcome=1.0)
 
-        Logic:
-          If failure was due to low rain → try drought-tolerant species (0)
-          If failure was due to disturbance → try fast-growing species (0)
-          If failure was natural mortality → try next species up
+    def _recommend(self, fc: dict):
         """
-        from configs.config import SPECIES
-        tried = fc.get("species_tried", 0)
-        reason = fc.get("reason", "natural_mortality")
-        rain   = fc.get("rain", 0.5)
-
-        if reason == "disturbance" or rain < 0.35:
-            return 0   # Eucalyptus grandis — most resilient
-        # Try next species in the list
-        return min(tried + 1, len(SPECIES) - 1)
-
-    def _priority(self, fc: dict) -> float:
+        Recommend next species to try at a failed cell using the learned
+        SpeciesRecommender (soil, rain, slope, corridor proximity, failure
+        reason, and each candidate species' own rain requirement / growth
+        speed), instead of a fixed if/else rule. Also returns the
+        recommender's own predicted survival score for that pick, which
+        doubles as this cell's reseed priority (see ingest_failures).
         """
-        Higher priority = reseed sooner.
-        Good soil + good rain = high priority (likely to succeed).
-        """
-        soil = fc.get("soil", 0.5)
-        rain = fc.get("rain", 0.5)
-        return (soil + rain) / 2.0
+        cell = {
+            "soil":               fc.get("soil", 0.5),
+            "rain":               fc.get("rain", 0.5),
+            "slope_pen":          fc.get("slope", 0.0),
+            "corridor_proximity": fc.get("corridor_proximity", 0.0),
+            "reason":             fc.get("reason", "natural_mortality"),
+        }
+        tried = fc.get("species_tried", None)
+        species_id, feats, score = self.recommender.recommend(
+            cell, SPECIES, epsilon=self.epsilon, exclude=tried,
+            return_features=True, return_score=True,
+        )
+        return species_id, feats, score
 
     def get_top_targets(self, n: int = 5) -> list:
         """Return top N reseeding targets."""
         return self.reseed_queue[:n]
 
     def mark_reseeded(self, x: int, y: int):
-        """Remove cell from queue when drone reseeds it."""
+        """
+        Called when the drone actually drops a seed on a queued reseed
+        target. Moves that target's recommendation (species + features)
+        into pending_reseeds so the outcome can be attributed back to the
+        recommender once it resolves (see ingest_failures / resolve_matured).
+        """
+        match = next((r for r in self.reseed_queue
+                      if r["x"] == x and r["y"] == y), None)
+        if match is not None and "_recommend_features" in match:
+            self.pending_reseeds[(x, y)] = {
+                "features": match["_recommend_features"],
+                "species":  match.get("recommended_species"),
+            }
+            # Diagnostic: this is the drone actually reaching and replanting
+            # a queued target, separate from whether that replant later
+            # resolves (see SpeciesRecommender.reseed_attempts docstring).
+            self.recommender.reseed_attempts += 1
+
         self.reseed_queue = [
             r for r in self.reseed_queue
             if not (r["x"] == x and r["y"] == y)
@@ -134,7 +153,8 @@ class MonitoringSystem:
 
     def summary(self) -> dict:
         return {
-            "total_failures":   len(self.failed_cells),
-            "pending_reseeds":  len(self.reseed_queue),
+            "total_failures":    len(self.failed_cells),
+            "pending_reseeds":   len(self.reseed_queue),
             "completed_reseeds": len(self.reseed_log),
+            "recommender_updates": self.recommender.n_updates,
         }

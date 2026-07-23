@@ -49,6 +49,25 @@ namespace ARIA.Core
         public const float RAINFALL_SUNNY_THRESH = 0.266f;
         public const float ZONE_MIN_SOIL         = 0.358f;
 
+        // Mirrors configs.config.ZONE_SUITABILITY_WEIGHTS in the Python
+        // training side -- soil/rain/slope combine into one zone-level
+        // suitability score with these weights, both here and in the
+        // reward function ZoneData.ZoneSuitability() feeds.
+        public const float ZONE_SUIT_W_SOIL  = 3.0f;
+        public const float ZONE_SUIT_W_RAIN  = 2.0f;
+        public const float ZONE_SUIT_W_SLOPE = 1.0f;
+
+        // Mirrors configs.config.ZONE_MIN_SUITABILITY (P25 of the composite
+        // soil+rain-slope score over the real raw dataset). This value is
+        // ESTIMATED, not derived from your actual full-resolution dataset
+        // the way ZONE_MIN_SOIL above was -- this sandbox could only run
+        // the real pipeline against a downsampled copy of your rasters
+        // (full resolution ran out of memory here). After your next Kaggle
+        // run, Cell 6 of the notebook now prints the real
+        // config.ZONE_MIN_SUITABILITY value -- replace this constant with
+        // that number.
+        public const float ZONE_MIN_SUITABILITY = 0.24f;
+
         public const int MIN_SEED_SPACING = 3;
 
         public const int N_SEASONS = 6;

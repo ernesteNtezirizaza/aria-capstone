@@ -24,6 +24,13 @@ namespace ARIA.Drone
         [Tooltip("Which manifest entry to start on (index into zone_manifest.json's list).")]
         public int startingZoneIndex = 2; // Central Plateau East
 
+        [Header("Learned reseed recommender")]
+        [Tooltip("Pretrained SpeciesRecommender weights (env/species_recommender.py's " +
+                 "save() format), exported from a real PPO training run and copied into " +
+                 "StreamingAssets. If missing, starts from randomly-initialised weights " +
+                 "instead -- the demo still runs, it just hasn't learned anything yet.")]
+        public string speciesRecommenderFileName = "species_recommender.json";
+
         [Header("Zone transitions")]
         [Tooltip("Auto-advance to the next zone when an episode truncates. Defaults false " +
                  "since the Demo Controls HUD now has a manual zone button, and auto-cycling " +
@@ -80,6 +87,13 @@ namespace ARIA.Drone
         private bool  _stepLoopEnabled; // true only once intro (if any) has finished
         private bool  _switchingZone;
 
+        // Persists across every episode restart and zone switch (unlike
+        // EpisodeState/MonitoringSystem, which are recreated per episode) --
+        // this is what actually lets the reseed recommender keep learning
+        // across a whole play session instead of resetting to random
+        // weights every time StartNewEpisode() runs.
+        private SpeciesRecommender _speciesRecommender;
+
         private Vector3 _moveFrom, _moveTo;
         private float _moveElapsed;
 
@@ -104,7 +118,47 @@ namespace ARIA.Drone
             if (policyInference == null)
                 policyInference = GetComponent<ARIAPolicyInference>();
 
-            StartCoroutine(InitializeZones());
+            StartCoroutine(InitializeAll());
+        }
+
+        private IEnumerator InitializeAll()
+        {
+            // Load the pretrained recommender FIRST and wait for it, so that
+            // by the time InitializeZones() reaches StartNewEpisode(), a
+            // real (or explicitly default) SpeciesRecommender already
+            // exists -- StartNewEpisode() must never race ahead of this.
+            yield return LoadSpeciesRecommender();
+            yield return InitializeZones();
+        }
+
+        // Application.streamingAssetsPath is a URL on WebGL (not a real filesystem
+        // path), so this goes through UnityWebRequest, same as RealZoneLoader --
+        // System.IO.File would silently fail there.
+        private IEnumerator LoadSpeciesRecommender()
+        {
+            string path = System.IO.Path.Combine(Application.streamingAssetsPath, speciesRecommenderFileName);
+
+            using (var req = UnityEngine.Networking.UnityWebRequest.Get(path))
+            {
+                yield return req.SendWebRequest();
+
+                if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                {
+                    _speciesRecommender = SpeciesRecommender.FromJson(req.downloadHandler.text);
+                    Debug.Log($"[DroneController] Loaded pretrained species recommender from " +
+                        $"'{speciesRecommenderFileName}' ({_speciesRecommender.NUpdates} reseed " +
+                        "outcomes learned during training).");
+                }
+                else
+                {
+                    Debug.LogWarning($"[DroneController] No pretrained species recommender found " +
+                        $"at '{path}' ({req.error}) -- starting from randomly-initialised weights. " +
+                        "Export species_recommender.json from a real Kaggle training run " +
+                        "(train_ppo.py already saves one per experiment) and copy it into " +
+                        "Assets/StreamingAssets/ to give the live demo real learned weights.");
+                    _speciesRecommender = new SpeciesRecommender();
+                }
+            }
         }
 
         private IEnumerator InitializeZones()
@@ -189,7 +243,7 @@ namespace ARIA.Drone
 
             AwaitingRestart = false;
 
-            State = new EpisodeState(_currentZoneData, _rng);
+            State = new EpisodeState(_currentZoneData, _rng, _speciesRecommender);
             EpisodeCount++;
             CumulativeReward = 0f;
 

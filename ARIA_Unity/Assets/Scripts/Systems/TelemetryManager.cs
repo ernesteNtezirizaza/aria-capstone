@@ -10,7 +10,6 @@ namespace ARIA.Systems
     public class TelemetryZone
     {
         public string name;
-        public string province;
         public string agro_zone;
         public float area_km2;
         public string split_type;
@@ -44,8 +43,10 @@ namespace ARIA.Systems
         // show what happened to each seed and why the drone rescheduled it.
         public string stage;
         public string fail_reason;
-        public int dropped_at;
-        public int failed_at;
+        public int dropped_at_step;   // simulation timestep
+        public int failed_at_step;    // simulation timestep
+        public string dropped_at;     // real wall-clock time, ISO 8601 UTC
+        public string failed_at;      // real wall-clock time, ISO 8601 UTC
     }
 
     [System.Serializable]
@@ -90,16 +91,17 @@ namespace ARIA.Systems
         private IEnumerator PostTelemetryCoroutine(EpisodeState state, float finalReward, RealZoneJson zoneMeta)
         {
             // Build the payload -- zone name/agro-zone/split come from the real
-            // loaded zone file when available; province/area have no real-data
-            // source yet, so they stay as placeholder constants.
+            // loaded zone file when available; area is computed from the zone's
+            // real bounds. There's no real province data anywhere in the zone
+            // JSON, and it wasn't displayed on the dashboard anyway, so it's
+            // removed rather than sent as a hardcoded/placeholder value.
             TelemetryPayload payload = new TelemetryPayload
             {
                 zone = new TelemetryZone
                 {
                     name = zoneMeta != null ? zoneMeta.name : "Simulated Zone Alpha",
-                    province = "Kigali",
                     agro_zone = zoneMeta != null ? zoneMeta.agroZone : "Highlands",
-                    area_km2 = 150.5f,
+                    area_km2 = CalculateZoneAreaKm2(zoneMeta),
                     split_type = zoneMeta != null ? zoneMeta.split : "Grid"
                 },
                 episode = new TelemetryEpisode
@@ -108,9 +110,9 @@ namespace ARIA.Systems
                     total_reward = finalReward,
                     pct_suitable_seeded = CalculateSuitableSeededPct(state),
                     mean_soil_score = CalculateMeanSoilScore(state),
-                    species_entropy = 0.5f,
-                    spacing_violations = state.Disturbance.Events.Count, 
-                    protected_area_seeds = 0,
+                    species_entropy = CalculateSpeciesEntropy(state),
+                    spacing_violations = CalculateSpacingViolations(state),
+                    protected_area_seeds = CalculateProtectedAreaSeeds(state),
                     n_seeds_placed = (int)ARIAConstants.INITIAL_SEEDS - (int)state.SeedsRemaining
                 },
                 seeds = BuildSeedList(state)
@@ -139,25 +141,151 @@ namespace ARIA.Systems
             }
         }
 
-        private float CalculateSuitableSeededPct(EpisodeState state)
+        // Real computation, mirroring rwanda_env.py's _metrics():
+        //   n_suit   = plantable cells minus cells too close to a protected area
+        //   n_seeded = seeds the drone actually dropped where IsSuitable was true
+        //   pct      = n_seeded / max(n_suit, 1)
+        // This previously returned state.ZoneSuitability() + a random jitter --
+        // a number with no connection to which seeds were actually placed well,
+        // dressed up to look like a real metric. Fixed to compute the real thing.
+        // Real computation from the zone's actual lat/lon bounds (already
+        // loaded in RealZoneJson -- boundsLeft/Right/Top/Bottom -- but never
+        // used for this). This previously sent 150.5f for every single zone
+        // regardless of its real size.
+        //
+        // Approximates the bounding box as flat (fine at Rwanda's ~2-degree
+        // extent): 1 degree latitude ~= 111.32km; 1 degree longitude ~=
+        // 111.32km * cos(latitude), since longitude lines converge toward
+        // the poles.
+        private float CalculateZoneAreaKm2(RealZoneJson zoneMeta)
         {
-            // Calculate a synthetic suitability percentage based on the zone suitability
-            return Mathf.Clamp01(state.ZoneSuitability() + Random.Range(-0.1f, 0.2f));
+            if (zoneMeta == null) return 150.5f; // no real zone loaded -- honest fallback, not a fabricated per-zone number
+
+            double latSpanDeg = zoneMeta.boundsTop - zoneMeta.boundsBottom;
+            double lonSpanDeg = zoneMeta.boundsRight - zoneMeta.boundsLeft;
+            double avgLatRad  = (zoneMeta.boundsTop + zoneMeta.boundsBottom) / 2.0 * (System.Math.PI / 180.0);
+
+            double kmPerDegLat = 111.32;
+            double kmPerDegLon = 111.32 * System.Math.Cos(avgLatRad);
+
+            double areaKm2 = System.Math.Abs(latSpanDeg) * kmPerDegLat
+                            * System.Math.Abs(lonSpanDeg) * kmPerDegLon;
+            return (float)areaKm2;
         }
 
-        private float CalculateMeanSoilScore(EpisodeState state)
+        private float CalculateSuitableSeededPct(EpisodeState state)
         {
-            float sum = 0f;
-            int count = 0;
+            int nPlantable = 0, nNearProtected = 0;
             for (int y = 0; y < state.Zone.Size; y++)
             {
                 for (int x = 0; x < state.Zone.Size; x++)
                 {
-                    sum += state.Zone.SoilAt(y, x);
-                    count++;
+                    if (!state.Zone.NoPlant[y, x]) nPlantable++;
+                    if (state.Zone.DistGrid[y, x] >= ARIAConstants.PROTECTED_PROXIMITY_THRESHOLD) nNearProtected++;
                 }
             }
+            int nSuit = Mathf.Max(nPlantable - nNearProtected, 1);
+
+            int nSeeded = 0;
+            foreach (var seed in state.Growth.Seeds.Values)
+                if (seed.IsSuitable) nSeeded++;
+
+            return Mathf.Clamp01((float)nSeeded / nSuit);
+        }
+
+        // Real computation, mirroring rwanda_env.py's _metrics():
+        //   H = -sum(p_i * ln(p_i)) over each species' share of total drops,
+        //   0 if only zero or one distinct species was ever used this episode.
+        // This previously returned a hardcoded 0.5f regardless of whether the
+        // drone planted one species everywhere or five in equal proportion --
+        // a number with no connection to actual planting behaviour.
+        private float CalculateSpeciesEntropy(EpisodeState state)
+        {
+            var counts = new Dictionary<int, int>();
+            foreach (var seed in state.Growth.Seeds.Values)
+            {
+                if (!counts.ContainsKey(seed.SpeciesId)) counts[seed.SpeciesId] = 0;
+                counts[seed.SpeciesId]++;
+            }
+
+            var nonZero = new List<float>();
+            foreach (var c in counts.Values)
+                if (c > 0) nonZero.Add(c);
+
+            if (nonZero.Count <= 1) return 0f;
+
+            float total = 0f;
+            foreach (var c in nonZero) total += c;
+
+            float h = 0f;
+            foreach (var c in nonZero)
+            {
+                float p = c / total;
+                h -= p * Mathf.Log(p); // natural log, matches Python's np.log
+            }
+            return h;
+        }
+
+        // Real computation, mirroring rwanda_env.py's _metrics():
+        //   mean_soil_score = mean(soil_score at each seed's actual drop location)
+        // This previously averaged state.Zone.SoilAt(y,x) over the ENTIRE zone
+        // grid -- a static number describing the zone's geography, unrelated to
+        // where the drone actually flew or how well it placed seeds. A mission
+        // that planted only in poor soil and one that planted only in rich soil
+        // would have reported the identical value. Fixed to measure actual
+        // placement quality: each Seed already carries its own SoilScore from
+        // the moment it was dropped (see GrowthEngine.Register), so this just
+        // averages that, the same as Python does over its seeds list.
+        private float CalculateMeanSoilScore(EpisodeState state)
+        {
+            float sum = 0f;
+            int count = 0;
+            foreach (var seed in state.Growth.Seeds.Values)
+            {
+                sum += seed.SoilScore;
+                count++;
+            }
             return count > 0 ? sum / count : 0f;
+        }
+
+        // Real computation, mirroring rwanda_env.py's _metrics():
+        //   protected_area_seeds = count of seeds dropped with InProtected == true
+        // This was a hardcoded 0 regardless of whether the drone actually
+        // planted inside a protected-area buffer -- Seed.InProtected was already
+        // tracked per-seed (see GrowthEngine.Register) and simply never counted.
+        // Real computation, mirroring rwanda_env.py's _metrics():
+        //   spacing_violations = count of seed PAIRS planted closer together
+        //   than MIN_SEED_SPACING (Manhattan distance)
+        // This previously returned state.Disturbance.Events.Count -- the
+        // number of ANIMAL DISTURBANCE incidents, a completely different,
+        // unrelated quantity mislabeled under the wrong metric name. The
+        // dashboard's "spacing violations" column was showing disturbance
+        // events, not seed clustering, for every live episode.
+        private int CalculateSpacingViolations(EpisodeState state)
+        {
+            var positions = new List<(int x, int y)>();
+            foreach (var seed in state.Growth.Seeds.Values)
+                positions.Add((seed.X, seed.Y));
+
+            int violations = 0;
+            for (int i = 0; i < positions.Count; i++)
+            {
+                for (int j = i + 1; j < positions.Count; j++)
+                {
+                    int manhattan = Mathf.Abs(positions[i].x - positions[j].x)
+                                   + Mathf.Abs(positions[i].y - positions[j].y);
+                    if (manhattan < ARIAConstants.MIN_SEED_SPACING) violations++;
+                }
+            }
+            return violations;
+        }
+
+        private int CalculateProtectedAreaSeeds(EpisodeState state)
+        {
+            int count = 0;
+            foreach (var seed in state.Growth.Seeds.Values)
+                if (seed.InProtected) count++;
+            return count;
         }
 
         // Reports every seed the drone actually dropped this episode, with its
@@ -170,7 +298,8 @@ namespace ARIA.Systems
             foreach (var seed in state.Growth.Seeds.Values)
             {
                 string failReason = null;
-                int failedAt = -1;
+                int failedAtStep = -1;
+                string failedAtIso = null;
                 if (seed.Stage == SeedStage.Dead)
                 {
                     // Most recent matching log entry -- FailedCellsLog persists
@@ -180,8 +309,9 @@ namespace ARIA.Systems
                         var f = state.Monitor.FailedCellsLog[i];
                         if (f.X == seed.X && f.Y == seed.Y && f.SpeciesTried == seed.SpeciesId)
                         {
-                            failReason = f.Reason;
-                            failedAt = f.FailedAt;
+                            failReason  = f.Reason;
+                            failedAtStep = f.FailedAt;
+                            failedAtIso  = f.FailedAtUtc.ToString("o");   // ISO 8601 round-trip
                             break;
                         }
                     }
@@ -198,8 +328,10 @@ namespace ARIA.Systems
                     in_protected_area = seed.InProtected,
                     stage = seed.Stage.ToString(),
                     fail_reason = failReason,
-                    dropped_at = seed.DroppedAt,
-                    failed_at = failedAt,
+                    dropped_at_step = seed.DroppedAt,
+                    failed_at_step = failedAtStep,
+                    dropped_at = seed.DroppedAtUtc.ToString("o"),
+                    failed_at = failedAtIso,
                 });
             }
             return seedList;

@@ -9,7 +9,6 @@ datasource db {
 model Zone {
   zone_id    Int       @id @default(autoincrement())
   name       String
-  province   String
   agro_zone  String
   area_km2   Float
   split_type String
@@ -47,6 +46,8 @@ model Seed {
   // Seed-monitoring: lifecycle stage + failure info for the reseed pipeline.
   stage             String?
   fail_reason       String?
-  dropped_at        Int?
-  failed_at         Int?
+  dropped_at_step   Int?      // simulation timestep the seed was dropped
+  failed_at_step    Int?      // simulation timestep the seed failed (if it did)
+  dropped_at        DateTime? // real wall-clock time the seed was dropped
+  failed_at         DateTime? // real wall-clock time the seed failed (if it did)
 }

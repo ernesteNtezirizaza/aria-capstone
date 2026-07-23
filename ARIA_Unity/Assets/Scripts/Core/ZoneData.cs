@@ -27,13 +27,34 @@ namespace ARIA.Core
         public float SoilAt(int y, int x)  => Terrain[y, x, 2];
         public float SlopeAt(int y, int x) => Terrain[y, x, 1];
 
+        // Composite zone-level suitability: soil + rain - slope, weighted
+        // the same way as configs.config.ZONE_SUITABILITY_WEIGHTS on the
+        // Python training side. Previously this only averaged the soil
+        // channel (Terrain[y,x,2]), so the abort decision and the
+        // mission_vector's zone_score ignored rain and slope entirely even
+        // though the trained policy was taught (via the Python reward
+        // function) that all three matter.
         public float ZoneSuitability()
         {
-            float sum = 0f;
+            float soilSum = 0f, rainSum = 0f, slopeSum = 0f;
             for (int y = 0; y < Size; y++)
+            {
                 for (int x = 0; x < Size; x++)
-                    sum += Terrain[y, x, 2];
-            return sum / (Size * Size);
+                {
+                    soilSum  += Terrain[y, x, 2];
+                    rainSum  += Terrain[y, x, 3];
+                    slopeSum += Terrain[y, x, 1]; // already 0-1 normalised, same as Python's slope_norm channel
+                }
+            }
+            int n = Size * Size;
+            float soil = soilSum / n, rain = rainSum / n, slopePen = slopeSum / n;
+
+            float wSoil = ARIAConstants.ZONE_SUIT_W_SOIL;
+            float wRain = ARIAConstants.ZONE_SUIT_W_RAIN;
+            float wSlope = ARIAConstants.ZONE_SUIT_W_SLOPE;
+
+            float score = (wSoil * soil + wRain * rain - wSlope * slopePen) / (wSoil + wRain + wSlope);
+            return Mathf.Clamp01(score);
         }
 
         public float NoPlantFraction()
