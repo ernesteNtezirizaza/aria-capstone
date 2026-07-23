@@ -1,4 +1,6 @@
-exp,description,learning_rate,gamma,n_steps,batch_size,clip_range,ent_coef,use_curriculum,peak_reward
-01,Baseline + domain randomisation,0.0003,0.99,4096,256,0.2,0.1,False,1149.07
-02,Low LR + domain randomisation,0.0001,0.99,4096,256,0.2,0.1,False,1164.79
-03,Low LR + stable fine-tuning,5e-05,0.99,4096,128,0.1,0.1,False,1158.6
+exp,description,learning_rate,gamma,n_steps,batch_size,clip_range,ent_coef,use_curriculum,use_zone_selector,peak_reward
+01,"Spacing sweep: control (spacing=5, weight=3.5)",0.0003,0.99,4096,256,0.2,0.1,False,False,2274.39
+02,"Spacing sweep: tighter radius (spacing=4, weight=3.5)",0.0003,0.99,4096,256,0.2,0.1,False,False,2056.63
+03,"Spacing sweep: wider radius (spacing=6, weight=3.5)",0.0003,0.99,4096,256,0.2,0.1,False,False,1908.48
+04,"Spacing sweep: stronger penalty (spacing=5, weight=4.5)",0.0003,0.99,4096,256,0.2,0.1,False,False,1611.2
+05,"Spacing sweep: weaker penalty (spacing=5, weight=2.5)",0.0003,0.99,4096,256,0.2,0.1,False,False,2219.0

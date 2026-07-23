@@ -18,6 +18,7 @@ namespace ARIA.UI
         private Text _coverText;
         private Text _seedsText;
         private Text _queuedText;
+        private Text _suitabilityText;
 
         private Text _weatherButtonLabel, _obstacleButtonLabel, _animalButtonLabel, _zoneButtonLabel;
         private Image _weatherButtonImg, _obstacleButtonImg, _animalButtonImg;
@@ -91,6 +92,17 @@ namespace ARIA.UI
                 new Vector2(8, 0), new Vector2(-8, 0));
             _queuedText.fontStyle = FontStyle.Bold;
             _queuedText.color = new Color(1f, 0.7f, 0.3f);
+
+            // Zone Suitability: soil + rain - slope, composite score used for
+            // the abort decision and the mission_vector observation feature,
+            // not soil alone. Shown live so a viewer can see the same signal
+            // driving ARIA's own "should I even be here" decision.
+            var suitabilityPanel = MakePanel(transform, new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(10, -150), new Vector2(220, 30), new Color(0f, 0.05f, 0f, 1f));
+            _suitabilityText = MakeText(suitabilityPanel, "Zone Suitability: --", 13, TextAnchor.MiddleCenter,
+                new Vector2(8, 0), new Vector2(-8, 0));
+            _suitabilityText.fontStyle = FontStyle.Bold;
+            _suitabilityText.color = new Color(0.6f, 0.9f, 0.6f);
 
             BuildDemoControls();
             BuildRestartBar();
@@ -314,6 +326,19 @@ namespace ARIA.UI
                 int queued = d.State.ReseedingTargets.Count;
                 _queuedText.text = $"Seeds Queued: {queued}";
                 _queuedText.color = queued > 0 ? new Color(1f, 0.7f, 0.3f) : new Color(0.6f, 0.6f, 0.6f);
+
+                // Same soil+rain-slope composite score, and the same threshold,
+                // that ARIA's own abort decision uses -- this is a live view
+                // into "does the drone consider this zone worth being in",
+                // not a separate cosmetic number.
+                float suitability = d.State.ZoneSuitability();
+                float pctSuit = suitability * 100f;
+                _suitabilityText.text = $"Zone Suitability: {pctSuit:F0}%";
+                _suitabilityText.color = suitability < ARIAConstants.ZONE_MIN_SUITABILITY
+                    ? new Color(1f, 0.35f, 0.3f)     // below the abort threshold -- red
+                    : suitability < ARIAConstants.ZONE_MIN_SUITABILITY * 1.5f
+                        ? new Color(1f, 0.8f, 0.2f)  // marginal -- amber
+                        : new Color(0.4f, 1f, 0.4f); // comfortably suitable -- green
             }
         }
     }

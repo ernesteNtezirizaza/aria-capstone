@@ -64,7 +64,7 @@ namespace ARIA.Core
             if (action == ARIAConstants.ABORT_ACTION)
             {
                 float zoneScore = s.ZoneSuitability();
-                if (zoneScore < ARIAConstants.ZONE_MIN_SOIL)
+                if (zoneScore < ARIAConstants.ZONE_MIN_SUITABILITY)
                     result.ValidAbort = true;
                 else
                     result.BadAbort = true;
@@ -274,9 +274,15 @@ namespace ARIA.Core
             if (s.Timestep % MONITORING_INTERVAL == 0 && s.Timestep > 0)
             {
                 float[,] rainMap = ExtractChannel(s.Zone, 3);
-                s.Growth.Step(s.Timestep, rainMap);
+                var maturedPositions = s.Growth.Step(s.Timestep, rainMap);
                 if (DemoConditions.AnimalDisturbanceEnabled)
                     s.Disturbance.Step(s.Growth, s.Timestep);
+
+                // Close the reseed feedback loop: any seed that matured this
+                // step, at a position that was a pending reseed, is a real
+                // success outcome for whichever species SpeciesRecommender
+                // picked there -- feed it back before ingesting new failures.
+                s.Monitor.ResolveMatured(maturedPositions);
 
                 s.Monitor.IngestFailures(new System.Collections.Generic.List<FailedCell>(s.Growth.FailedCells));
                 s.Growth.FailedCells.Clear();

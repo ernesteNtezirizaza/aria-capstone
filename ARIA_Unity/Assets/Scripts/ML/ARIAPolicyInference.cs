@@ -59,8 +59,8 @@ namespace ARIA.ML
                 new TensorShape(1, ARIAConstants.ZONE_SIZE, ARIAConstants.ZONE_SIZE, 1), obs.DisturbanceMap);
             using var obstacleMap    = new Tensor<float>(
                 new TensorShape(1, ARIAConstants.ZONE_SIZE, ARIAConstants.ZONE_SIZE, 1), obs.ObstacleMap);
-            using var missionVector  = new Tensor<float>(new TensorShape(1, 8), obs.MissionVector);
-            using var terrainStats   = new Tensor<float>(new TensorShape(1, 6), obs.TerrainStats);
+            using var missionVector  = new Tensor<float>(new TensorShape(1, obs.MissionVector.Length), obs.MissionVector);
+            using var terrainStats   = new Tensor<float>(new TensorShape(1, obs.TerrainStats.Length), obs.TerrainStats);
 
             var inputs = new Dictionary<string, Tensor>
             {

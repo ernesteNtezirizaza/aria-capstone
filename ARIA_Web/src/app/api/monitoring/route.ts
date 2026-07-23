@@ -19,7 +19,6 @@ export async function POST(request: Request) {
       dbZone = await prisma.zone.create({
         data: {
           name: zone.name || "Default Zone",
-          province: zone.province || "Unknown",
           agro_zone: zone.agro_zone || "Unknown",
           area_km2: zone.area_km2 || 100.0,
           split_type: zone.split_type || "None"
@@ -51,8 +50,13 @@ export async function POST(request: Request) {
             in_protected_area: s.in_protected_area,
             stage: s.stage,
             fail_reason: s.fail_reason || null,
-            dropped_at: s.dropped_at,
-            failed_at: s.failed_at >= 0 ? s.failed_at : null
+            dropped_at_step: s.dropped_at_step,
+            failed_at_step: s.failed_at_step >= 0 ? s.failed_at_step : null,
+            // Unity sends these as ISO 8601 strings (DateTime.UtcNow.ToString("o"));
+            // Prisma needs a real Date object, not the raw string, to write a
+            // DateTime column.
+            dropped_at: s.dropped_at ? new Date(s.dropped_at) : null,
+            failed_at: s.failed_at ? new Date(s.failed_at) : null,
           }))
         }
       }

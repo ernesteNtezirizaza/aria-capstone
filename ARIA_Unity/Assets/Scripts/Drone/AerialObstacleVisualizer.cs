@@ -4,49 +4,41 @@ using ARIA.Core;
 
 namespace ARIA.Drone
 {
+    /// Renders real obstacles as static, terrain-fixed hazards, matching
+    /// how they actually work on the training side (env/rwanda_env.py):
+    /// self.obs_grid is set once at episode reset and never modified
+    /// during step() -- obstacles are permanent terrain features (steep
+    /// slope + local elevation turbulence, see utils/preprocess.py's
+    /// compute_obstacle()) that the drone discovers as it explores, not
+    /// objects that move or hunt it.
+    ///
+    /// This replaces an earlier version that spawned fast-approaching
+    /// spheres closing a 34-unit gap at 18 units/second -- visually
+    /// dramatic, but it didn't correspond to anything the policy was
+    /// actually trained against, which only ever sees a static per-cell
+    /// hazard flag. A policy correctly avoiding a static hazard could
+    /// still look like it's "not reacting" to a fast-incoming 3D object,
+    /// because nothing resembling that ever appeared during training.
     public class AerialObstacleVisualizer : MonoBehaviour
     {
         [Tooltip("Assign the same DroneController driving the episode.")]
         public DroneController drone;
 
+        [Tooltip("Assign the RealTerrainRenderer so markers sit on the real terrain surface, not a fixed height.")]
+        public RealTerrainRenderer terrainRenderer;
+
         [Tooltip("World-space size of one terrain cell -- MUST match DroneController.cellSize.")]
         public float cellSize = 1.0f;
 
-        [Tooltip("How high above the ground these hazards fly -- set to match the " +
-                 "drone's typical cruise altitude (altitudeWorldScale * 1.0) so they're " +
-                 "directly in its visible flight path, not off to the side.")]
-        public float hoverHeight = 12.0f; // matches DroneController's new altitudeWorldScale (12) at full altitude
+        [Tooltip("How far above the real terrain surface each marker sits, purely for visibility.")]
+        public float markerLift = 1.5f;
 
-        [Tooltip("How many hazards are incoming at once.")]
-        public int maxActiveObstacles = 3;
+        [Tooltip("Safety cap on how many individual hazard markers to instantiate, in case a zone " +
+                 "has a very large contiguous hazardous region -- adjacent hazard cells are merged " +
+                 "into clusters first (see BuildClusters), so this should rarely bind in practice.")]
+        public int maxMarkers = 400;
 
-        [Tooltip("World units/second an incoming hazard closes on the drone -- fast " +
-                 "by request, so it clearly reads as something to react to, not a " +
-                 "slow drift.")]
-        public float approachSpeed = 18.0f;
-
-        [Tooltip("Spawn distance (world units) from the drone's current position.")]
-        public float spawnDistance = 34.0f;
-
-        [Tooltip("Once a hazard gets this close (world units) to the drone, or flies " +
-                 "past it, it's retired and a fresh one spawns from a new direction.")]
-        public float retireDistance = 4.0f;
-
-        [Tooltip("How many extra cells out from centre this hazard occupies on ObsGrid " +
-                 "in every direction -- 2 means a 5x5 block of cells is 'hot' at once, " +
-                 "matching a genuinely BIG obstacle instead of a single hidden cell.")]
-        public int footprintRadius = 2;
-
-        private class Hazard
-        {
-            public GameObject Go;
-            public TrailRenderer Trail;
-            public readonly List<(int x, int y)> OwnedCells = new List<(int, int)>();
-            public int CenterX = int.MinValue, CenterY = int.MinValue;
-        }
-
-        private readonly List<Hazard> _hazards = new List<Hazard>();
-        private System.Random _rng = new System.Random();
+        private readonly List<GameObject> _markers = new List<GameObject>();
         private bool _active;
 
         public void Bind(DroneController d)
@@ -68,135 +60,121 @@ namespace ARIA.Drone
 
         public void RefreshMarkers()
         {
-            ClearAllHazards();
+            ClearAllMarkers();
 
             _active = drone != null && drone.State != null && DemoConditions.ObstacleOverlayEnabled;
             if (!_active)
             {
-                Debug.Log("[AerialObstacleVisualizer] Obstacles off or no active drone/State -- 0 hazards flying.");
+                Debug.Log("[AerialObstacleVisualizer] Obstacles off or no active drone/State -- 0 hazards shown.");
                 return;
             }
 
-            for (int i = 0; i < maxActiveObstacles; i++)
-                SpawnHazard();
+            var zone = drone.State.Zone;
+            var clusters = BuildClusters(zone);
 
-            Debug.Log($"[AerialObstacleVisualizer] Obstacles on -- {_hazards.Count} big aerial hazard(s) now incoming.");
-        }
-
-        void Update()
-        {
-            if (!_active || drone == null || drone.State == null) return;
-
-            Vector3 dronePos = drone.transform.position;
-
-            for (int i = _hazards.Count - 1; i >= 0; i--)
+            int placed = 0;
+            foreach (var c in clusters)
             {
-                var h = _hazards[i];
-                if (h.Go == null) { _hazards.RemoveAt(i); continue; }
-
-                Vector3 pos = h.Go.transform.position;
-                Vector3 toDrone = dronePos - pos;
-                toDrone.y = 0f;
-                float dist = toDrone.magnitude;
-
-                if (dist <= retireDistance)
-                {
-                    ClearHazardCells(h);
-                    Destroy(h.Go);
-                    _hazards.RemoveAt(i);
-                    SpawnHazard();
-                    continue;
-                }
-
-                Vector3 dir = toDrone.normalized;
-                pos += dir * approachSpeed * Time.deltaTime;
-                pos.y = hoverHeight;
-                h.Go.transform.position = pos;
-                h.Go.transform.forward = dir;
-
-                UpdateHazardCells(h, pos);
+                if (placed >= maxMarkers) break;
+                PlaceMarker(zone, c.centerX, c.centerY, c.cellCount);
+                placed++;
             }
+
+            Debug.Log($"[AerialObstacleVisualizer] Obstacles on -- {clusters.Count} real hazard region(s) found, " +
+                      $"{placed} marker(s) placed (static, matching the real obstacle grid the policy observes).");
         }
 
-        private void SpawnHazard()
+        private struct Cluster
         {
-            if (drone == null || drone.State == null) return;
+            public int centerX, centerY, cellCount;
+        }
 
-            Vector3 dronePos = drone.transform.position;
-            float angle = (float)(_rng.NextDouble() * Mathf.PI * 2.0);
-            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * spawnDistance;
-            Vector3 spawnPos = dronePos + offset;
-            spawnPos.y = hoverHeight;
+        /// Groups adjacent obstacle cells (ObsGrid > OBSTACLE_THRESHOLD)
+        /// into connected regions via flood fill, so one continuous
+        /// hazardous slope renders as one marker sized to its real
+        /// extent, not one marker per individual grid cell.
+        private List<Cluster> BuildClusters(ZoneData zone)
+        {
+            int size = zone.Size;
+            var visited = new bool[size, size];
+            var clusters = new List<Cluster>();
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    if (visited[y, x]) continue;
+                    if (zone.ObsGrid[y, x] <= ARIAConstants.OBSTACLE_THRESHOLD) continue;
+
+                    // Flood fill this connected hazardous region.
+                    var stack = new Stack<(int x, int y)>();
+                    stack.Push((x, y));
+                    visited[y, x] = true;
+                    long sumX = 0, sumY = 0;
+                    int count = 0;
+
+                    while (stack.Count > 0)
+                    {
+                        var (cx, cy) = stack.Pop();
+                        sumX += cx; sumY += cy; count++;
+
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            for (int dx = -1; dx <= 1; dx++)
+                            {
+                                if (dx == 0 && dy == 0) continue;
+                                int nx = cx + dx, ny = cy + dy;
+                                if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+                                if (visited[ny, nx]) continue;
+                                if (zone.ObsGrid[ny, nx] <= ARIAConstants.OBSTACLE_THRESHOLD) continue;
+                                visited[ny, nx] = true;
+                                stack.Push((nx, ny));
+                            }
+                        }
+                    }
+
+                    clusters.Add(new Cluster {
+                        centerX = Mathf.RoundToInt((float)sumX / count),
+                        centerY = Mathf.RoundToInt((float)sumY / count),
+                        cellCount = count,
+                    });
+                }
+            }
+            return clusters;
+        }
+
+        private void PlaceMarker(ZoneData zone, int gx, int gy, int cellCount)
+        {
+            float worldX = gx * cellSize;
+            float worldZ = gy * cellSize;
+            float groundY = terrainRenderer != null ? terrainRenderer.GetHeight(gy, gx) : 0f;
 
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.name = "IncomingAerialObstacle";
+            go.name = "RealTerrainHazard";
             Destroy(go.GetComponent<Collider>());
-            go.transform.position = spawnPos;
+            go.transform.position = new Vector3(worldX, groundY + markerLift, worldZ);
 
-            float visualDiameter = (footprintRadius * 2 + 1) * cellSize * 0.85f;
+            // Real physical extent: cellCount cells' worth of ground,
+            // approximated as a circle, so a genuinely large hazardous
+            // slope reads as visibly bigger than a single steep cell.
+            float footprintCells = Mathf.Sqrt(cellCount);
+            float visualDiameter = Mathf.Clamp(footprintCells * cellSize * 0.9f, cellSize * 1.5f, cellSize * 12f);
             go.transform.localScale = Vector3.one * visualDiameter;
 
             var mat = MaterialHelper.GetDefaultMaterial();
-            mat.color = new Color(1f, 0.12f, 0.05f);
+            mat.color = new Color(0.75f, 0.2f, 0.1f);
             mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", new Color(1.4f, 0.18f, 0.05f)); // bright glow, visible from a distance
+            mat.SetColor("_EmissionColor", new Color(0.9f, 0.25f, 0.08f) * 0.6f); // steady glow, not flashing -- this is a fixed hazard, not an alarm
             go.GetComponent<Renderer>().material = mat;
 
-            var trail = go.AddComponent<TrailRenderer>();
-            trail.time = 0.5f;
-            trail.startWidth = visualDiameter * 0.6f;
-            trail.endWidth = 0.05f;
-            trail.material = MaterialHelper.GetDefaultMaterial();
-            trail.startColor = new Color(1f, 0.3f, 0.1f, 0.75f);
-            trail.endColor = new Color(1f, 0.3f, 0.1f, 0f);
-
-            var h = new Hazard { Go = go, Trail = trail };
-            UpdateHazardCells(h, spawnPos);
-            _hazards.Add(h);
+            _markers.Add(go);
         }
 
-        private void UpdateHazardCells(Hazard h, Vector3 worldPos)
+        private void ClearAllMarkers()
         {
-            if (drone.State == null) return;
-            var zone = drone.State.Zone;
-            int cx = Mathf.Clamp(Mathf.RoundToInt(worldPos.x / cellSize), 0, zone.Size - 1);
-            int cy = Mathf.Clamp(Mathf.RoundToInt(worldPos.z / cellSize), 0, zone.Size - 1);
-
-            if (h.CenterX == cx && h.CenterY == cy) return; // hasn't crossed into a new centre cell yet
-
-            ClearHazardCells(h);
-            h.CenterX = cx;
-            h.CenterY = cy;
-
-            for (int oy = -footprintRadius; oy <= footprintRadius; oy++)
-            {
-                for (int ox = -footprintRadius; ox <= footprintRadius; ox++)
-                {
-                    int gx = Mathf.Clamp(cx + ox, 0, zone.Size - 1);
-                    int gy = Mathf.Clamp(cy + oy, 0, zone.Size - 1);
-                    zone.ObsGrid[gy, gx] = 0.95f; // safely above OBSTACLE_THRESHOLD (0.7)
-                    h.OwnedCells.Add((gx, gy));
-                }
-            }
-        }
-
-        private void ClearHazardCells(Hazard h)
-        {
-            if (drone == null || drone.State == null) { h.OwnedCells.Clear(); return; }
-            var zone = drone.State.Zone;
-            foreach (var (gx, gy) in h.OwnedCells)
-                zone.ObsGrid[gy, gx] = 0f;
-            h.OwnedCells.Clear();
-        }
-
-        private void ClearAllHazards()
-        {
-            foreach (var h in _hazards)
-            {
-                ClearHazardCells(h);
-                if (h.Go != null) Destroy(h.Go);
-            }
-            _hazards.Clear();
+            foreach (var m in _markers)
+                if (m != null) Destroy(m);
+            _markers.Clear();
         }
     }
 }

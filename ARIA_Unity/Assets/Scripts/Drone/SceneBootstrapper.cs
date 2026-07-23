@@ -108,6 +108,7 @@ namespace ARIA.Drone
 
             var obstacleVisualizer = terrainObj.AddComponent<AerialObstacleVisualizer>();
             obstacleVisualizer.cellSize = cellSize;
+            obstacleVisualizer.terrainRenderer = renderer;
             obstacleVisualizer.Bind(droneObj.GetComponent<DroneController>());
 
             var reseedVisualizer = terrainObj.AddComponent<ReseedMarkerVisualizer>();

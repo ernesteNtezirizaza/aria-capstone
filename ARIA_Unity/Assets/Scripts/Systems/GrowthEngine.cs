@@ -11,7 +11,8 @@ namespace ARIA.Systems
         public int       SeedId;
         public int       SpeciesId;
         public int       X, Y;
-        public int       DroppedAt;
+        public int       DroppedAt;        // simulation timestep
+        public System.DateTime DroppedAtUtc;  // real wall-clock time (live Unity run)
         public float     SoilScore;
         public float     RainScore;
         public float     SlopeScore;
@@ -26,14 +27,19 @@ namespace ARIA.Systems
     {
         public int    X, Y;
         public int    SpeciesTried;
-        public int    FailedAt;
+        public int    FailedAt;             // simulation timestep
+        public System.DateTime FailedAtUtc; // real wall-clock time (live Unity run)
         public string Reason;       // "natural_mortality" or "disturbance"
         public float  Soil;
         public float  Rain;
+        public float  Slope;              // NEW -- was computed per-seed but not surfaced before
+        public float  CorridorProximity;  // NEW -- ditto
 
-        // Filled in by MonitoringSystem
-        public int   RecommendedSpecies;
-        public float Priority;
+        // Filled in by MonitoringSystem via the learned SpeciesRecommender
+        public int    RecommendedSpecies;
+        public float  Priority;           // = PredictedSurvival, not a separate hardcoded formula
+        public float  PredictedSurvival;
+        public float[] RecommendFeatures; // kept so a later outcome can update the recommender
     }
 
     public struct GrowthStepResult
@@ -72,6 +78,7 @@ namespace ARIA.Systems
                 SpeciesId = speciesId,
                 X = x, Y = y,
                 DroppedAt = timestep,
+                DroppedAtUtc = System.DateTime.UtcNow,
                 SoilScore = soil,
                 RainScore = rain,
                 SlopeScore = slope,
@@ -90,8 +97,12 @@ namespace ARIA.Systems
             return Mathf.Clamp(v, 0.05f, 0.95f);
         }
 
-        public void Step(int timestep, float[,] rainMap)
+        // Returns the (x,y) of every seed that matured THIS call, so
+        // MonitoringSystem can credit any pending reseed at that position
+        // with a real success outcome (see MonitoringSystem.ResolveMatured).
+        public List<(int x, int y)> Step(int timestep, float[,] rainMap)
         {
+            var matured = new List<(int x, int y)>();
             foreach (var kv in new List<KeyValuePair<int, Seed>>(Seeds))
             {
                 var s = kv.Value;
@@ -118,9 +129,12 @@ namespace ARIA.Systems
                         X = s.X, Y = s.Y,
                         SpeciesTried = s.SpeciesId,
                         FailedAt = timestep,
+                        FailedAtUtc = System.DateTime.UtcNow,
                         Reason = "natural_mortality",
                         Soil = s.SoilScore,
                         Rain = s.RainScore,
+                        Slope = s.SlopeScore,
+                        CorridorProximity = s.CorridorProximity,
                     });
                     continue;
                 }
@@ -139,8 +153,10 @@ namespace ARIA.Systems
                 else if (s.Stage == SeedStage.Seedling && age >= matureT)
                 {
                     s.Stage = SeedStage.Mature;
+                    matured.Add((s.X, s.Y));
                 }
             }
+            return matured;
         }
 
         // Unlike natural mortality in Step(), this can kill a Mature tree too (goats).
@@ -155,9 +171,12 @@ namespace ARIA.Systems
                 X = s.X, Y = s.Y,
                 SpeciesTried = s.SpeciesId,
                 FailedAt = timestep,
+                FailedAtUtc = System.DateTime.UtcNow,
                 Reason = reason,
                 Soil = s.SoilScore,
                 Rain = s.RainScore,
+                Slope = s.SlopeScore,
+                CorridorProximity = s.CorridorProximity,
             });
         }
 

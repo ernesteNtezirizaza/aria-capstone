@@ -7,6 +7,7 @@ Records all failed seeds for the monitoring system.
 """
 
 import numpy as np
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from configs.config import SPECIES, MONITORING_INTERVAL, REWARD, ZONE_SIZE
@@ -41,11 +42,31 @@ class GrowthEngine:
         self.failed_cells: List[dict] = []   # for monitoring/reseeding
         self._nid = 0
 
-    def reset(self):
-        self.seeds.clear()
+    def reset(self, preserve_positions: set = None):
+        """
+        preserve_positions: set of (x, y) tuples whose seeds should survive
+        this reset -- these are cells with a currently-pending reseed
+        outcome (tracked in MonitoringSystem.pending_reseeds) that hasn't
+        resolved yet. Without this, every episode boundary silently
+        destroyed any reseed that hadn't matured or died again within that
+        same episode: MonitoringSystem correctly remembered the cell was
+        pending, but the actual growth simulation for it was gone, so it
+        could never resolve and SpeciesRecommender never learned from it.
+        This was the confirmed cause of species_recommender_final.json
+        staying at 0 outcomes across every experiment this session.
+        """
+        preserve_positions = preserve_positions or set()
+        self.seeds = {
+            sid: s for sid, s in self.seeds.items()
+            if (s.x, s.y) in preserve_positions
+        }
         self.events.clear()
         self.failed_cells.clear()
-        self._nid = 0
+        # Only safe to restart the ID counter from 0 if nothing survived --
+        # otherwise a new seed could reuse a surviving seed's dict key and
+        # silently overwrite it.
+        if not self.seeds:
+            self._nid = 0
 
     def register(self, species_id, x, y, timestep,
                  soil, rain, slope, prox, suitable, protected):
@@ -88,9 +109,12 @@ class GrowthEngine:
                     "x": s.x, "y": s.y,
                     "species_tried": s.species_id,
                     "failed_at": timestep,
+                    "failed_at_utc": datetime.now(timezone.utc).isoformat(),
                     "reason": "natural_mortality",
                     "soil": s.soil_score,
                     "rain": s.rain_score,
+                    "slope": s.slope_score,
+                    "corridor_proximity": s.corridor_proximity,
                 })
                 continue
 
@@ -125,9 +149,12 @@ class GrowthEngine:
             "x": s.x, "y": s.y,
             "species_tried": s.species_id,
             "failed_at": timestep,
+            "failed_at_utc": datetime.now(timezone.utc).isoformat(),
             "reason": reason,
             "soil": s.soil_score,
             "rain": s.rain_score,
+            "slope": s.slope_score,
+            "corridor_proximity": s.corridor_proximity,
         })
         return -REWARD["w_germ"] * 0.5
 

@@ -19,10 +19,12 @@ METRICS_DIR     = os.path.join(RESULTS_DIR, "metrics")
 
 # ── Raw dataset paths ─────────────────────────────────────────────
 DEM_PATH       = os.path.join(DATA_RAW_DIR, "dem", "Rwanda_SRTM30meters", "Rwanda_SRTM30meters.tif")
-SOIL_CLAY_PATH = os.path.join(DATA_RAW_DIR, "soil", "rwanda_soil_clay.tif")
-SOIL_PH_PATH   = os.path.join(DATA_RAW_DIR, "soil", "rwanda_soil_ph.tif")
-SOIL_SAND_PATH = os.path.join(DATA_RAW_DIR, "soil", "rwanda_soil_sand.tif")
-SOIL_SOC_PATH  = os.path.join(DATA_RAW_DIR, "soil", "rwanda_soil_soc.tif")
+# Soil layers are discovered dynamically (glob, not a fixed list) so adding
+# a new layer -- e.g. rwanda_soil_nitrogen.tif, rwanda_soil_carbon.tif --
+# just means dropping the file in data/raw/soil/ and re-running preprocess.py.
+# A hardcoded list here previously meant new files were silently ignored
+# until someone remembered to add them by name in two separate places.
+SOIL_DIR       = os.path.join(DATA_RAW_DIR, "soil")
 RAINFALL_DIR   = os.path.join(DATA_RAW_DIR, "rainfall")
 LANDCOVER_DIR  = os.path.join(DATA_RAW_DIR, "landcover")
 WDPA_PATHS     = [
@@ -60,6 +62,14 @@ N_CHANNELS    = 5
 
 # ── Observation window ────────────────────────────────────────────
 OBS_WINDOW = 11   # 11×11 patch centred on drone
+
+# ── Zone-suitability weights ────────────────────────────────────────
+# Single source of truth for how soil / rainfall / slope combine into a
+# zone-level suitability score. Used both when deriving ZONE_MIN_SUITABILITY
+# below (from the real raw dataset) and inside REWARD further down, so the
+# per-seed placement reward and the zone-level abort/selection decision are
+# always scored with the exact same ecological weighting.
+ZONE_SUITABILITY_WEIGHTS = {"soil": 3.0, "rain": 2.0, "slope": 1.0}
 
 # ── Species ───────────────────────────────────────────────────────
 
@@ -208,6 +218,7 @@ def _derive_from_data():
     """
     import numpy as _np
     import os as _os
+    import warnings as _warnings
 
     try:
         import rasterio as _rio
@@ -263,8 +274,16 @@ def _derive_from_data():
         _zone_min_rain = round(float(_np.percentile(_flat, 25)), 4)
 
         # ── 4. Soil → ZONE_MIN_SOIL (P25 of composite soil score)
-        _soil_paths = [SOIL_CLAY_PATH, SOIL_PH_PATH, SOIL_SAND_PATH, SOIL_SOC_PATH]
+        _soil_paths = sorted(_glob.glob(_os.path.join(SOIL_DIR, "rwanda_soil_*.tif")))
+        # Nitrogen excluded at discovery, not later -- see the matching
+        # comment in utils/preprocess.py for why.
+        _soil_paths = [p for p in _soil_paths if "nitrogen" not in _os.path.basename(p).lower()]
+        if not _soil_paths:
+            raise FileNotFoundError(f"No rwanda_soil_*.tif files found in {SOIL_DIR}")
+        print(f"  Soil layers found ({len(_soil_paths)}): "
+              f"{[_os.path.basename(p) for p in _soil_paths]}")
         _soil_layers = []
+        _excluded_layers = []
         for _sp in _soil_paths:
             with _rio.open(_sp) as _ss:
                 _sd_raw = _np.zeros((_rows, _cols), dtype=_np.float32)
@@ -279,15 +298,51 @@ def _derive_from_data():
                 _sd[_sd <= 0] = _np.nan
                 _valid_frac = _np.isfinite(_sd).mean()
                 if _valid_frac < 0.5:
-                    print(f"  WARNING: {_sp} is {100*(1-_valid_frac):.1f}% "
-                          f"NaN/invalid after clipping to Rwanda bounds — "
-                          f"check this file's CRS/extent")
+                    # More than half the country came back NaN after
+                    # reprojection -- a real CRS/extent mismatch (or a
+                    # genuine source-coverage gap), not something to
+                    # silently fold into the composite. Averaging a layer
+                    # that's mostly missing doesn't corrupt the composite
+                    # everywhere (nanmean already skips NaN per-pixel), but
+                    # it does mean this layer contributes almost nothing
+                    # while still being counted as "6 layers" -- excluding
+                    # it outright is more honest than pretending it helped.
+                    print(f"  EXCLUDED {_os.path.basename(_sp)} from soil composite "
+                          f"({100*(1-_valid_frac):.1f}% invalid)")
+                    _excluded_layers.append(_os.path.basename(_sp))
+                    continue
                 _mn, _mx = _np.nanmin(_sd), _np.nanmax(_sd)
                 if _mx > _mn:
                     _sd = (_sd - _mn) / (_mx - _mn)
                 _soil_layers.append(_sd)
-        _soil_comp    = _np.nanmean(_np.stack(_soil_layers), axis=0)
+        if _excluded_layers:
+            print(f"  Soil composite built from {len(_soil_layers)} layers "
+                  f"(excluded: {_excluded_layers})")
+        # Some pixels (e.g. Lake Kivu, other water bodies) are legitimately
+        # NaN in every soil layer at once -- there's no soil to measure
+        # there. nanmean's "Mean of empty slice" warning is numpy telling
+        # us exactly that, correctly, not flagging a bug. Suppressed
+        # deliberately rather than left as an unexplained warning in the log.
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings("ignore", message="Mean of empty slice")
+            _soil_comp = _np.nanmean(_np.stack(_soil_layers), axis=0)
         _zone_min_soil = round(float(_np.nanpercentile(_soil_comp, 25)), 4)
+
+        # ── 4b. Composite zone suitability → ZONE_MIN_SUITABILITY ──
+        # Combines soil + rainfall + slope with ZONE_SUITABILITY_WEIGHTS,
+        # the same weighting used for per-seed placement reward, so the
+        # zone-level abort/selection threshold is ecologically consistent
+        # with per-cell scoring rather than being soil-only.
+        _rain_mean_map = _np.nanmean(_rain_norm, axis=0)
+        _slope_pen_map = _np.clip(_slope_deg / max(_max_slope, 1e-6), 0.0, 1.0)
+        _w = ZONE_SUITABILITY_WEIGHTS
+        _suit_map = (
+            _w["soil"] * _soil_comp
+            + _w["rain"] * _rain_mean_map
+            - _w["slope"] * _slope_pen_map
+        ) / (_w["soil"] + _w["rain"] + _w["slope"])
+        _suit_map = _np.clip(_suit_map, 0.0, 1.0)
+        _zone_min_suitability = round(float(_np.nanpercentile(_suit_map, 25)), 4)
 
         # ── 5. Species → from Excel dataset ───────────────────────
         _species = _load_species_from_dataset(_gmax)
@@ -303,6 +358,7 @@ def _derive_from_data():
             "RAINFALL_SUNNY_THRESH": _sunny_thresh,
             "ZONE_MIN_RAIN":         _zone_min_rain,
             "ZONE_MIN_SOIL":         _zone_min_soil,
+            "ZONE_MIN_SUITABILITY":  _zone_min_suitability,
             "SPECIES":               _species,
         }
 
@@ -318,6 +374,7 @@ def _derive_from_data():
             "RAINFALL_SUNNY_THRESH": 0.266,
             "ZONE_MIN_RAIN":         0.2327,
             "ZONE_MIN_SOIL":         0.358,
+            "ZONE_MIN_SUITABILITY":  0.400,
             "SPECIES": {
                 0: {"name": "Eucalyptus globulus",       "common": "Inturusu",
                     "germ_steps": 8,  "mature_steps": 60,  "rain_min": 0.0850},
@@ -347,6 +404,7 @@ GLOBAL_MAX_MONTHLY_MM = _DERIVED["GLOBAL_MAX_MONTHLY_MM"]
 RAINFALL_SUNNY_THRESH = _DERIVED["RAINFALL_SUNNY_THRESH"]
 ZONE_MIN_RAIN         = _DERIVED["ZONE_MIN_RAIN"]
 ZONE_MIN_SOIL         = _DERIVED["ZONE_MIN_SOIL"]
+ZONE_MIN_SUITABILITY  = _DERIVED["ZONE_MIN_SUITABILITY"]
 SPECIES               = _DERIVED["SPECIES"]
 
 N_SPECIES = len(SPECIES)
@@ -390,10 +448,26 @@ STATE_LANDING    = 5
 STATE_OBSTACLE   = 6
 
 # ── Episode ───────────────────────────────────────────────────────
-MAX_STEPS           = 1000
-INITIAL_SEEDS       = 500
+# Both raised together, deliberately. INITIAL_SEEDS is doubled to
+# directly raise the achievable ceiling on pct_suitable_seeded (the
+# ceiling is seed_budget / suitable_cells_in_zone, so doubling seeds
+# roughly doubles the ceiling). MAX_STEPS is raised alongside it so the
+# step cap doesn't quietly become the new binding constraint instead --
+# episodes were already reaching 400-460 steps on the old 500-seed
+# budget, so doubling seeds without more time risked the drone simply
+# running out of steps before using the extra seeds, which would measure
+# a new time constraint rather than the seed-budget effect this change
+# is meant to isolate.
+MAX_STEPS           = 1800
+INITIAL_SEEDS       = 1000
 MONITORING_INTERVAL = 10
-MIN_SEED_SPACING    = 3
+# Raised from 3: that only prevented literal stacking in a 120x120 zone,
+# doing little to push toward genuine zone-wide spread. 5 cells still
+# leaves ample room for the full 1000-seed budget (thousands of suitable
+# cells per zone), while meaningfully widening the neighbourhood
+# w_spacing's now-larger penalty (configs/config.py REWARD) actually
+# covers.
+MIN_SEED_SPACING    = 5
 
 # ── Energy system ─────────────────────────────────────────────────
 BATTERY_MAX           = 1.0
@@ -414,13 +488,28 @@ ZONE_MAX_SLOPE_PCT = 0.70    # abort if >70% of zone is no-plant
 ZONE_MAX_COVERED   = 0.80    # abort if >80% already seeded
 
 # ── Rainfall seasons ──────────────────────────────────────────────
+# Previously only March/April/May, repeated across 2021 and 2022 -- the
+# same season type seen twice, never Rwanda's short rains (Oct-Dec) or
+# either dry season. The originally planned fix (fetching the rest of
+# 2021) was superseded once the real files actually landed on disk: the
+# real dataset now has a full real calendar year of 2024 instead, plus
+# the original 2021/2022 March-May files still present alongside it (not
+# referenced here, but still picked up by the glob-based threshold
+# derivation above -- see CHANGES_AND_VALIDATION.md for that tradeoff).
+# WeatherSystem now cycles through a genuine full year via 2024.
 RAINFALL_FILES = [
-    "chirps-v2.0.2021.03.tif",
-    "chirps-v2.0.2021.04.tif",
-    "chirps-v2.0.2021.05.tif",
-    "chirps-v2.0.2022.03.tif",
-    "chirps-v2.0.2022.04.tif",
-    "chirps-v2.0.2022.05.tif",
+    "chirps-v2.0.2024.01.tif",
+    "chirps-v2.0.2024.02.tif",
+    "chirps-v2.0.2024.03.tif",
+    "chirps-v2.0.2024.04.tif",
+    "chirps-v2.0.2024.05.tif",
+    "chirps-v2.0.2024.06.tif",
+    "chirps-v2.0.2024.07.tif",
+    "chirps-v2.0.2024.08.tif",
+    "chirps-v2.0.2024.09.tif",
+    "chirps-v2.0.2024.10.tif",
+    "chirps-v2.0.2024.11.tif",
+    "chirps-v2.0.2024.12.tif",
 ]
 N_SEASONS = len(RAINFALL_FILES)
 
@@ -485,18 +574,73 @@ EVAL_ZONE_IDS  = [z[0] for z in ZONE_DEFINITIONS if z[5] == "eval"]
 
 # ── Reward weights ────────────────────────────────────────────────
 REWARD = {
-    "w_soil":          3.0,
-    "w_rain":          2.0,
-    "w_slope":         1.0,
-    "w_spacing":       0.8,
+    "w_soil":          ZONE_SUITABILITY_WEIGHTS["soil"],
+    "w_rain":          ZONE_SUITABILITY_WEIGHTS["rain"],
+    "w_slope":         ZONE_SUITABILITY_WEIGHTS["slope"],
+    # Reward audit finding: w_soil + w_rain + w_suitable_bonus can total
+    # roughly 9.0 for a genuinely good cell (up to 3.0 + 2.0 + 4.0), all
+    # computed purely from that cell's static quality with zero decay for
+    # repeat visits. w_spacing was the only broad, radius-based counter-
+    # force (MIN_SEED_SPACING covers a real neighbourhood, not just an
+    # exact-cell match), but at 0.8 it was nowhere near competitive -- a
+    # policy camping on one known-good cell still netted roughly +6 to +7
+    # reward per repeat visit after every existing penalty. This is the
+    # real, structural reason the redundant-placement nudge added
+    # alongside w_new_coverage_bonus (0.5) barely moved seeding efficiency
+    # across two full runs: it was never close to the right scale to
+    # compete with what it was actually up against. Raised to be a
+    # genuinely competitive fraction of the dominant placement reward,
+    # not a token tax on it.
+    "w_spacing":       3.5,
     "w_protected":    10.0,
     "w_disturbance":   0.6,
     "w_germ":          4.0,
     "w_diversity":     0.5,
     "w_reseed":        3.0,
+    # w_reseed_shaping was removed here. It rewarded reducing distance to a
+    # reseed target every step, meant to teach the policy to navigate there.
+    # Navigation is now scripted (env/rwanda_env.py), so that job is
+    # already done -- but the reward kept paying out in full on every
+    # guaranteed-success approach, turning reseeding into an unusually
+    # reliable, repeatable reward loop. Real data showed the cost: reseed
+    # outcomes went from 0 to over 5,800 across a run, reward rose to among
+    # the best all session, and pct_suitable_seeded dropped 6 to 9x at the
+    # same time -- consistent with the policy spending its limited seed
+    # budget cycling back to known targets instead of covering new ground.
+    # w_reseed alone still rewards actually completing a correction once;
+    # it no longer also pays for a walk that isn't being learned anymore.
+    # Direct bonus for clearing the exact discrete threshold pct_suitable_seeded
+    # measures (rain >= species.rain_min AND soil >= ZONE_MIN_SOIL AND not
+    # no-plant/protected). Before this, the placement reward was a smooth
+    # soil+rain-slope score with no term tied to that specific threshold --
+    # a policy could earn decent reward from "pretty good" cells that never
+    # actually cleared the bar the evaluation metric checks. This closes
+    # that gap between what's trained and what's measured. Scaled comparable
+    # to w_germ (4.0), not disproportionate to everything else the way
+    # bad_abort used to be (see below).
+    "w_suitable_bonus": 4.0,
+    # Secondary to w_spacing above, which is now the primary anti-clustering
+    # force and already covers this exact-cell case (distance 0 is always
+    # within MIN_SEED_SPACING). This pair adds a smaller, additional signal
+    # specifically for placing on a cell already seeded before, distinct
+    # from merely placing too close to one -- both still skipped entirely
+    # for a legitimate reseed, since revisiting a known failure is
+    # deliberate correction, not wasteful redundancy (see env/rwanda_env.py).
+    "w_new_coverage_bonus":  0.5,   # placing on a cell not seeded before
+    "w_redundant_penalty":  -0.5,   # placing on a cell already seeded
     "step_penalty":    0.4,
     "battery_save":    1.0,
-    "bad_abort":      -200.0,
+    # Was -200.0 -- 20-2000x larger than every other weight in this dict
+    # (all in the 0.1-10 range). A single bad abort could erase the
+    # equivalent of ~50 well-placed suitable seeds, which likely made the
+    # policy extremely reluctant to ever abort, even on genuinely bad
+    # zones where aborting is the correct call (this is the same abort
+    # decision validated as real, learned behaviour in CHANGES section 1 --
+    # a reward this lopsided risks the policy never actually using it).
+    # Rescaled to be clearly the worst single-event penalty in the reward
+    # function (bigger than w_protected=10, the next largest), without
+    # being disproportionate enough to suppress the action outright.
+    "bad_abort":       -20.0,
     "battery_empty":  -5.0,
     "obstacle_clear":  0.5,
     "obstacle_hit":   -3.0,
@@ -513,10 +657,11 @@ N_EVAL_EPISODES = 50
 DISCOUNT_GAMMA  = 0.99
 
 # ── Evaluation metrics ────────────────────────────────────────────
-PRIMARY_METRIC     = "pct_suitable_seeded"
-TARGET_IMPROVEMENT = 0.20
+PRIMARY_METRIC = "pct_suitable_seeded"
 EVAL_METRICS = [
     "pct_suitable_seeded",
+    "seeding_ceiling",
+    "seeding_efficiency",
     "mean_soil_score",
     "species_entropy",
     "spacing_violations",

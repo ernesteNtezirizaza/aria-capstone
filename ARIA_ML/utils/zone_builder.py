@@ -79,6 +79,8 @@ def run():
             "split": split, "col": col, "row": row,
             "bounds": get_bounds(col, row), "array_index": idx,
             "mean_soil": float(tp[:,:,2].mean()),
+            "mean_slope": float(tp[:,:,1].mean()),
+            "mean_rain": float(rp.mean()),
             "no_plant_pct": float(np_p.mean() * 100),
             "mean_dist": float(dp.mean()),
         })
@@ -93,7 +95,8 @@ def run():
             ei += 1
 
         print(f"  Z{zid:02d} [{split:5s}] {name:<32} "
-              f"soil={tp[:,:,2].mean():.2f} dist={dp.mean():.2f}")
+              f"soil={tp[:,:,2].mean():.2f} slope={tp[:,:,1].mean():.2f} "
+              f"rain={rp.mean():.2f} dist={dp.mean():.2f}")
 
     # Save
     for prefix, tl, dl, ol, rl, nl in [
