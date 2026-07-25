@@ -13,7 +13,6 @@ namespace ARIA.Core
     public static class DemoConditions
     {
         public static WeatherMode WeatherMode = WeatherMode.RealData;
-        public static bool ObstacleOverlayEnabled = false;
         public static bool AnimalDisturbanceEnabled = false;
 
         public static float GetEffectiveRainfall(float realRainfall, int timestep)
@@ -40,43 +39,15 @@ namespace ARIA.Core
             }
         }
 
-        public static void ApplyObstacleOverlay(ZoneData zone, int seed)
-        {
-            // Previously a complete no-op -- confirmed by direct inspection,
-            // toggling this on in the demo changed nothing about the real
-            // obstacle grid the policy actually observes. Seeds a modest,
-            // reproducible-per-zone set of obstacles (same convention as
-            // real, static obstacle clusters (same convention as
-            // AerialObstacleVisualizer's terrain-fixed markers: 0.95f, safely above
-            // OBSTACLE_THRESHOLD) onto real plantable ground, so enabling
-            // this toggle has a genuine, visible effect tied to the same
-            // grid the policy's obstacle_map observation reads from.
-            if (zone == null) return;
-            var rng = new System.Random(seed);
-            int size = zone.Size;
-            int count = Mathf.Max(1, size / 12); // scales modestly with zone size
-
-            int placed = 0;
-            int attempts = 0;
-            int maxAttempts = count * 20;
-            while (placed < count && attempts < maxAttempts)
-            {
-                attempts++;
-                int x = rng.Next(0, size);
-                int y = rng.Next(0, size);
-                if (zone.NoPlant[y, x]) continue;
-                zone.ObsGrid[y, x] = 0.95f;
-                placed++;
-            }
-        }
-        
-        public static void ClearObstacles(ZoneData zone)
-        {
-            if (zone == null) return;
-            int size = zone.Size;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                    zone.ObsGrid[y, x] = 0f;
-        }
+        // ApplyObstacleOverlay()/ClearObstacles() used to exist here, wired to a demo
+        // "Obstacles" toggle. Off wiped the real, terrain-derived ObsGrid (loaded from
+        // real slope/turbulence data) to all-zero; On replaced it with a handful of
+        // random synthetic hazards and forced blocking regardless of altitude, which
+        // env/rwanda_env.py's step() never does -- it blocks unconditionally on real
+        // hazards whenever altitude < 0.5, with no toggle at all. So the demo control
+        // was never showing the real system either way: Off showed an empty field
+        // that doesn't exist during training, On showed a fake field with fake rules.
+        // Real per-cell hazards, loaded once from the zone JSON, are simply never
+        // touched now -- see ActionDispatcher.Step()'s obstacle-blocking logic.
     }
 }

@@ -181,7 +181,6 @@ namespace ARIA.Drone
                 yield return RealZoneLoader.LoadAsync(fallbackZoneFileName, (zone, meta) =>
                 {
                     _currentZoneData = zone;
-                    DemoConditions.ApplyObstacleOverlay(_currentZoneData, 0);
                     if (zone == null)
                     {
                         Debug.LogError("[DroneController] Could not load real zone data " +
@@ -208,7 +207,6 @@ namespace ARIA.Drone
                 }
 
                 _currentZoneData = zone;
-                DemoConditions.ApplyObstacleOverlay(_currentZoneData, index);
                 CurrentZoneMeta = meta;
                 CurrentZoneIndex = index;
                 _switchingZone = false;

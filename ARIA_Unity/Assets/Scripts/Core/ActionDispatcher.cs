@@ -109,10 +109,15 @@ namespace ARIA.Core
                 int newX = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 int newY = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
+                // Matches env/rwanda_env.py's step() exactly: obstacles are real, static
+                // terrain features (from compute_obstacle() in preprocess.py) that always
+                // block low-altitude flight into them, unconditionally -- not something a
+                // demo toggle turns on. There used to be a "Obstacles" button that swapped
+                // in a handful of synthetic random obstacles and only enforced blocking
+                // while it was on; the real per-cell hazard map now applies every step,
+                // exactly like the trained policy actually experienced it.
                 bool obstacleAtDestination = s.Zone.ObsGrid[newY, newX] > ARIAConstants.OBSTACLE_THRESHOLD;
-                bool altitudeMattersHere = !DemoConditions.ObstacleOverlayEnabled;
-                bool blocked = obstacleAtDestination &&
-                    (!altitudeMattersHere || s.Altitude < ARIAConstants.OBSTACLE_SAFE_ALTITUDE);
+                bool blocked = obstacleAtDestination && s.Altitude < ARIAConstants.OBSTACLE_SAFE_ALTITUDE;
 
                 bool wasTransitHop = s.DroneState == ARIAConstants.STATE_NAVIGATING;
 
@@ -121,36 +126,33 @@ namespace ARIA.Core
                     result.ObstacleHit = true;
                     s.DroneState = ARIAConstants.STATE_OBSTACLE;
 
-                    if (DemoConditions.ObstacleOverlayEnabled)
+                    int cwIdx  = FindDirectionIndex(dx, -dy);   // 90 deg clockwise
+                    int ccwIdx = FindDirectionIndex(-dx, dy);   // 90 deg counter-clockwise
+                    int revIdx = FindDirectionIndex(-dy, -dx);  // reverse, tried last
+
+                    Span<int> tryOrder = stackalloc int[8];
+                    int n = 0;
+                    if (cwIdx  >= 0) tryOrder[n++] = cwIdx;
+                    if (ccwIdx >= 0) tryOrder[n++] = ccwIdx;
+                    for (int i = 0; i < ARIAConstants.DIRECTIONS.Length; i++)
+                        if (i != cwIdx && i != ccwIdx && i != revIdx) tryOrder[n++] = i;
+                    if (revIdx >= 0) tryOrder[n++] = revIdx;
+
+                    for (int k = 0; k < n; k++)
                     {
-                        int cwIdx  = FindDirectionIndex(dx, -dy);   // 90 deg clockwise
-                        int ccwIdx = FindDirectionIndex(-dx, dy);   // 90 deg counter-clockwise
-                        int revIdx = FindDirectionIndex(-dy, -dx);  // reverse, tried last
-
-                        Span<int> tryOrder = stackalloc int[8];
-                        int n = 0;
-                        if (cwIdx  >= 0) tryOrder[n++] = cwIdx;
-                        if (ccwIdx >= 0) tryOrder[n++] = ccwIdx;
-                        for (int i = 0; i < ARIAConstants.DIRECTIONS.Length; i++)
-                            if (i != cwIdx && i != ccwIdx && i != revIdx) tryOrder[n++] = i;
-                        if (revIdx >= 0) tryOrder[n++] = revIdx;
-
-                        for (int k = 0; k < n; k++)
+                        var (ty, tx) = ARIAConstants.DIRECTIONS[tryOrder[k]];
+                        int altX = Mathf.Clamp(s.X + tx, 0, ARIAConstants.ZONE_SIZE - 1);
+                        int altY = Mathf.Clamp(s.Y + ty, 0, ARIAConstants.ZONE_SIZE - 1);
+                        bool altBlocked = s.Zone.ObsGrid[altY, altX] > ARIAConstants.OBSTACLE_THRESHOLD;
+                        if (!altBlocked && (altX != s.X || altY != s.Y))
                         {
-                            var (ty, tx) = ARIAConstants.DIRECTIONS[tryOrder[k]];
-                            int altX = Mathf.Clamp(s.X + tx, 0, ARIAConstants.ZONE_SIZE - 1);
-                            int altY = Mathf.Clamp(s.Y + ty, 0, ARIAConstants.ZONE_SIZE - 1);
-                            bool altBlocked = s.Zone.ObsGrid[altY, altX] > ARIAConstants.OBSTACLE_THRESHOLD;
-                            if (!altBlocked && (altX != s.X || altY != s.Y))
-                            {
-                                s.X = altX;
-                                s.Y = altY;
-                                result.ObstacleCleared = true;
-                                s.DroneState = wasTransitHop
-                                    ? ARIAConstants.STATE_NAVIGATING
-                                    : ARIAConstants.STATE_SEEDING;
-                                break;
-                            }
+                            s.X = altX;
+                            s.Y = altY;
+                            result.ObstacleCleared = true;
+                            s.DroneState = wasTransitHop
+                                ? ARIAConstants.STATE_NAVIGATING
+                                : ARIAConstants.STATE_SEEDING;
+                            break;
                         }
                     }
                 }

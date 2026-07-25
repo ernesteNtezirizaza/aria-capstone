@@ -35,7 +35,7 @@ OBS_SPEC = [
     ("lifecycle_map",    (ZONE_SIZE, ZONE_SIZE, 1),               torch.float32),
     ("disturbance_map",  (ZONE_SIZE, ZONE_SIZE, 1),               torch.float32),
     ("obstacle_map",     (ZONE_SIZE, ZONE_SIZE, 1),               torch.float32),
-    ("mission_vector",   (8,),                                    torch.float32),
+    ("mission_vector",   (14,),                                   torch.float32),
     ("terrain_stats",    (6,),                                    torch.float32),
 ]
 

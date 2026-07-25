@@ -37,7 +37,7 @@ namespace ARIA.Drone
             if (buildCamera) BuildCamera(droneObj);
             BuildRainEffect(droneObj);
             BuildCoverIndicator(droneObj);
-            if (buildHud)    BuildHud(droneObj, obstacleVisualizer);
+            if (buildHud)    BuildHud(droneObj);
         }
 
         private void BuildCoverIndicator(GameObject droneObj)
@@ -170,7 +170,7 @@ namespace ARIA.Drone
                 "If you don't see this exact line in the Console, BuildCamera() didn't run.");
         }
 
-        private void BuildHud(GameObject droneObj, AerialObstacleVisualizer obstacleVisualizer)
+        private void BuildHud(GameObject droneObj)
         {
             if (FindFirstObjectByType<EventSystem>() == null)
             {
@@ -189,7 +189,6 @@ namespace ARIA.Drone
             canvasObj.AddComponent<GraphicRaycaster>();
 
             var hud = canvasObj.AddComponent<DroneHUD>();
-            hud.obstacleVisualizer = obstacleVisualizer;
             hud.Bind(droneObj.GetComponent<DroneController>());
         }
     }

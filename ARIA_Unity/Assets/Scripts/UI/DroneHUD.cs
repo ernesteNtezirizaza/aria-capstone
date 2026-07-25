@@ -10,18 +10,14 @@ namespace ARIA.UI
         [Header("Source")]
         public DroneController drone;
 
-        [Tooltip("Assigned by SceneBootstrapper -- lets the Obstacles button refresh " +
-                 "floating markers immediately on click, not just at episode boundaries.")]
-        public AerialObstacleVisualizer obstacleVisualizer;
-
         private Text _batteryText;
         private Text _coverText;
         private Text _seedsText;
         private Text _queuedText;
         private Text _suitabilityText;
 
-        private Text _weatherButtonLabel, _obstacleButtonLabel, _animalButtonLabel, _zoneButtonLabel;
-        private Image _weatherButtonImg, _obstacleButtonImg, _animalButtonImg;
+        private Text _weatherButtonLabel, _animalButtonLabel, _zoneButtonLabel;
+        private Image _weatherButtonImg, _animalButtonImg;
 
         private GameObject _restartBar;
         private Button _restartButton;
@@ -111,7 +107,7 @@ namespace ARIA.UI
         private void BuildDemoControls()
         {
             var panel = MakePanel(transform, new Vector2(1, 1), new Vector2(1, 1),
-                new Vector2(-16, -16), new Vector2(260, 236), new Color(0.1f, 0.15f, 0.1f, 0.98f));
+                new Vector2(-16, -16), new Vector2(260, 188), new Color(0.1f, 0.15f, 0.1f, 0.98f));
 
             var titleText = MakeText(panel, "DEMO CONTROLS", 16, TextAnchor.UpperCenter,
                 new Vector2(0, -12), new Vector2(0, -12));
@@ -127,17 +123,13 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             weatherBtn.onClick.AddListener(CycleWeatherMode);
 
-            // Obstacle toggle -- ClearObstacles() resets to real data when turned off.
-            var obstacleBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(12, -88), new Vector2(-24, 40), new Color(0.25f, 0.15f, 0.15f, 1f));
-            var obstacleBtn = obstacleBtnGO.AddComponent<Button>();
-            _obstacleButtonImg = obstacleBtnGO.GetComponent<Image>();
-            _obstacleButtonLabel = MakeText(obstacleBtnGO, "Obstacles: Off", 14, TextAnchor.MiddleCenter,
-                new Vector2(6, 0), new Vector2(-6, 0));
-            obstacleBtn.onClick.AddListener(ToggleObstacles);
+            // No more "Obstacles" toggle here -- real per-cell hazards are always
+            // active and always visualised now (see ActionDispatcher.Step() and
+            // AerialObstacleVisualizer), matching how the trained policy actually
+            // experienced them, not something a demo button turns on.
 
             var animalBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(12, -136), new Vector2(-24, 40), new Color(0.2f, 0.15f, 0.1f, 1f));
+                new Vector2(12, -88), new Vector2(-24, 40), new Color(0.2f, 0.15f, 0.1f, 1f));
             var animalBtn = animalBtnGO.AddComponent<Button>();
             _animalButtonImg = animalBtnGO.GetComponent<Image>();
             _animalButtonLabel = MakeText(animalBtnGO, "Animal Disturbance: Off", 14, TextAnchor.MiddleCenter,
@@ -146,7 +138,7 @@ namespace ARIA.UI
 
             // Zone button -- cycles through every real zone in the manifest.
             var zoneBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(12, -184), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
+                new Vector2(12, -136), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
             var zoneBtn = zoneBtnGO.AddComponent<Button>();
             _zoneButtonLabel = MakeText(zoneBtnGO, "Zone: --", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
@@ -194,17 +186,6 @@ namespace ARIA.UI
             RefreshDemoControlLabels();
         }
 
-        private void ToggleObstacles()
-        {
-            DemoConditions.ObstacleOverlayEnabled = !DemoConditions.ObstacleOverlayEnabled;
-            if (!DemoConditions.ObstacleOverlayEnabled && drone != null && drone.State != null)
-            {
-                DemoConditions.ClearObstacles(drone.State.Zone);
-            }
-            if (obstacleVisualizer != null) obstacleVisualizer.RefreshMarkers();
-            RefreshDemoControlLabels();
-        }
-
         private void ToggleAnimalDisturbance()
         {
             DemoConditions.AnimalDisturbanceEnabled = !DemoConditions.AnimalDisturbanceEnabled;
@@ -231,12 +212,6 @@ namespace ARIA.UI
             _weatherButtonImg.color = DemoConditions.WeatherMode == WeatherMode.RealData
                 ? new Color(0.2f, 0.2f, 0.15f, 0.95f)
                 : new Color(0.5f, 0.4f, 0.05f, 0.95f);
-
-            _obstacleButtonLabel.text = DemoConditions.ObstacleOverlayEnabled
-                ? "Obstacles: On" : "Obstacles: Off";
-            _obstacleButtonImg.color = DemoConditions.ObstacleOverlayEnabled
-                ? new Color(0.6f, 0.15f, 0.1f, 0.95f)
-                : new Color(0.2f, 0.15f, 0.15f, 0.95f);
 
             _animalButtonLabel.text = DemoConditions.AnimalDisturbanceEnabled
                 ? "Animal Disturbance: On" : "Animal Disturbance: Off";
@@ -291,11 +266,6 @@ namespace ARIA.UI
         private void HandleEpisodeStarted(DroneController d)
         {
             if (_restartBar != null) _restartBar.SetActive(false);
-
-            if (DemoConditions.ObstacleOverlayEnabled && d.State != null)
-            {
-                DemoConditions.ApplyObstacleOverlay(d.State.Zone, d.CurrentZoneIndex);
-            }
 
             RefreshDemoControlLabels(); // picks up the new zone name/index once a switch completes
         }

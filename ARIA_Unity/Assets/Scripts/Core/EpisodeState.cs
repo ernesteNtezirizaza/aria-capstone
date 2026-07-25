@@ -14,7 +14,7 @@ namespace ARIA.Core
         public float[] LifecycleMap;    // [ZONE_SIZE * ZONE_SIZE * 1]
         public float[] DisturbanceMap;  // [ZONE_SIZE * ZONE_SIZE * 1]
         public float[] ObstacleMap;     // [ZONE_SIZE * ZONE_SIZE * 1]
-        public float[] MissionVector;   // [11] -- was [8], added nearest-reseed-target direction/distance
+        public float[] MissionVector;   // [14] -- reseed-target + nearest-unseeded-suitable-cell direction/distance
         public float[] TerrainStats;    // [6]
     }
 
@@ -44,6 +44,14 @@ namespace ARIA.Core
         public Dictionary<int, int> SpeciesCounts;
         public HashSet<(int y, int x)> ReseedingTargets;
         public Dictionary<(int y, int x), int> ReseedSpeciesMap; // recommended species per reseed target
+
+        // Precomputed once per episode (terrain doesn't change mid-episode): a cell
+        // that's genuinely worth seeding, matching env/rwanda_env.py's suitable_mask.
+        // Python's version uses the max rainfall across all 6 seasons ("best month");
+        // Unity's zone export only carries a single rainfall snapshot per cell, not a
+        // seasonal stack, so this uses that one value instead. Same shape of signal,
+        // slightly less precise -- a real gap, not a rounding difference.
+        private bool[,] _suitableMask;
 
         public ZoneData        Zone;
         public GrowthEngine    Growth;
@@ -90,9 +98,21 @@ namespace ARIA.Core
 
             CoveredPlantableCells = 0;
             PlantableCells = 0;
+            float minRainAcrossSpecies = ARIAConstants.SPECIES_RAIN_MIN[0];
+            for (int i = 1; i < ARIAConstants.SPECIES_RAIN_MIN.Length; i++)
+                minRainAcrossSpecies = Mathf.Min(minRainAcrossSpecies, ARIAConstants.SPECIES_RAIN_MIN[i]);
+            _suitableMask = new bool[ARIAConstants.ZONE_SIZE, ARIAConstants.ZONE_SIZE];
             for (int y = 0; y < ARIAConstants.ZONE_SIZE; y++)
+            {
                 for (int x = 0; x < ARIAConstants.ZONE_SIZE; x++)
+                {
                     if (!Zone.NoPlant[y, x]) PlantableCells++;
+                    _suitableMask[y, x] = !Zone.NoPlant[y, x]
+                        && Zone.DistGrid[y, x] < 0.9f
+                        && Zone.Terrain[y, x, 2] >= ARIAConstants.ZONE_MIN_SOIL
+                        && Zone.Terrain[y, x, 3] >= minRainAcrossSpecies;
+                }
+            }
 
             Growth.Reset();
             Disturbance.Reset();
@@ -228,6 +248,33 @@ namespace ARIA.Core
             float reseedDx   = Mathf.Clamp01((relDx + 1f) / 2f);   // 0.5 = same column as drone
             float reseedDist = Mathf.Clamp01(manhattanDist);
 
+            // Same idea applied to genuine coverage: direction/distance to the
+            // nearest cell that's both suitable (_suitableMask) and not yet
+            // seeded. Same reasoning as the reseed offset above -- without a
+            // direct signal, the policy can only find unexplored suitable
+            // ground by chance CNN pattern-matching, not by steering to it.
+            float covRelDy = 0f, covRelDx = 0f, covManhattanDist = 1f;
+            int bestCovDist = int.MaxValue;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    if (!_suitableMask[y, x] || CoverageMap[y, x] != 0f) continue;
+                    int d = Mathf.Abs(y - Y) + Mathf.Abs(x - X);
+                    if (d < bestCovDist)
+                    {
+                        bestCovDist = d;
+                        covRelDy = (float)(y - Y) / ARIAConstants.ZONE_SIZE;
+                        covRelDx = (float)(x - X) / ARIAConstants.ZONE_SIZE;
+                    }
+                }
+            }
+            if (bestCovDist != int.MaxValue)
+                covManhattanDist = (float)bestCovDist / (2f * ARIAConstants.ZONE_SIZE);
+            float coverageDy   = Mathf.Clamp01((covRelDy + 1f) / 2f);
+            float coverageDx   = Mathf.Clamp01((covRelDx + 1f) / 2f);
+            float coverageDist = Mathf.Clamp01(covManhattanDist);
+
             obs.MissionVector = new float[]
             {
                 Mathf.Clamp01(zoneScore),
@@ -239,6 +286,7 @@ namespace ARIA.Core
                 Mathf.Clamp01(MissionsCompleted / 10f),
                 Mathf.Clamp01(isReseed),
                 reseedDy, reseedDx, reseedDist,
+                coverageDy, coverageDx, coverageDist,
             };
 
             obs.TerrainStats = TerrainStats();

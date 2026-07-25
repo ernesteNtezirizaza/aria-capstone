@@ -62,10 +62,13 @@ namespace ARIA.Drone
         {
             ClearAllMarkers();
 
-            _active = drone != null && drone.State != null && DemoConditions.ObstacleOverlayEnabled;
+            // Real hazards are a static, always-present terrain feature (see
+            // ActionDispatcher.Step()), not something a demo button turns on --
+            // so the markers for them are always shown too, no toggle required.
+            _active = drone != null && drone.State != null;
             if (!_active)
             {
-                Debug.Log("[AerialObstacleVisualizer] Obstacles off or no active drone/State -- 0 hazards shown.");
+                Debug.Log("[AerialObstacleVisualizer] No active drone/State -- 0 hazards shown.");
                 return;
             }
 
@@ -80,7 +83,7 @@ namespace ARIA.Drone
                 placed++;
             }
 
-            Debug.Log($"[AerialObstacleVisualizer] Obstacles on -- {clusters.Count} real hazard region(s) found, " +
+            Debug.Log($"[AerialObstacleVisualizer] {clusters.Count} real hazard region(s) found, " +
                       $"{placed} marker(s) placed (static, matching the real obstacle grid the policy observes).");
         }
 
