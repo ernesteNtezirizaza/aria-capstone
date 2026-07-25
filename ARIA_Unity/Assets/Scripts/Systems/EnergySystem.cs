@@ -43,9 +43,12 @@ namespace ARIA.Systems
 
             if (sunny)
             {
+                // BATTERY_NET_DRAIN_SUNNY is already the net shortfall after solar offset,
+                // not an additional drain on top of it -- adding SolarInput here as well
+                // double-counts the offset and cancels the drain back out to +net.
                 SolarInput    = ARIAConstants.SOLAR_CHARGE_RATE;
                 DrainThisStep = ARIAConstants.BATTERY_NET_DRAIN_SUNNY;
-                Battery = Mathf.Clamp(Battery + SolarInput - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
+                Battery = Mathf.Clamp(Battery - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
             }
             else
             {
