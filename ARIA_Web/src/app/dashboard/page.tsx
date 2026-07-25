@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const episodes = await prisma.episode.findMany({
-    orderBy: { timestamp: 'desc' },
+    orderBy: { episode_id: 'desc' },
     take: 50,
     include: {
       zone: true,
@@ -36,10 +36,10 @@ export default async function DashboardPage() {
     include: { episode: { include: { zone: true } } }
   });
 
-  // Calculate average reward
-  const episodesWithReward = episodes.filter((e: any) => e.total_reward !== null);
-  const avgReward = episodesWithReward.length > 0
-    ? episodesWithReward.reduce((acc: number, curr: any) => acc + (curr.total_reward || 0), 0) / episodesWithReward.length
+  // Calculate average reseeding count
+  const episodesWithReseeding = episodes.filter((e: any) => e.reseeding_count !== null);
+  const avgReseedingCount = episodesWithReseeding.length > 0
+    ? episodesWithReseeding.reduce((acc: number, curr: any) => acc + (curr.reseeding_count || 0), 0) / episodesWithReseeding.length
     : 0;
 
   // Calculate average suitable seeded percentage
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         stats={{
           totalEpisodes,
           totalSeeds,
-          avgReward,
+          avgReseedingCount,
           avgSuitable
         }}
         seedMonitoring={{

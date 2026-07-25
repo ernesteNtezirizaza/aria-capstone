@@ -7,47 +7,28 @@ datasource db {
 }
 
 model Zone {
-  zone_id    Int       @id @default(autoincrement())
-  name       String
-  agro_zone  String
-  area_km2   Float
-  split_type String
-  episodes   Episode[]
+  zone_id   Int       @id @default(autoincrement())
+  name      String
+  agro_zone String
+  episodes  Episode[]
 }
 
 model Episode {
-  episode_id           Int      @id @default(autoincrement())
+  episode_id           Int     @id @default(autoincrement())
   zone_id              Int
-  zone                 Zone     @relation(fields: [zone_id], references: [zone_id])
-  agent_type           String
-  total_reward         Float?
+  zone                 Zone    @relation(fields: [zone_id], references: [zone_id])
   pct_suitable_seeded  Float?
-  mean_soil_score      Float?
-  species_entropy      Float?
   spacing_violations   Int?
   protected_area_seeds Int?
-  timestamp            DateTime @default(now())
-  n_seeds_placed       Int?
+  reseeding_count      Int?
   seeds                Seed[]
 }
 
 model Seed {
-  seed_id           Int      @id @default(autoincrement())
-  episode_id        Int
-  episode           Episode  @relation(fields: [episode_id], references: [episode_id])
-  x_coord           Int
-  y_coord           Int
-  species_id        Int
-  soil_score        Float?
-  rain_score        Float?
-  slope_score       Float?
-  is_suitable       Boolean?
-  in_protected_area Boolean?
-  // Seed-monitoring: lifecycle stage + failure info for the reseed pipeline.
-  stage             String?
-  fail_reason       String?
-  dropped_at_step   Int?      // simulation timestep the seed was dropped
-  failed_at_step    Int?      // simulation timestep the seed failed (if it did)
-  dropped_at        DateTime? // real wall-clock time the seed was dropped
-  failed_at         DateTime? // real wall-clock time the seed failed (if it did)
+  seed_id         Int     @id @default(autoincrement())
+  episode_id      Int
+  episode         Episode @relation(fields: [episode_id], references: [episode_id])
+  stage           String?
+  fail_reason     String?
+  dropped_at_step Int?
 }

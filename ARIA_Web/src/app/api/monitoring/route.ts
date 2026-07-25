@@ -20,8 +20,6 @@ export async function POST(request: Request) {
         data: {
           name: zone.name || "Default Zone",
           agro_zone: zone.agro_zone || "Unknown",
-          area_km2: zone.area_km2 || 100.0,
-          split_type: zone.split_type || "None"
         }
       });
     }
@@ -30,33 +28,15 @@ export async function POST(request: Request) {
     const dbEpisode = await prisma.episode.create({
       data: {
         zone_id: dbZone.zone_id,
-        agent_type: episode.agent_type || "Unknown",
-        total_reward: episode.total_reward,
         pct_suitable_seeded: episode.pct_suitable_seeded,
-        mean_soil_score: episode.mean_soil_score,
-        species_entropy: episode.species_entropy,
         spacing_violations: episode.spacing_violations,
         protected_area_seeds: episode.protected_area_seeds,
-        n_seeds_placed: episode.n_seeds_placed,
+        reseeding_count: episode.reseeding_count,
         seeds: {
           create: seeds.map((s: any) => ({
-            x_coord: s.x_coord,
-            y_coord: s.y_coord,
-            species_id: s.species_id,
-            soil_score: s.soil_score,
-            rain_score: s.rain_score,
-            slope_score: s.slope_score,
-            is_suitable: s.is_suitable,
-            in_protected_area: s.in_protected_area,
             stage: s.stage,
             fail_reason: s.fail_reason || null,
             dropped_at_step: s.dropped_at_step,
-            failed_at_step: s.failed_at_step >= 0 ? s.failed_at_step : null,
-            // Unity sends these as ISO 8601 strings (DateTime.UtcNow.ToString("o"));
-            // Prisma needs a real Date object, not the raw string, to write a
-            // DateTime column.
-            dropped_at: s.dropped_at ? new Date(s.dropped_at) : null,
-            failed_at: s.failed_at ? new Date(s.failed_at) : null,
           }))
         }
       }

@@ -18,9 +18,8 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
   // Format data for charts
   const chartData = [...episodes].reverse().map((ep, idx) => ({
     name: `Ep ${ep.episode_id}`,
-    reward: ep.total_reward || 0,
+    reseeding: ep.reseeding_count || 0,
     suitable: (ep.pct_suitable_seeded || 0) * 100, // convert to percentage
-    seeds: ep.n_seeds_placed || 0,
     violations: ep.spacing_violations || 0
   }));
 
@@ -60,11 +59,11 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
           icon={<Sprout className="w-5 h-5 text-emerald-500" />}
           trend="Across all zones"
         />
-        <StatCard 
-          title="Avg Model Reward" 
-          value={stats.avgReward.toFixed(2)} 
+        <StatCard
+          title="Avg Reseeding Count"
+          value={stats.avgReseedingCount.toFixed(2)}
           icon={<Target className="w-5 h-5 text-indigo-500" />}
-          trend="PPO Agent Performance"
+          trend="Reseed pipeline activity"
         />
         <StatCard 
           title="Avg Suitable %" 
@@ -76,17 +75,17 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-        {/* Reward Chart */}
+        {/* Reseeding Chart */}
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
             <Activity className="w-5 h-5 text-indigo-500" />
-            Total Reward over Time
+            Reseeding Count over Time
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="colorReward" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorReseeding" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                   </linearGradient>
@@ -94,11 +93,11 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px' }}
                   itemStyle={{ color: '#818cf8' }}
                 />
-                <Area type="monotone" dataKey="reward" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorReward)" />
+                <Area type="monotone" dataKey="reseeding" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorReseeding)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -188,10 +187,8 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                 <tr>
                   <th className="px-3 py-2 font-medium">Seed</th>
                   <th className="px-3 py-2 font-medium">Zone</th>
-                  <th className="px-3 py-2 font-medium">Cell</th>
                   <th className="px-3 py-2 font-medium">Reason</th>
-                  <th className="px-3 py-2 font-medium">Failed At</th>
-                  <th className="px-3 py-2 font-medium">Step</th>
+                  <th className="px-3 py-2 font-medium">Dropped At Step</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -199,16 +196,12 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                   <tr key={s.seed_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="px-3 py-2 font-medium">#{s.seed_id}</td>
                     <td className="px-3 py-2">{s.episode?.zone?.name || 'Unknown'}</td>
-                    <td className="px-3 py-2 font-mono text-xs">({s.x_coord}, {s.y_coord})</td>
                     <td className="px-3 py-2">
                       <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-medium">
                         {s.fail_reason || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-slate-500">
-                      {s.failed_at ? new Date(s.failed_at).toLocaleString() : 'N/A'}
-                    </td>
-                    <td className="px-3 py-2 text-slate-400 font-mono text-xs">{s.failed_at_step ?? 'N/A'}</td>
+                    <td className="px-3 py-2 text-slate-400 font-mono text-xs">{s.dropped_at_step ?? 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -232,9 +225,9 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
               <tr>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tl-lg">Episode ID</th>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Zone</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Agent Type</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Reward</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tr-lg">Time</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Suitable %</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Spacing Violations</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tr-lg">Reseeding Count</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -242,15 +235,9 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
                 <tr key={ep.episode_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium">#{ep.episode_id}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">{ep.zone?.name || 'Unknown'}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium">
-                      {ep.agent_type}
-                    </span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.total_reward?.toFixed(2) || 'N/A'}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500">
-                    {new Date(ep.timestamp).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })}
-                  </td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.pct_suitable_seeded != null ? `${(ep.pct_suitable_seeded * 100).toFixed(1)}%` : 'N/A'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.spacing_violations ?? 'N/A'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.reseeding_count ?? 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
