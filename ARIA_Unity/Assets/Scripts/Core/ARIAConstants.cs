@@ -37,7 +37,8 @@ namespace ARIA.Core
         public const float BATTERY_INIT          = 1.0f;
         public const float BATTERY_DRAIN_SUNNY   = 0.002f;   // per step in sun
         public const float BATTERY_DRAIN_RAIN    = 0.004f;   // per step in rain (2x drain)
-        public const float SOLAR_CHARGE_RATE     = 0.002f;   // per step when sunny
+        public const float SOLAR_CHARGE_RATE     = 0.002f;   // per step when sunny -- exactly offsets BATTERY_DRAIN_SUNNY
+        public const float BATTERY_NET_DRAIN_SUNNY = 0.0003f; // avionics/compute draw solar can't fully cover -- without this the battery reads a frozen 100% for the entire sunny majority of any demo, since solar exactly cancels the base drain above
         public const float BATTERY_RETURN_THRESH = 0.05f;    // return to base below this
         public const float BATTERY_CRITICAL      = 0.00f;    // emergency land below this
         public const int   RETURN_DESCENT_RANGE  = 8;         // start descending this many cells out from base

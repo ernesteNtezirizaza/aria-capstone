@@ -44,8 +44,8 @@ namespace ARIA.Systems
             if (sunny)
             {
                 SolarInput    = ARIAConstants.SOLAR_CHARGE_RATE;
-                DrainThisStep = 0f;
-                Battery = Mathf.Clamp(Battery + SolarInput, 0f, ARIAConstants.BATTERY_MAX);
+                DrainThisStep = ARIAConstants.BATTERY_NET_DRAIN_SUNNY;
+                Battery = Mathf.Clamp(Battery + SolarInput - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
             }
             else
             {

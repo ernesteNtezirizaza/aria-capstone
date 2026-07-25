@@ -6,7 +6,7 @@
       "name": "Congo-Nile Divide South",
       "agroZone": "Western Ridge",
       "split": "eval",
-      "meanSoil": 0.3574601113796234
+      "meanSoil": 0.21020935475826263
     },
     {
       "index": 1,
@@ -14,7 +14,7 @@
       "name": "Kivu Belt Southwest",
       "agroZone": "Kivu Belt",
       "split": "eval",
-      "meanSoil": 0.5266535878181458
+      "meanSoil": 0.45515304803848267
     },
     {
       "index": 2,
@@ -22,7 +22,7 @@
       "name": "Central Plateau East",
       "agroZone": "Central Plateau",
       "split": "eval",
-      "meanSoil": 0.5255632996559143
+      "meanSoil": 0.46300023794174194
     },
     {
       "index": 3,
@@ -30,7 +30,7 @@
       "name": "Northern Plateau East",
       "agroZone": "Northern Highlands",
       "split": "eval",
-      "meanSoil": 0.36450856924057007
+      "meanSoil": 0.4215376079082489
     },
     {
       "index": 4,
@@ -38,7 +38,7 @@
       "name": "Eastern Savanna South",
       "agroZone": "Eastern Savanna",
       "split": "eval",
-      "meanSoil": 0.5510424375534058
+      "meanSoil": 0.37944328784942627
     },
     {
       "index": 5,
@@ -46,7 +46,7 @@
       "name": "Southern Valley East",
       "agroZone": "Southern Valley",
       "split": "eval",
-      "meanSoil": 0.4812924563884735
+      "meanSoil": 0.17546693980693817
     },
     {
       "index": 6,
@@ -54,7 +54,7 @@
       "name": "Northwest Highlands",
       "agroZone": "Northern Highlands",
       "split": "train",
-      "meanSoil": 0.2539122402667999
+      "meanSoil": 0.5007031559944153
     },
     {
       "index": 7,
@@ -62,7 +62,7 @@
       "name": "Southern Valley West",
       "agroZone": "Southern Valley",
       "split": "train",
-      "meanSoil": 0.5440486073493958
+      "meanSoil": 0.18229153752326965
     },
     {
       "index": 8,
@@ -70,7 +70,7 @@
       "name": "South Kivu Belt",
       "agroZone": "Kivu Belt",
       "split": "train",
-      "meanSoil": 0.5542073845863342
+      "meanSoil": 0.3174736499786377
     }
   ]
 }

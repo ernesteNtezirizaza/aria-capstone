@@ -8,7 +8,9 @@ Single source of truth for the entire ARIA ML pipeline.
 import os
 
 # ── Paths ─────────────────────────────────────────────────────────
-ROOT_DIR        = "/kaggle/working/ARIA_ML"
+# Derived from this file's own location (configs/config.py -> ARIA_ML/) rather
+# than hardcoded, so the same config works locally and on Kaggle without editing.
+ROOT_DIR        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_RAW_DIR    = os.path.join(ROOT_DIR, "data", "raw")
 DATA_PROC_DIR   = os.path.join(ROOT_DIR, "data", "processed")
 ZONES_DIR       = os.path.join(ROOT_DIR, "data", "zones")
