@@ -191,6 +191,34 @@ namespace ARIA.Drone
                     _heightMap[y, x] = zone.Terrain[y, x, 0] * heightScale;
                 }
             }
+            // TEMP DIAGNOSTIC v2: even a dedicated Unlit material -- which
+            // mathematically cannot be affected by light, ambient, or
+            // shader choice -- still rendered washed-out pale yellow. That
+            // rules out the entire lighting pipeline, which was the target
+            // of all three previous fix attempts. This can now only mean
+            // either the colour DATA itself isn't what SampleCellColour is
+            // supposed to produce, or this code isn't actually the version
+            // running live. Logging both the raw zone data and the actual
+            // computed pixel values, plus a version canary, to find out
+            // which, instead of guessing a fifth time.
+            {
+                Color minC = pixels[0], maxC = pixels[0];
+                double sumR = 0, sumG = 0, sumB = 0;
+                foreach (var p in pixels)
+                {
+                    sumR += p.r; sumG += p.g; sumB += p.b;
+                    if (p.r + p.g + p.b < minC.r + minC.g + minC.b) minC = p;
+                    if (p.r + p.g + p.b > maxC.r + maxC.g + maxC.b) maxC = p;
+                }
+                int n = pixels.Length;
+                int sx = size / 2, sy = size / 2;
+                Debug.Log($"[TerrainDiag-v2] CANARY -- this build's RealTerrainRenderer IS running. " +
+                    $"zoneSize={size} avgPixel=({sumR / n:F3},{sumG / n:F3},{sumB / n:F3}) " +
+                    $"minPixel=({minC.r:F3},{minC.g:F3},{minC.b:F3}) maxPixel=({maxC.r:F3},{maxC.g:F3},{maxC.b:F3}) " +
+                    $"centre({sx},{sy}): soil={zone.Terrain[sy, sx, 2]:F3} rain={zone.Terrain[sy, sx, 3]:F3} " +
+                    $"slope={zone.Terrain[sy, sx, 1]:F3} elev={zone.Terrain[sy, sx, 0]:F3} " +
+                    $"noPlant={zone.NoPlant[sy, sx]} computedPixel={pixels[sy * size + sx]}");
+            }
             _texture.SetPixels(pixels);
             _texture.Apply(false);
 
