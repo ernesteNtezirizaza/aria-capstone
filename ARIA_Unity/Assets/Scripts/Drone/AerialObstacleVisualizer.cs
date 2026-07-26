@@ -38,7 +38,7 @@ namespace ARIA.Drone
                  "terrain and makes individual hazards impossible to pick out. The real hazard grid the " +
                  "policy navigates around is completely unaffected by this; it only limits what gets a " +
                  "visible marker, for legibility.")]
-        public int maxMarkers = 15;
+        public int maxMarkers = 5;
 
         [Tooltip("Optional: assign the imported 'Animated civilian Helicopter' prefab here to render " +
                  "hazards as this model (with its animation playing) instead of plain spheres. Left " +
@@ -55,8 +55,15 @@ namespace ARIA.Drone
                  "-- confirmed live that a rugged zone with hundreds of hazard clusters instantiating " +
                  "that many simultaneous animated meshes crashes the WebGL context. The largest " +
                  "clusters get the helicopter treatment; the rest still render as sphere markers, so " +
-                 "nothing is hidden, it's purely a cost control on the fancier visual.")]
-        public int maxHelicopterMarkers = 20;
+                 "nothing is hidden, it's purely a cost control on the fancier visual. Kept equal to " +
+                 "maxMarkers by default so every visible hazard is a helicopter, not a mix.")]
+        public int maxHelicopterMarkers = 5;
+
+        [Tooltip("Extra size multiplier on top of the normal cluster-based sizing, applied only to " +
+                 "helicopter markers -- with only maxHelicopterMarkers of them ever on screen at once " +
+                 "(default 5), each one should read as large and unmistakable rather than sized like " +
+                 "the sphere markers it replaced.")]
+        public float helicopterSizeBoost = 3.0f;
 
         private readonly List<GameObject> _markers = new List<GameObject>();
         private bool _active;
@@ -248,9 +255,13 @@ namespace ARIA.Drone
             // Imported model's own scale/orientation vary by asset -- normalise
             // against the same visualDiameter the sphere marker uses, so a
             // large hazard cluster still reads as visibly bigger than a small
-            // one, consistent with the marker sizing this replaces.
-            go.transform.position = new Vector3(worldX, groundY + markerLift + visualDiameter * 0.5f, worldZ);
-            go.transform.localScale = Vector3.one * visualDiameter * 0.15f;
+            // one, consistent with the marker sizing this replaced. Boosted
+            // well past that baseline (helicopterSizeBoost) since so few of
+            // these are ever on screen at once -- each one should be a
+            // clearly visible, big landmark, not a small prop in the distance.
+            float scale = visualDiameter * 0.15f * helicopterSizeBoost;
+            go.transform.position = new Vector3(worldX, groundY + markerLift + scale * 0.5f, worldZ);
+            go.transform.localScale = Vector3.one * scale;
 
             foreach (var col in go.GetComponentsInChildren<Collider>())
                 Destroy(col);
