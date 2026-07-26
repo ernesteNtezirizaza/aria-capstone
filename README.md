@@ -183,6 +183,9 @@ All testing below was performed directly against the **live production deploymen
 **Unattended Battery Drain**: captured 45 seconds into a completely untouched session (no clicks), showing the battery has genuinely moved off 100% under default weather with zero operator intervention:
 ![Battery draining untouched](docs/testing/screenshots/10-battery-draining-untouched.png)
 
+**Unattended ~13-Minute Run, Battery-Critical Path**: a separate fully untouched session (no clicks at all), left running under default weather; this one didn't finish its seed budget first -- battery reached the 5% critical floor at 12:45 with 425/500 seeds placed, terminating the episode immediately (the "Restart Mission" bar is Unity's shared end-of-episode UI for both outcomes; it doesn't distinguish which one fired). A genuinely different outcome from an earlier untouched run documented in this README's history, where the mission finished before the battery got critical -- both are real, and which one happens depends on how the policy's actual flight path plays out that run, exactly what the 9-zone `battery_empty_events` variance below already predicts rather than something staged for this screenshot:
+![Battery critical untouched](docs/testing/screenshots/11-battery-critical-untouched.png)
+
 **Solar & Battery, Forced Boundary Test**: "Force Sunny" holding the battery flat at 100% rather than draining (left as a regression check after this exact button was found and fixed mid-testing to still be silently draining the battery), versus "Force Rainy" driving the same fresh episode down to the 5% critical floor in under 75 seconds, triggering immediate termination with no scripted return flight:
 ![Battery stable under Force Sunny](docs/testing/screenshots/12-force-sunny-battery-stable.png)
 ![Battery critical under Force Rainy](docs/testing/screenshots/13-battery-critical-termination.png)
