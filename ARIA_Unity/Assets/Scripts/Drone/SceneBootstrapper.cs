@@ -169,6 +169,7 @@ namespace ARIA.Drone
             // fog. Pushing fogStartDistance/fogEndDistance further out
             // didn't fully solve it, so fog is off rather than tuned again.
             RenderSettings.fog = false;
+        }
 
         private void BuildCamera(GameObject droneObj)
         {
