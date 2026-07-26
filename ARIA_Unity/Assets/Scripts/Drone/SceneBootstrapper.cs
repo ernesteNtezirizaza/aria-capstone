@@ -129,22 +129,24 @@ namespace ARIA.Drone
             GameObject lightObj = new GameObject("Directional Light");
             var light = lightObj.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.25f;
-            light.color = new Color(1f, 0.96f, 0.88f); // warm sunlight, not flat white
+            // Confirmed live: 1.25 intensity + the trilight ambient below
+            // stacked past white on most terrain albedos (Standard shader
+            // is albedo * (direct*NdotL + ambient), and both terms were too
+            // hot at once) -- the whole zone washed out to a flat pale
+            // yellow, destroying the natural-earth-tone palette entirely.
+            // Toned down together rather than just one or the other.
+            light.intensity = 0.85f;
+            light.color = new Color(1f, 0.97f, 0.92f); // warm sunlight, not flat white
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.8f;
             lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
-            // Binds the procedural skybox's sun disk to this light and
-            // lifts ambient/fog out of flat defaults -- without this, the
-            // directional light casts no shadows at all (Unity's default
-            // for a freshly-added Light is LightShadows.None) and the sky
-            // has no real sense of atmosphere or depth.
+            // Binds the procedural skybox's sun disk to this light -- without
+            // this, the directional light casts no shadows at all (Unity's
+            // default for a freshly-added Light is LightShadows.None).
             RenderSettings.sun = light;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor    = new Color(0.55f, 0.62f, 0.70f);
-            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.42f, 0.35f);
-            RenderSettings.ambientGroundColor  = new Color(0.25f, 0.22f, 0.18f);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.30f, 0.32f, 0.35f);
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
