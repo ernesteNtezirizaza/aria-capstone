@@ -27,7 +27,16 @@ namespace ARIA.Core
             switch (WeatherMode)
             {
                 case WeatherMode.ForceSunny:
-                    return ARIAConstants.RAINFALL_SUNNY_THRESH - 0.08f;
+                    // Deliberately near-zero, not just "under the sunny
+                    // threshold": SOLAR_CHARGE_RATE only exactly offsets
+                    // BATTERY_DRAIN_SUNNY at rainfall == 0 (see
+                    // ARIAConstants), so a value still close to
+                    // RAINFALL_SUNNY_THRESH (as this used to be, THRESH -
+                    // 0.08 = 0.186) leaves solar income well below drain and
+                    // the battery keeps visibly falling even while this
+                    // button reads "Force Sunny" -- confirmed live during
+                    // testing (53% -> 39% over 15s under "Force Sunny").
+                    return 0f;
 
                 case WeatherMode.ForceRainy:
                     return ARIAConstants.RAINFALL_SUNNY_THRESH + 0.08f;
