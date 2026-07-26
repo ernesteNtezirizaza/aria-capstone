@@ -175,7 +175,7 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} ARIA. Adaptive Reforestation Intelligence Agent. All rights reserved.
           </div>
           <Link href="/privacy" className="text-slate-500 hover:text-slate-300 text-sm transition-colors underline underline-offset-4">
-            Privacy Policy &amp; Terms of Use
+            Privacy Policy
           </Link>
         </div>
       </footer>
