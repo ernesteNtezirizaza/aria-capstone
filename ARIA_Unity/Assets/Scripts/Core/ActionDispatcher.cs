@@ -241,14 +241,6 @@ namespace ARIA.Core
                 {
                     s.DroneState = ARIAConstants.STATE_LANDING;
                     s.MissionsCompleted++;
-
-                    var targets = s.Monitor.GetTopTargets(3);
-                    foreach (var t in targets)
-                    {
-                        s.ReseedingTargets.Add((t.Y, t.X));
-                        s.ReseedSpeciesMap[(t.Y, t.X)] = t.RecommendedSpecies;
-                    }
-
                     result.Landed = true;
 
                     if (s.MissionCompleteReturning)
@@ -288,6 +280,17 @@ namespace ARIA.Core
 
                 s.Monitor.IngestFailures(new System.Collections.Generic.List<FailedCell>(s.Growth.FailedCells));
                 s.Growth.FailedCells.Clear();
+
+                // Queue reseed targets continuously as failures come in, rather
+                // than only once per full return-to-base cycle. A cell already
+                // queued (not yet visited) simply gets its entry refreshed, not
+                // duplicated, since ReseedingTargets is a HashSet and
+                // ReseedSpeciesMap is keyed by (y, x). Mirrors rwanda_env.py.
+                foreach (var t in s.Monitor.GetTopTargets(3))
+                {
+                    s.ReseedingTargets.Add((t.Y, t.X));
+                    s.ReseedSpeciesMap[(t.Y, t.X)] = t.RecommendedSpecies;
+                }
             }
 
             s.Timestep++;

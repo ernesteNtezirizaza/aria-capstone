@@ -458,15 +458,13 @@ class RwandaReforestEnv(gym.Env):
                 self.drone_state = STATE_SEEDING
                 self.energy.recharge(0.5)
                 self.missions_completed += 1
-                targets = self.monitor.get_top_targets(3)
-                for t in targets:
-                    self.reseeding_targets[(t["y"], t["x"])] = t.get("recommended_species")
                 # Diagnostic: confirms the scripted return-to-base handoff
-                # itself fires, and whether the queue actually had entries
-                # waiting at this exact moment, before any outbound flight
-                # toward a target has even started.
+                # itself fires, and whether any reseed targets are waiting
+                # at this exact moment (queueing itself now happens
+                # continuously below, not only here -- see the monitoring
+                # step further down).
                 self.monitor.recommender.landings_completed += 1
-                if targets:
+                if self.reseeding_targets:
                     self.monitor.recommender.landings_with_targets += 1
                 info["landed"] = True
 
@@ -487,6 +485,13 @@ class RwandaReforestEnv(gym.Env):
 
             self.monitor.ingest_failures(self.growth.failed_cells.copy())
             self.growth.failed_cells.clear()
+
+            # Queue reseed targets continuously as failures come in, rather
+            # than only once per full return-to-base cycle. A cell already
+            # queued (not yet visited) simply gets its entry refreshed, not
+            # duplicated, since reseeding_targets is keyed by (y, x).
+            for t in self.monitor.get_top_targets(3):
+                self.reseeding_targets[(t["y"], t["x"])] = t.get("recommended_species")
 
         # ── Timestep ───────────────────────────────────────────────
         total_r             += -REWARD["step_penalty"]
