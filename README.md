@@ -286,5 +286,12 @@ aria-capstone/
 
 ---
 
+## Third-Party Assets
+
+The simulation's obstacle hazard model and tree models are real 3D assets, not procedural geometry, sourced from Sketchfab:
+
+- **Animated civilian Helicopter** by [assetfactory](https://sketchfab.com/assetfactory) -- [source](https://sketchfab.com/3d-models/animated-civilian-helicopter-f25c041a8d004eb092e4aa41d1dc33f4), Sketchfab Standard license.
+- **More Realistic Trees Free!** by [Nicholas-3D](https://sketchfab.com/Nicholas01) -- [source](https://sketchfab.com/3d-models/more-realistic-trees-free-b5b506fc4f5d4af9b546283bdf0c6a15), licensed [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/). This work is based on "More Realistic Trees Free!" by Nicholas-3D, licensed under CC-BY-4.0.
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

@@ -240,9 +240,16 @@ namespace ARIA.Core
                 s.X = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 s.Y = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
-                // Cruise above canopy until clear of the planted zone, then descend.
+                // Cruise above canopy until clear of the planted zone, then
+                // descend -- genuinely checked against real tree positions
+                // now, not just assumed from distance-to-base. A tall
+                // Seedling/Mature tree sitting inside the final descent
+                // radius used to get flown straight through, since the old
+                // curve only looked at distance, never at what was actually
+                // underneath.
                 int distToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
-                s.Altitude = distToBase <= ARIAConstants.RETURN_DESCENT_RANGE
+                bool overCanopy = HasTreeCanopyAt(s, s.X, s.Y);
+                s.Altitude = (!overCanopy && distToBase <= ARIAConstants.RETURN_DESCENT_RANGE)
                     ? Mathf.Clamp01((float)distToBase / ARIAConstants.RETURN_DESCENT_RANGE)
                     : 1f;
 
@@ -344,6 +351,20 @@ namespace ARIA.Core
                 for (int x = 0; x < size; x++)
                     map[y, x] = zone.Terrain[y, x, channel];
             return map;
+        }
+
+        // Only Seedling/Mature have a real canopy tall enough to visually
+        // clip through during a low return-flight pass -- Dropped/
+        // Germinating are still just a sprout marker at ground level.
+        private static bool HasTreeCanopyAt(EpisodeState s, int x, int y)
+        {
+            foreach (var seed in s.Growth.Seeds.Values)
+            {
+                if (seed.X == x && seed.Y == y &&
+                    (seed.Stage == SeedStage.Seedling || seed.Stage == SeedStage.Mature))
+                    return true;
+            }
+            return false;
         }
     }
 }

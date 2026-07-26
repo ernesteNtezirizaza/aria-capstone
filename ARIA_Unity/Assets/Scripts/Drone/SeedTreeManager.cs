@@ -54,6 +54,7 @@ namespace ARIA.Drone
             public Vector3    RenderPos;     // jittered render position, reused for both objects
             public int        SpeciesId;
             public bool       IsSuitable;
+            public float      TreeBaseScale = 1f; // RealTreeBuilder's per-species scale factor -- growth-stage tweening multiplies on top of this, not Vector3.one
         }
 
         private readonly Dictionary<int, TreeVisual> _visuals = new Dictionary<int, TreeVisual>();
@@ -366,18 +367,23 @@ namespace ARIA.Drone
             {
                 if (visual.SproutObject != null) Destroy(visual.SproutObject);
 
-                float baseHeight = 5f + visual.SpeciesId * 0.6f;
-                var tree = TreeBuilder.Build(visual.SpeciesId, baseHeight, existing: false);
-                tree.transform.position = visual.RenderPos;
-                tree.transform.localScale = Vector3.one * 0.15f; // starts small, tweens up below
-
-                if (!visual.IsSuitable)
+                var tree = RealTreeBuilder.Build(visual.SpeciesId, existing: false);
+                if (tree != null)
                 {
-                    foreach (var rend in tree.GetComponentsInChildren<Renderer>())
-                        rend.material.color = Color.Lerp(rend.material.color, Color.gray, 0.4f);
-                }
+                    visual.TreeBaseScale = tree.transform.localScale.x;
+                    tree.transform.position = visual.RenderPos;
+                    tree.transform.localScale = Vector3.one * (visual.TreeBaseScale * 0.15f); // starts small, tweens up below
 
-                visual.TreeObject = tree;
+                    if (!visual.IsSuitable)
+                    {
+                        foreach (var rend in tree.GetComponentsInChildren<Renderer>())
+                            foreach (var mat in rend.materials)
+                                if (mat.HasProperty("_Color"))
+                                    mat.color = Color.Lerp(mat.color, Color.gray, 0.4f);
+                    }
+
+                    visual.TreeObject = tree;
+                }
             }
 
             visual.LastStage = newStage;
@@ -392,12 +398,20 @@ namespace ARIA.Drone
             {
                 // Grey out and shrink the existing marker in place -- reads as "died here".
                 foreach (var rend in target.GetComponentsInChildren<Renderer>())
-                    rend.material.color = Color.Lerp(rend.material.color, new Color(0.35f, 0.3f, 0.25f), 0.7f);
+                    foreach (var mat in rend.materials)
+                        if (mat.HasProperty("_Color"))
+                            mat.color = Color.Lerp(mat.color, new Color(0.35f, 0.3f, 0.25f), 0.7f);
                 endScale = startScale * 0.4f;
             }
             else
             {
-                endScale = isTreeStage ? TreeScale(newStage) : 1f; // sprout tweens toward its own full size (1)
+                // Tree stages scale relative to RealTreeBuilder's own
+                // per-species base scale, not a flat 1.0 -- otherwise every
+                // species would converge on the same final size regardless
+                // of its intended scale factor. Sprouts have no such base
+                // (still TreeBuilder's plain procedural marker) and keep
+                // tweening toward their own full size of 1.
+                endScale = isTreeStage ? TreeScale(newStage) * visual.TreeBaseScale : 1f;
             }
 
             float t = 0f;
