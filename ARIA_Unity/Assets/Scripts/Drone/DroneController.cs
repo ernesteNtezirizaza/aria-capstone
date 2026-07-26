@@ -248,6 +248,8 @@ namespace ARIA.Drone
             if (LastEpisodeEndedByMissionComplete)
                 CoverageOverride.Reset();
 
+            CoverageOverride.PlanForZone(State.Zone, (int)ARIAConstants.INITIAL_SEEDS);
+
             _episodeActive = true;
             _timer = 0f;
 

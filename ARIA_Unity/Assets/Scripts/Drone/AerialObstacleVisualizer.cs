@@ -49,6 +49,13 @@ namespace ARIA.Drone
                  "drag a reference into -- same pattern as SceneBootstrapper's onnxResourceName.")]
         public string helicopterResourceName = "HelicopterHazard";
 
+        [Tooltip("Cap on how many markers use the (much heavier, animated) helicopter model at once " +
+                 "-- confirmed live that a rugged zone with hundreds of hazard clusters instantiating " +
+                 "that many simultaneous animated meshes crashes the WebGL context. The largest " +
+                 "clusters get the helicopter treatment; the rest still render as sphere markers, so " +
+                 "nothing is hidden, it's purely a cost control on the fancier visual.")]
+        public int maxHelicopterMarkers = 20;
+
         private readonly List<GameObject> _markers = new List<GameObject>();
         private bool _active;
         private bool _lastShownState = true;
@@ -100,12 +107,15 @@ namespace ARIA.Drone
 
             var zone = drone.State.Zone;
             var clusters = BuildClusters(zone);
+            // Biggest hazards get the helicopter treatment first, once capped.
+            clusters.Sort((a, b) => b.cellCount.CompareTo(a.cellCount));
 
             int placed = 0;
             foreach (var c in clusters)
             {
                 if (placed >= maxMarkers) break;
-                PlaceMarker(zone, c.centerX, c.centerY, c.cellCount);
+                bool useHelicopter = placed < maxHelicopterMarkers;
+                PlaceMarker(zone, c.centerX, c.centerY, c.cellCount, useHelicopter);
                 placed++;
             }
 
@@ -194,7 +204,7 @@ namespace ARIA.Drone
             return clusters;
         }
 
-        private void PlaceMarker(ZoneData zone, int gx, int gy, int cellCount)
+        private void PlaceMarker(ZoneData zone, int gx, int gy, int cellCount, bool useHelicopter)
         {
             float worldX = gx * cellSize;
             float worldZ = gy * cellSize;
@@ -206,7 +216,7 @@ namespace ARIA.Drone
             float footprintCells = Mathf.Sqrt(cellCount);
             float visualDiameter = Mathf.Clamp(footprintCells * cellSize * 0.9f, cellSize * 1.5f, cellSize * 12f);
 
-            GameObject go = helicopterPrefab != null
+            GameObject go = (helicopterPrefab != null && useHelicopter)
                 ? PlaceHelicopterMarker(worldX, groundY, worldZ, visualDiameter)
                 : PlaceSphereMarker(worldX, groundY, worldZ, visualDiameter);
 
