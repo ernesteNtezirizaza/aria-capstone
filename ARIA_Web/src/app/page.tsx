@@ -35,7 +35,7 @@ export default function LandingPage() {
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy &amp; Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
               Go to Dashboard
             </Link>
@@ -59,7 +59,7 @@ export default function LandingPage() {
             <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
-            <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Privacy &amp; Terms</Link>
+            <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
               Go to Dashboard
             </Link>
