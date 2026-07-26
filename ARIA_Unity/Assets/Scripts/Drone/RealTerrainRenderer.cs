@@ -77,7 +77,12 @@ namespace ARIA.Drone
             _groundPlane.AddComponent<MeshCollider>();
 
             _texture = new Texture2D(size, size, TextureFormat.RGB24, false);
-            _texture.filterMode = FilterMode.Point;
+            // Bilinear, not Point: with Point filtering each cell reads as a
+            // hard-edged pixel (a data grid); bilinear blends between
+            // neighbouring cells' colours, which combined with the
+            // natural-earth-tone palette below is what makes this read as
+            // ground texture rather than a suitability heatmap.
+            _texture.filterMode = FilterMode.Bilinear;
             _texture.wrapMode = TextureWrapMode.Clamp;
 
             var mat = MaterialHelper.GetDefaultMaterial();
@@ -151,7 +156,7 @@ namespace ARIA.Drone
             if (_texture == null || _texture.width != size)
             {
                 _texture = new Texture2D(size, size, TextureFormat.RGB24, false);
-                _texture.filterMode = FilterMode.Point;
+                _texture.filterMode = FilterMode.Bilinear;
                 _texture.wrapMode = TextureWrapMode.Clamp;
                 if (_renderer != null) _renderer.material.mainTexture = _texture;
             }
@@ -175,26 +180,38 @@ namespace ARIA.Drone
             BuildHeightmapMesh(size, _heightMap);
         }
 
+        // Natural earth-tone ground colour driven by the same real soil/
+        // rain/slope data the policy reasons over, rather than the raw
+        // suitability score painted directly as a blue-to-orange gradient.
+        // A suitability heatmap reads as a data visualisation; this reads
+        // as ground, which is what an audience needs to see to believe
+        // it's a real landscape and not a chart.
+        private static readonly Color DryEarth   = new Color(0.55f, 0.46f, 0.30f);
+        private static readonly Color GrassGreen = new Color(0.27f, 0.44f, 0.15f);
+        private static readonly Color Rock       = new Color(0.43f, 0.40f, 0.36f);
+
         private Color SampleCellColour(ZoneData zone, int x, int y)
         {
             float soil  = zone.Terrain[y, x, 2];
             float rain  = zone.Terrain[y, x, 3];
             float slope = zone.Terrain[y, x, 1];
-            float suit  = (soil * 0.4f + rain * 0.4f) * (1f - slope * 0.5f);
 
-            Color baseColour;
-            if (zone.NoPlant[y, x])
-                baseColour = new Color(0.25f, 0.25f, 0.25f); // dark grey: no-plant cell
-            else if (suit > 0.5f)      baseColour = new Color(suit, 1f - suit, 0f);
-            else if (suit > 0.25f)     baseColour = new Color(suit * 0.5f, 1f - suit * 0.5f, 0f);
-            else                       baseColour = new Color(0f, suit, 1f - suit);
+            // How lush this cell would actually look: good soil+rain reads
+            // green, poor reads as dry/dusty earth. Steep ground holds less
+            // topsoil in reality, so slope pulls it toward bare rock.
+            float lushness = Mathf.Clamp01((soil * 0.5f + rain * 0.5f) * (1f - slope * 0.6f));
+            Color ground = Color.Lerp(DryEarth, GrassGreen, lushness);
+            Color baseColour = zone.NoPlant[y, x]
+                ? Rock
+                : Color.Lerp(ground, Rock, slope * 0.5f);
 
-            float obstacle = zone.ObsGrid[y, x];
-            if (obstacle > ARIAConstants.OBSTACLE_THRESHOLD)
-            {
-                return Color.Lerp(baseColour, new Color(0.9f, 0.25f, 0.1f), 0.75f);
-            }
-            return baseColour;
+            // Small per-cell mottling so the ground doesn't read as a flat
+            // gradient fill -- cheap stand-in for a real ground texture.
+            float n = (Mathf.PerlinNoise(x * 0.15f, y * 0.15f) - 0.5f) * 0.12f;
+            return new Color(
+                Mathf.Clamp01(baseColour.r + n),
+                Mathf.Clamp01(baseColour.g + n),
+                Mathf.Clamp01(baseColour.b + n));
         }
 
         /// Real per-cell height matching the displaced mesh, in the same

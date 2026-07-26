@@ -129,8 +129,29 @@ namespace ARIA.Drone
             GameObject lightObj = new GameObject("Directional Light");
             var light = lightObj.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.2f;
+            light.intensity = 1.25f;
+            light.color = new Color(1f, 0.96f, 0.88f); // warm sunlight, not flat white
+            light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.8f;
             lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+            // Binds the procedural skybox's sun disk to this light and
+            // lifts ambient/fog out of flat defaults -- without this, the
+            // directional light casts no shadows at all (Unity's default
+            // for a freshly-added Light is LightShadows.None) and the sky
+            // has no real sense of atmosphere or depth.
+            RenderSettings.sun = light;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor    = new Color(0.55f, 0.62f, 0.70f);
+            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.42f, 0.35f);
+            RenderSettings.ambientGroundColor  = new Color(0.25f, 0.22f, 0.18f);
+
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.72f, 0.78f, 0.82f);
+            float zoneWorldSize = ARIA.Core.ARIAConstants.ZONE_SIZE * cellSize;
+            RenderSettings.fogStartDistance = zoneWorldSize * 0.6f;
+            RenderSettings.fogEndDistance   = zoneWorldSize * 2.5f;
         }
 
         private void BuildCamera(GameObject droneObj)
