@@ -85,24 +85,34 @@ namespace ARIA.Drone
             _texture.filterMode = FilterMode.Bilinear;
             _texture.wrapMode = TextureWrapMode.Clamp;
 
-            // Deliberately its own Unlit material, not the shared
-            // MaterialHelper one every other object uses. Three separate
-            // lighting/material fixes in a row (light+ambient intensity,
-            // fog distance, then reverting a shader change entirely) all
-            // failed to stop the terrain rendering as a flat, washed-out
-            // pale yellow instead of the computed earth-tone palette --
-            // strong evidence the remaining variable is still something in
-            // the lit-shading pipeline I haven't correctly isolated, not
-            // the colour data itself (SampleCellColour's actual values are
-            // moderate earth tones, nothing close to pale yellow). Unlit
-            // guarantees the texture displays exactly as computed, with no
-            // dependency on light intensity, ambient, or colour-space
-            // interaction to get right. Trade-off: the ground no longer
-            // receives cast shadows from trees/the drone -- acceptable
-            // against three consecutive failed attempts to get lit shading
-            // to render the intended colours correctly.
-            var unlitShader = Shader.Find("Unlit/Texture");
-            var mat = unlitShader != null ? new Material(unlitShader) : MaterialHelper.GetDefaultMaterial();
+            // Deliberately its own baked Unlit material asset
+            // (Assets/Resources/TerrainUnlitMaterial.mat, built by
+            // UnlitTerrainMaterialBuilder), not Shader.Find("Unlit/Texture")
+            // at runtime and not the shared MaterialHelper material every
+            // other object uses. Runtime Shader.Find works fine in the
+            // Editor (which always has every built-in shader available),
+            // but nothing else in the project references "Unlit/Texture"
+            // from a serialized asset, so the WebGL build pipeline can
+            // strip it as unused -- meaning Shader.Find would silently
+            // return null in the actual deployed build and fall back
+            // invisibly, which is suspected to be exactly why four
+            // consecutive lighting/material fixes (light+ambient, fog
+            // distance, reverting a shader change, disabling fog outright)
+            // never changed anything: the terrain was likely never actually
+            // using Unlit at all. A real asset reference guarantees the
+            // shader survives stripping, same fix already applied to
+            // DummyStandardMaterial earlier this session.
+            var mat = Resources.Load<Material>("TerrainUnlitMaterial");
+            if (mat == null)
+            {
+                Debug.LogError("[RealTerrainRenderer] TerrainUnlitMaterial not found in Resources -- " +
+                    "falling back to the shared lit material. Run UnlitTerrainMaterialBuilder in the Editor.");
+                mat = MaterialHelper.GetDefaultMaterial();
+            }
+            else
+            {
+                mat = new Material(mat);
+            }
             if (mat != null)
             {
                 mat.mainTexture = _texture;
