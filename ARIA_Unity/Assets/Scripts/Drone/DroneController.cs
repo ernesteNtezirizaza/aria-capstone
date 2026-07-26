@@ -420,7 +420,19 @@ namespace ARIA.Drone
 
             SnapToGridPosition();
 
-            if (result.Landed || result.EmergencyLand)
+            if (result.EmergencyLand)
+            {
+                // Battery-critical termination fires wherever the drone
+                // happens to be, matching rwanda_env.py exactly -- there is
+                // no scripted flight home first. So "return to the ground"
+                // here means descend straight down at its current grid
+                // position, not teleport to the helipad; teleporting home
+                // implied a return flight that never actually happened.
+                Vector3 groundPos = GridToWorld(State.X, State.Y, 0f, minHeightFloor: false);
+                transform.position = groundPos;
+                _moveFrom = _moveTo = groundPos;
+            }
+            else if (result.Landed)
             {
                 Vector3 padPos = GetHelipadGroundPos();
                 if (result.Terminated)

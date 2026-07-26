@@ -121,6 +121,9 @@ namespace ARIA.Drone
             animalVisualizer.cellSize = cellSize;
             animalVisualizer.Bind(droneObj.GetComponent<DroneController>());
 
+            var chasingObstacle = terrainObj.AddComponent<ChasingObstacle>();
+            chasingObstacle.Bind(droneObj.GetComponent<DroneController>());
+
             return (obstacleVisualizer, reseedVisualizer);
         }
 

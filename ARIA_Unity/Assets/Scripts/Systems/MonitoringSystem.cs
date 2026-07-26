@@ -107,13 +107,14 @@ namespace ARIA.Systems
             }
         }
 
-        // Mirrors GrowthEngine's per-species mature-step lookup, normalised
+        // Mirrors GrowthEngine's per-species mature-step lookup (kept in
+        // sync with that file's slowed-down growth-pacing values), normalised
         // the same way Python's SpeciesRecommender._make_features does (/150).
         private static float SpeciesMatureStepsNorm(int speciesId)
         {
             int steps = speciesId switch
             {
-                0 => 350, 1 => 400, 2 => 370, 3 => 380, 4 => 450, _ => 380,
+                0 => 875, 1 => 1000, 2 => 925, 3 => 950, 4 => 1125, _ => 950,
             };
             return System.Math.Min(steps / 150f, 1f);
         }

@@ -217,25 +217,29 @@ namespace ARIA.Systems
             return result;
         }
 
-        // Episodes can end well before MAX_STEPS once fully planted, so growth must reach
-        // Mature with time to spare, not just within the full step budget.
+        // Deliberately slowed down (roughly 2.5x the original steps) so
+        // growth reads as a genuine, gradual process rather than trees
+        // popping up within seconds of being planted -- a demo-pacing
+        // decision, not a training-parity value. Still comfortably inside
+        // MAX_STEPS (1800) so a normal-length episode has time to watch a
+        // seed actually reach Mature, not just Germinating/Seedling.
         private static int SpeciesGermSteps(int speciesId) => speciesId switch
         {
-            0 => 40,  // Eucalyptus globulus  -- fast
-            1 => 50,  // Grevillea robusta    -- moderate
-            2 => 40,  // Eucalyptus maculata  -- fast
-            3 => 45,  // Eucalyptus maidenii  -- fast
-            4 => 70,  // Artocarpus heterophyllus -- slow (jackfruit)
-            _ => 45,
+            0 => 100,  // Eucalyptus globulus  -- fast
+            1 => 125,  // Grevillea robusta    -- moderate
+            2 => 100,  // Eucalyptus maculata  -- fast
+            3 => 115,  // Eucalyptus maidenii  -- fast
+            4 => 175,  // Artocarpus heterophyllus -- slow (jackfruit)
+            _ => 115,
         };
         private static int SpeciesMatureSteps(int speciesId) => speciesId switch
         {
-            0 => 350,
-            1 => 400,
-            2 => 370,
-            3 => 380,
-            4 => 450,
-            _ => 380,
+            0 => 875,
+            1 => 1000,
+            2 => 925,
+            3 => 950,
+            4 => 1125,
+            _ => 950,
         };
     }
 }

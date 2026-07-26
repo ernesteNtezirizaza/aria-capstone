@@ -15,12 +15,14 @@ namespace ARIA.Core
         public static WeatherMode WeatherMode = WeatherMode.RealData;
         public static bool AnimalDisturbanceEnabled = false;
 
-        // Purely a rendering toggle for AerialObstacleVisualizer -- unlike the
-        // removed ObstacleOverlay toggle documented below, this never touches
-        // ObsGrid or ActionDispatcher.Step()'s blocking logic in any way. The
-        // real hazard grid the policy reasons over is always active regardless
-        // of this flag; turning it off only hides the on-screen markers.
-        public static bool ShowHazardMarkers = true;
+        // Drives both AerialObstacleVisualizer's static real-hazard markers
+        // and ChasingObstacle's dynamic hazard (see that file) -- off by
+        // default per explicit request, so the demo opens clean and the
+        // more dramatic chase behaviour is something you switch on
+        // deliberately. Never touches ObsGrid or ActionDispatcher.Step()'s
+        // blocking logic either way -- the real hazard grid the policy
+        // reasons over is always active regardless of this flag.
+        public static bool ShowHazardMarkers = false;
 
         public static float GetEffectiveRainfall(float realRainfall, int timestep)
         {

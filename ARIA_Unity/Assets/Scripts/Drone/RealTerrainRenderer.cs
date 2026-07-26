@@ -201,34 +201,6 @@ namespace ARIA.Drone
                     _heightMap[y, x] = zone.Terrain[y, x, 0] * heightScale;
                 }
             }
-            // TEMP DIAGNOSTIC v2: even a dedicated Unlit material -- which
-            // mathematically cannot be affected by light, ambient, or
-            // shader choice -- still rendered washed-out pale yellow. That
-            // rules out the entire lighting pipeline, which was the target
-            // of all three previous fix attempts. This can now only mean
-            // either the colour DATA itself isn't what SampleCellColour is
-            // supposed to produce, or this code isn't actually the version
-            // running live. Logging both the raw zone data and the actual
-            // computed pixel values, plus a version canary, to find out
-            // which, instead of guessing a fifth time.
-            {
-                Color minC = pixels[0], maxC = pixels[0];
-                double sumR = 0, sumG = 0, sumB = 0;
-                foreach (var p in pixels)
-                {
-                    sumR += p.r; sumG += p.g; sumB += p.b;
-                    if (p.r + p.g + p.b < minC.r + minC.g + minC.b) minC = p;
-                    if (p.r + p.g + p.b > maxC.r + maxC.g + maxC.b) maxC = p;
-                }
-                int n = pixels.Length;
-                int sx = size / 2, sy = size / 2;
-                Debug.Log($"[TerrainDiag-v2] CANARY -- this build's RealTerrainRenderer IS running. " +
-                    $"zoneSize={size} avgPixel=({sumR / n:F3},{sumG / n:F3},{sumB / n:F3}) " +
-                    $"minPixel=({minC.r:F3},{minC.g:F3},{minC.b:F3}) maxPixel=({maxC.r:F3},{maxC.g:F3},{maxC.b:F3}) " +
-                    $"centre({sx},{sy}): soil={zone.Terrain[sy, sx, 2]:F3} rain={zone.Terrain[sy, sx, 3]:F3} " +
-                    $"slope={zone.Terrain[sy, sx, 1]:F3} elev={zone.Terrain[sy, sx, 0]:F3} " +
-                    $"noPlant={zone.NoPlant[sy, sx]} computedPixel={pixels[sy * size + sx]}");
-            }
             _texture.SetPixels(pixels);
             _texture.Apply(false);
 
@@ -241,9 +213,17 @@ namespace ARIA.Drone
         // A suitability heatmap reads as a data visualisation; this reads
         // as ground, which is what an audience needs to see to believe
         // it's a real landscape and not a chart.
-        private static readonly Color DryEarth   = new Color(0.55f, 0.46f, 0.30f);
-        private static readonly Color GrassGreen = new Color(0.27f, 0.44f, 0.15f);
-        private static readonly Color Rock       = new Color(0.43f, 0.40f, 0.36f);
+        // Plantable ground reads as green -- that's where seeds actually
+        // get dropped, so it should look like it, rather than a suitability
+        // gradient that happened to land on tan/brown for a low-lushness
+        // zone. Lushness only shades which green (pale/yellow-green for
+        // marginal soil+rain, rich green for good), it never crosses over
+        // to brown -- only genuinely unplantable ground (steep/protected)
+        // does that, so green vs. brown reads directly as "plantable vs.
+        // not" at a glance.
+        private static readonly Color LushGreen = new Color(0.18f, 0.48f, 0.14f);
+        private static readonly Color PaleGreen = new Color(0.40f, 0.54f, 0.20f);
+        private static readonly Color Rock      = new Color(0.40f, 0.32f, 0.22f);
 
         private Color SampleCellColour(ZoneData zone, int x, int y)
         {
@@ -251,14 +231,11 @@ namespace ARIA.Drone
             float rain  = zone.Terrain[y, x, 3];
             float slope = zone.Terrain[y, x, 1];
 
-            // How lush this cell would actually look: good soil+rain reads
-            // green, poor reads as dry/dusty earth. Steep ground holds less
-            // topsoil in reality, so slope pulls it toward bare rock.
             float lushness = Mathf.Clamp01((soil * 0.5f + rain * 0.5f) * (1f - slope * 0.6f));
-            Color ground = Color.Lerp(DryEarth, GrassGreen, lushness);
+            Color ground = Color.Lerp(PaleGreen, LushGreen, lushness);
             Color baseColour = zone.NoPlant[y, x]
                 ? Rock
-                : Color.Lerp(ground, Rock, slope * 0.5f);
+                : Color.Lerp(ground, Rock, slope * 0.3f);
 
             // Small per-cell mottling so the ground doesn't read as a flat
             // gradient fill -- cheap stand-in for a real ground texture.

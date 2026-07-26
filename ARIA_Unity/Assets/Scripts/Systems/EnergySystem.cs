@@ -54,16 +54,25 @@ namespace ARIA.Systems
         public EnergyStepResult Step(WeatherSystem weather, int stepsToBase = 0)
         {
             bool sunny = weather.IsSunny();
-            bool rainy = weather.IsRainy();
 
-            // weather.SolarRate is already rainfall-proportional (full
-            // SOLAR_CHARGE_RATE at zero rainfall, tapering to 0 as
-            // rainfall approaches RAINFALL_SUNNY_THRESH), matching
-            // weather_system.py's solar_rate exactly -- no separate
-            // "net drain" workaround constant needed.
-            SolarInput    = sunny ? weather.SolarRate : 0f;
-            DrainThisStep = rainy ? ARIAConstants.BATTERY_DRAIN_RAIN : ARIAConstants.BATTERY_DRAIN_SUNNY;
-            Battery = Mathf.Clamp(Battery + SolarInput - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
+            if (sunny)
+            {
+                // Deliberate product decision, overriding the rainfall-
+                // proportional solar formula rwanda_env.py trained under:
+                // sunny weather fully sustains the battery at 100% rather
+                // than merely reducing drain by some fraction. Simpler,
+                // more intuitive demo behaviour -- sunny means safe, rainy
+                // means the battery actually drains.
+                SolarInput    = ARIAConstants.BATTERY_MAX;
+                DrainThisStep = 0f;
+                Battery       = ARIAConstants.BATTERY_MAX;
+            }
+            else
+            {
+                SolarInput    = 0f;
+                DrainThisStep = ARIAConstants.BATTERY_DRAIN_RAIN;
+                Battery = Mathf.Clamp(Battery + SolarInput - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
+            }
 
             TotalSolar += SolarInput;
             TotalDrain += DrainThisStep;

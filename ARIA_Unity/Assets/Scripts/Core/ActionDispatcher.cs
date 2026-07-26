@@ -272,6 +272,11 @@ namespace ARIA.Core
                 }
             }
 
+            // Growth/disturbance themselves still only tick once per
+            // MONITORING_INTERVAL steps, preserving how often a seed
+            // actually gets a mortality/disturbance roll -- running that
+            // part every step would make animal disturbance kill far more
+            // aggressively, not just faster to notice.
             const int MONITORING_INTERVAL = 10;
             if (s.Timestep % MONITORING_INTERVAL == 0 && s.Timestep > 0)
             {
@@ -285,20 +290,31 @@ namespace ARIA.Core
                 // success outcome for whichever species SpeciesRecommender
                 // picked there -- feed it back before ingesting new failures.
                 s.Monitor.ResolveMatured(maturedPositions);
+            }
 
+            // Ingesting failures and queueing reseed targets runs every
+            // step, not gated to MONITORING_INTERVAL -- a real-world goat
+            // eating a seed should show up as queued for reseeding
+            // immediately, not after up to 10 steps (1.5s) of batching
+            // delay. Growth.FailedCells simply accumulates between the
+            // (still gated) growth/disturbance ticks above, and drains
+            // here every step, so this is a no-op most steps and only
+            // does real work on the step a failure actually happened.
+            if (s.Growth.FailedCells.Count > 0)
+            {
                 s.Monitor.IngestFailures(new System.Collections.Generic.List<FailedCell>(s.Growth.FailedCells));
                 s.Growth.FailedCells.Clear();
+            }
 
-                // Queue reseed targets continuously as failures come in, rather
-                // than only once per full return-to-base cycle. A cell already
-                // queued (not yet visited) simply gets its entry refreshed, not
-                // duplicated, since ReseedingTargets is a HashSet and
-                // ReseedSpeciesMap is keyed by (y, x). Mirrors rwanda_env.py.
-                foreach (var t in s.Monitor.GetTopTargets(3))
-                {
-                    s.ReseedingTargets.Add((t.Y, t.X));
-                    s.ReseedSpeciesMap[(t.Y, t.X)] = t.RecommendedSpecies;
-                }
+            // Queue reseed targets continuously as failures come in, rather
+            // than only once per full return-to-base cycle. A cell already
+            // queued (not yet visited) simply gets its entry refreshed, not
+            // duplicated, since ReseedingTargets is a HashSet and
+            // ReseedSpeciesMap is keyed by (y, x). Mirrors rwanda_env.py.
+            foreach (var t in s.Monitor.GetTopTargets(3))
+            {
+                s.ReseedingTargets.Add((t.Y, t.X));
+                s.ReseedSpeciesMap[(t.Y, t.X)] = t.RecommendedSpecies;
             }
 
             s.Timestep++;
