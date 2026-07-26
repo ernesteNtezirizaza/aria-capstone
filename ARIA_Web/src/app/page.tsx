@@ -35,6 +35,7 @@ export default function LandingPage() {
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy &amp; Terms</Link>
             <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
               Go to Dashboard
             </Link>
@@ -58,6 +59,7 @@ export default function LandingPage() {
             <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
+            <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Privacy &amp; Terms</Link>
             <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
               Go to Dashboard
             </Link>
@@ -168,10 +170,13 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 py-8 px-4 border-t border-slate-800/50 mt-12 bg-slate-950">
-        <div className="max-w-7xl mx-auto flex items-center justify-center">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
           <div className="text-slate-500 text-sm text-center">
             &copy; {new Date().getFullYear()} ARIA. Adaptive Reforestation Intelligence Agent. All rights reserved.
           </div>
+          <Link href="/privacy" className="text-slate-500 hover:text-slate-300 text-sm transition-colors underline underline-offset-4">
+            Privacy Policy &amp; Terms of Use
+          </Link>
         </div>
       </footer>
     </div>
