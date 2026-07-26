@@ -33,10 +33,12 @@ namespace ARIA.Drone
         [Tooltip("How far above the real terrain surface each marker sits, purely for visibility.")]
         public float markerLift = 1.5f;
 
-        [Tooltip("Safety cap on how many individual hazard markers to instantiate, in case a zone " +
-                 "has a very large contiguous hazardous region -- adjacent hazard cells are merged " +
-                 "into clusters first (see BuildClusters), so this should rarely bind in practice.")]
-        public int maxMarkers = 400;
+        [Tooltip("Cap on how many hazard markers are actually drawn, biggest clusters first. A rugged " +
+                 "zone can have hundreds of real hazard regions -- rendering all of them blankets the " +
+                 "terrain and makes individual hazards impossible to pick out. The real hazard grid the " +
+                 "policy navigates around is completely unaffected by this; it only limits what gets a " +
+                 "visible marker, for legibility.")]
+        public int maxMarkers = 15;
 
         [Tooltip("Optional: assign the imported 'Animated civilian Helicopter' prefab here to render " +
                  "hazards as this model (with its animation playing) instead of plain spheres. Left " +
