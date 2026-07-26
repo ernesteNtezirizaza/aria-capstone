@@ -3,7 +3,7 @@
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { Activity, Target, AlertTriangle, Sprout, ArrowLeft, Database, Skull } from 'lucide-react';
+import { Activity, Target, AlertTriangle, Sprout, ArrowLeft, Database, Skull, CloudOff } from 'lucide-react';
 import Link from 'next/link';
 
 const STAGE_COLORS: Record<string, string> = {
@@ -14,7 +14,7 @@ const STAGE_COLORS: Record<string, string> = {
   Dead: '#ef4444',
 };
 
-export default function DashboardClient({ episodes, stats, seedMonitoring }: { episodes: any[], stats: any, seedMonitoring?: { stageCounts: any[], recentFailures: any[] } }) {
+export default function DashboardClient({ episodes, stats, seedMonitoring, dataUnavailable }: { episodes: any[], stats: any, seedMonitoring?: { stageCounts: any[], recentFailures: any[] }, dataUnavailable?: boolean }) {
   // Format data for charts
   const chartData = [...episodes].reverse().map((ep, idx) => ({
     name: `Ep ${ep.episode_id}`,
@@ -39,11 +39,24 @@ export default function DashboardClient({ episodes, stats, seedMonitoring }: { e
           <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Real-time telemetrics from the ARIA simulation</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Live Connection
-        </div>
+        {dataUnavailable ? (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm font-medium border border-amber-500/20">
+            <CloudOff className="w-4 h-4" />
+            No Data Available
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Connection
+          </div>
+        )}
       </header>
+
+      {dataUnavailable && (
+        <div className="mb-10 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
+          Telemetry data couldn&apos;t be loaded right now. This shows an empty dashboard rather than an error page -- try refreshing shortly, or check back once new simulation runs have posted data.
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
