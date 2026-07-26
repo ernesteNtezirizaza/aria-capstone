@@ -148,12 +148,22 @@ namespace ARIA.Drone
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.30f, 0.32f, 0.35f);
 
+            // Confirmed live, separately from the light/ambient fix above:
+            // the terrain was STILL washed out pale after that fix, because
+            // fogStartDistance (0.6x zone size = 72) sat almost right at the
+            // orbit camera's own distance from its target (dist = half*1.333
+            // = ~80) -- meaning most of the visible terrain was already deep
+            // into the fog gradient, blending toward the pale fog colour
+            // across the whole primary view, not just a distant horizon.
+            // Pushed both distances well past any normal viewing range so
+            // fog only fades in at the far horizon, not across the terrain
+            // actually being watched.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.72f, 0.78f, 0.82f);
             float zoneWorldSize = ARIA.Core.ARIAConstants.ZONE_SIZE * cellSize;
-            RenderSettings.fogStartDistance = zoneWorldSize * 0.6f;
-            RenderSettings.fogEndDistance   = zoneWorldSize * 2.5f;
+            RenderSettings.fogStartDistance = zoneWorldSize * 2.0f;
+            RenderSettings.fogEndDistance   = zoneWorldSize * 5.0f;
         }
 
         private void BuildCamera(GameObject droneObj)
