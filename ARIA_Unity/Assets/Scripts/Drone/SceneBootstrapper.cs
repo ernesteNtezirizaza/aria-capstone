@@ -158,13 +158,17 @@ namespace ARIA.Drone
             // Pushed both distances well past any normal viewing range so
             // fog only fades in at the far horizon, not across the terrain
             // actually being watched.
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.72f, 0.78f, 0.82f);
-            float zoneWorldSize = ARIA.Core.ARIAConstants.ZONE_SIZE * cellSize;
-            RenderSettings.fogStartDistance = zoneWorldSize * 2.0f;
-            RenderSettings.fogEndDistance   = zoneWorldSize * 5.0f;
-        }
+            // Disabled entirely: measured actual rendered pixel colours
+            // directly from a screenshot against the logged, correct
+            // texture data (avg ~(117,112,71)) and found most on-screen
+            // terrain pixels running 180-255, nowhere close, even under a
+            // dedicated Unlit material. Root cause: Unity's built-in
+            // Unlit/Texture shader still applies fog blending in its
+            // fragment shader (UNITY_APPLY_FOG) despite having zero
+            // lighting response -- "unlit" only means no lighting, not no
+            // fog. Pushing fogStartDistance/fogEndDistance further out
+            // didn't fully solve it, so fog is off rather than tuned again.
+            RenderSettings.fog = false;
 
         private void BuildCamera(GameObject droneObj)
         {
