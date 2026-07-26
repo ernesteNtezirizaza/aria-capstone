@@ -174,6 +174,30 @@ namespace ARIA.Drone
                     _heightMap[y, x] = zone.Terrain[y, x, 0] * heightScale;
                 }
             }
+            // TEMP DIAGNOSTIC: the terrain has rendered as a flat, washed-out
+            // pale yellow through two rounds of lighting/fog fixes that
+            // should each have visibly darkened it, while everything else
+            // in the scene (helicopter markers) looks normal. Logging the
+            // actual computed pixel values here to find out whether the
+            // colour DATA itself is wrong (a bug in SampleCellColour or the
+            // underlying soil/rain/slope values for this zone) versus a
+            // pure rendering/lighting problem, instead of guessing a third
+            // time blind. Remove once root-caused.
+            {
+                Color minC = pixels[0], maxC = pixels[0];
+                float sumR = 0, sumG = 0, sumB = 0;
+                foreach (var p in pixels)
+                {
+                    sumR += p.r; sumG += p.g; sumB += p.b;
+                    if (p.r + p.g + p.b < minC.r + minC.g + minC.b) minC = p;
+                    if (p.r + p.g + p.b > maxC.r + maxC.g + maxC.b) maxC = p;
+                }
+                int n = pixels.Length;
+                Debug.Log($"[TerrainDiag] avg=({sumR / n:F3},{sumG / n:F3},{sumB / n:F3}) " +
+                    $"min=({minC.r:F3},{minC.g:F3},{minC.b:F3}) max=({maxC.r:F3},{maxC.g:F3},{maxC.b:F3}) " +
+                    $"sample(60,60) soil={zone.Terrain[60, 60, 2]:F3} rain={zone.Terrain[60, 60, 3]:F3} " +
+                    $"slope={zone.Terrain[60, 60, 1]:F3} noPlant={zone.NoPlant[60, 60]} pixel={pixels[60 * size + 60]}");
+            }
             _texture.SetPixels(pixels);
             _texture.Apply(false);
 
