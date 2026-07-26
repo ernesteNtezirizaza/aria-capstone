@@ -1,43 +1,37 @@
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace ARIA.Core
 {
+    /// Scripted reseed-target navigation, mirroring rwanda_env.py's step()
+    /// exactly: whenever a reseed target is queued and the drone is in
+    /// STATE_SEEDING, the environment itself overrides the policy's chosen
+    /// movement direction with a direct line toward the NEAREST queued
+    /// target (rwanda_env.py: min(reseeding_targets, key=manhattan_dist)),
+    /// only overriding species once the drone actually arrives at the
+    /// target cell. Ordinary coverage/navigation (no reseed target queued)
+    /// is NOT scripted in rwanda_env.py at all -- the trained policy's own
+    /// action drives it entirely. An earlier version of this file also had
+    /// a serpentine coverage-sweep pattern for that case; it had no
+    /// equivalent in rwanda_env.py, meaning the drone's "normal" seeding
+    /// behavior in the demo was a scripted pattern, not the trained
+    /// policy's actual navigation decisions. Removed for that reason.
     public static class CoverageOverride
     {
         public static bool Enabled = true;
 
-        private const int X_SPACING = 5;
-        private const int Y_SPACING = 16;
-
-        private static List<(int x, int y)> _targets;
-        private static int _pointer;
-        private static ZoneData _plannedZone;
-
-        public static void PlanForZone(ZoneData zone, int seedBudget)
-        {
-            if (zone == null) return;
-            if (ReferenceEquals(zone, _plannedZone) && _targets != null) return; // same zone -- keep sweeping onward
-
-            _plannedZone = zone;
-            _targets = new List<(int, int)>();
-            _pointer = 0;
-
-            int size = zone.Size;
-            int halfX = X_SPACING / 2;
-            int halfY = Y_SPACING / 2;
-
-            bool reverse = false;
-            for (int y = halfY; y < size; y += Y_SPACING)
-            {
-                var row = new List<(int, int)>();
-                for (int x = halfX; x < size; x += X_SPACING)
-                    row.Add((x, y));
-                if (reverse) row.Reverse(); // serpentine/boustrophedon sweep
-                reverse = !reverse;
-                _targets.AddRange(row);
-            }
-        }
+        // Detects a reseed target the drone can't actually make progress
+        // toward (most commonly one that's obstacle-blocked from every
+        // approach angle, now that targets queue continuously instead of
+        // rarely -- see TryGetOverrideAction below). rwanda_env.py has no
+        // equivalent give-up logic (its scripted move still runs the
+        // normal obstacle check every step, same as here), but nothing
+        // there can get stuck in the first place, since a blocked step
+        // there just holds position for one step while the underlying
+        // target selection itself never changes -- this is a Unity-only
+        // safety valve for the same real-world case of a genuinely
+        // unreachable target, not a training-behavior deviation.
+        private static (int x, int y) _lastReseedTarget = (-1, -1);
+        private static (int x, int y) _lastDronePos = (-1, -1);
+        private static int _stuckSteps = 0;
+        private const int MAX_STUCK_STEPS = 6;
 
         public static bool TryGetOverrideAction(EpisodeState s, out int action, out bool suppressSeeding)
         {
@@ -46,24 +40,39 @@ namespace ARIA.Core
             if (!Enabled) return false;
 
             if (s.SeedsRemaining <= 0) return false;
+            if (s.ReseedingTargets.Count == 0) return false;
 
-            if (s.ReseedingTargets.Count > 0)
+            // Nearest queued target by Manhattan distance, matching
+            // rwanda_env.py's min(reseeding_targets, key=lambda t: abs(t[0]-y)+abs(t[1]-x))
+            // exactly -- not just the first one found in iteration order.
+            (int y, int x) target = default;
+            int bestDist = int.MaxValue;
+            foreach (var t in s.ReseedingTargets)
             {
-                (int y, int x) target = default;
-                foreach (var t in s.ReseedingTargets) { target = t; break; } // any queued target -- HashSet has no order guarantee, first is fine
-                int? recommended = s.ReseedSpeciesMap.TryGetValue(target, out int rec) ? rec : (int?)null;
-                return TryStepToward(s, target.x, target.y, out action, out suppressSeeding, recommended);
+                int dist = System.Math.Abs(t.y - s.Y) + System.Math.Abs(t.x - s.X);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    target = t;
+                }
             }
 
-            if (_targets == null || _targets.Count == 0) return false;
+            var dronePos = (s.X, s.Y);
+            _stuckSteps = (target == _lastReseedTarget && dronePos == _lastDronePos) ? _stuckSteps + 1 : 0;
+            _lastReseedTarget = target;
+            _lastDronePos = dronePos;
 
-            while (_pointer < _targets.Count && _targets[_pointer] == (s.X, s.Y))
-                _pointer++;
+            if (_stuckSteps >= MAX_STUCK_STEPS)
+            {
+                s.ReseedingTargets.Remove(target);
+                s.ReseedSpeciesMap.Remove(target);
+                _stuckSteps = 0;
+                _lastReseedTarget = (-1, -1);
+                return false; // let the trained policy's own action apply this step instead
+            }
 
-            if (_pointer >= _targets.Count) return false;
-
-            var (tx, ty) = _targets[_pointer];
-            return TryStepToward(s, tx, ty, out action, out suppressSeeding);
+            int? recommended = s.ReseedSpeciesMap.TryGetValue(target, out int rec) ? rec : (int?)null;
+            return TryStepToward(s, target.x, target.y, out action, out suppressSeeding, recommended);
         }
 
         private static bool TryStepToward(EpisodeState s, int tx, int ty, out int action, out bool suppressSeeding, int? forcedSpecies = null)
@@ -124,9 +133,9 @@ namespace ARIA.Core
 
         public static void Reset()
         {
-            _targets = null;
-            _pointer = 0;
-            _plannedZone = null;
+            _lastReseedTarget = (-1, -1);
+            _lastDronePos = (-1, -1);
+            _stuckSteps = 0;
         }
     }
 }

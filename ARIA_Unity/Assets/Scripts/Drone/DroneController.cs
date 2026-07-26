@@ -248,8 +248,6 @@ namespace ARIA.Drone
             if (LastEpisodeEndedByMissionComplete)
                 CoverageOverride.Reset();
 
-            CoverageOverride.PlanForZone(State.Zone, (int)ARIAConstants.INITIAL_SEEDS);
-
             _episodeActive = true;
             _timer = 0f;
 
@@ -404,6 +402,11 @@ namespace ARIA.Drone
                 CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
                 SpawnSeedVisual();
             }
+            // Mirrors config.py's REWARD["w_redundant_penalty"] (-0.5) and
+            // the reward function's slope penalty at its floor value
+            // (w_slope=1.0 * slope_pen capped at 1.0 for any no_plant cell).
+            if (result.RedundantPlacementBlocked) CumulativeReward -= 0.5f;
+            if (result.TooSteepBlocked) CumulativeReward -= 1.0f;
             if (result.ObstacleHit) CumulativeReward -= 1.0f;
             if (result.ValidAbort) CumulativeReward += 5.0f;
             if (result.MissionComplete) CumulativeReward += 10.0f;

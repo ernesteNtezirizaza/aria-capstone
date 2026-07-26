@@ -38,8 +38,21 @@ namespace ARIA.Drone
                  "into clusters first (see BuildClusters), so this should rarely bind in practice.")]
         public int maxMarkers = 400;
 
+        [Tooltip("Optional: assign the imported 'Animated civilian Helicopter' prefab here to render " +
+                 "hazards as this model (with its animation playing) instead of plain spheres. Left " +
+                 "unassigned, markers fall back to the original sphere rendering.")]
+        public GameObject helicopterPrefab;
+
+        [Tooltip("Only used as a fallback if helicopterPrefab above is left empty -- loads " +
+                 "Assets/Resources/<name>.prefab automatically. This component is added at runtime " +
+                 "via SceneBootstrapper, not placed in the scene file, so there's no Inspector to " +
+                 "drag a reference into -- same pattern as SceneBootstrapper's onnxResourceName.")]
+        public string helicopterResourceName = "HelicopterHazard";
+
         private readonly List<GameObject> _markers = new List<GameObject>();
         private bool _active;
+        private bool _lastShownState = true;
+        private bool _triedLoadingResource;
 
         public void Bind(DroneController d)
         {
@@ -62,9 +75,22 @@ namespace ARIA.Drone
         {
             ClearAllMarkers();
 
+            if (helicopterPrefab == null && !_triedLoadingResource)
+            {
+                _triedLoadingResource = true;
+                helicopterPrefab = Resources.Load<GameObject>(helicopterResourceName);
+                if (helicopterPrefab == null)
+                    Debug.Log($"[AerialObstacleVisualizer] No helicopter prefab found at " +
+                        $"Resources/{helicopterResourceName} -- falling back to sphere markers. " +
+                        "Convert Assets/Models/scene.gltf to a prefab and save it under " +
+                        "Assets/Resources/ to enable it.");
+            }
+
             // Real hazards are a static, always-present terrain feature (see
-            // ActionDispatcher.Step()), not something a demo button turns on --
-            // so the markers for them are always shown too, no toggle required.
+            // ActionDispatcher.Step()) -- always computed here regardless of
+            // DemoConditions.ShowHazardMarkers, which only controls whether
+            // the resulting markers are visible (see Update() below), never
+            // whether the real hazard grid exists or blocks the drone.
             _active = drone != null && drone.State != null;
             if (!_active)
             {
@@ -83,8 +109,30 @@ namespace ARIA.Drone
                 placed++;
             }
 
+            _lastShownState = DemoConditions.ShowHazardMarkers;
+            SetMarkersVisible(_lastShownState);
+
             Debug.Log($"[AerialObstacleVisualizer] {clusters.Count} real hazard region(s) found, " +
                       $"{placed} marker(s) placed (static, matching the real obstacle grid the policy observes).");
+        }
+
+        void Update()
+        {
+            // Cheap per-frame check for the visibility toggle changing, so
+            // it takes effect immediately rather than waiting for the next
+            // episode reset -- mirrors the lightweight static-flag pattern
+            // DemoConditions already uses elsewhere (no new event wiring).
+            if (DemoConditions.ShowHazardMarkers != _lastShownState)
+            {
+                _lastShownState = DemoConditions.ShowHazardMarkers;
+                SetMarkersVisible(_lastShownState);
+            }
+        }
+
+        private void SetMarkersVisible(bool visible)
+        {
+            foreach (var m in _markers)
+                if (m != null) m.SetActive(visible);
         }
 
         private struct Cluster
@@ -152,16 +200,25 @@ namespace ARIA.Drone
             float worldZ = gy * cellSize;
             float groundY = terrainRenderer != null ? terrainRenderer.GetHeight(gy, gx) : 0f;
 
-            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.name = "RealTerrainHazard";
-            Destroy(go.GetComponent<Collider>());
-            go.transform.position = new Vector3(worldX, groundY + markerLift, worldZ);
-
             // Real physical extent: cellCount cells' worth of ground,
             // approximated as a circle, so a genuinely large hazardous
             // slope reads as visibly bigger than a single steep cell.
             float footprintCells = Mathf.Sqrt(cellCount);
             float visualDiameter = Mathf.Clamp(footprintCells * cellSize * 0.9f, cellSize * 1.5f, cellSize * 12f);
+
+            GameObject go = helicopterPrefab != null
+                ? PlaceHelicopterMarker(worldX, groundY, worldZ, visualDiameter)
+                : PlaceSphereMarker(worldX, groundY, worldZ, visualDiameter);
+
+            _markers.Add(go);
+        }
+
+        private GameObject PlaceSphereMarker(float worldX, float groundY, float worldZ, float visualDiameter)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "RealTerrainHazard";
+            Destroy(go.GetComponent<Collider>());
+            go.transform.position = new Vector3(worldX, groundY + markerLift, worldZ);
             go.transform.localScale = Vector3.one * visualDiameter;
 
             var mat = MaterialHelper.GetDefaultMaterial();
@@ -169,8 +226,38 @@ namespace ARIA.Drone
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(0.9f, 0.25f, 0.08f) * 0.6f); // steady glow, not flashing -- this is a fixed hazard, not an alarm
             go.GetComponent<Renderer>().material = mat;
+            return go;
+        }
 
-            _markers.Add(go);
+        private GameObject PlaceHelicopterMarker(float worldX, float groundY, float worldZ, float visualDiameter)
+        {
+            var go = Instantiate(helicopterPrefab);
+            go.name = "RealTerrainHazard (Helicopter)";
+            // Imported model's own scale/orientation vary by asset -- normalise
+            // against the same visualDiameter the sphere marker uses, so a
+            // large hazard cluster still reads as visibly bigger than a small
+            // one, consistent with the marker sizing this replaces.
+            go.transform.position = new Vector3(worldX, groundY + markerLift + visualDiameter * 0.5f, worldZ);
+            go.transform.localScale = Vector3.one * visualDiameter * 0.15f;
+
+            foreach (var col in go.GetComponentsInChildren<Collider>())
+                Destroy(col);
+
+            // glTFast imports animation clips onto a Legacy Animation
+            // component by default -- play it if present so the rotor
+            // actually spins; harmless no-op if the asset has none.
+            var anim = go.GetComponentInChildren<Animation>();
+            if (anim != null && anim.clip != null)
+            {
+                anim.wrapMode = WrapMode.Loop;
+                anim.Play();
+            }
+            else
+            {
+                var animator = go.GetComponentInChildren<Animator>();
+                if (animator != null) animator.Play(0, 0, Random.value); // desync multiple instances
+            }
+            return go;
         }
 
         private void ClearAllMarkers()

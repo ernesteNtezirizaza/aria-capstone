@@ -16,8 +16,8 @@ namespace ARIA.UI
         private Text _queuedText;
         private Text _suitabilityText;
 
-        private Text _weatherButtonLabel, _animalButtonLabel, _zoneButtonLabel;
-        private Image _weatherButtonImg, _animalButtonImg;
+        private Text _weatherButtonLabel, _animalButtonLabel, _obstaclesButtonLabel, _zoneButtonLabel;
+        private Image _weatherButtonImg, _animalButtonImg, _obstaclesButtonImg;
 
         private GameObject _restartBar;
         private Button _restartButton;
@@ -107,7 +107,7 @@ namespace ARIA.UI
         private void BuildDemoControls()
         {
             var panel = MakePanel(transform, new Vector2(1, 1), new Vector2(1, 1),
-                new Vector2(-16, -16), new Vector2(260, 188), new Color(0.1f, 0.15f, 0.1f, 0.98f));
+                new Vector2(-16, -16), new Vector2(260, 236), new Color(0.1f, 0.15f, 0.1f, 0.98f));
 
             var titleText = MakeText(panel, "DEMO CONTROLS", 16, TextAnchor.UpperCenter,
                 new Vector2(0, -12), new Vector2(0, -12));
@@ -123,11 +123,6 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             weatherBtn.onClick.AddListener(CycleWeatherMode);
 
-            // No more "Obstacles" toggle here -- real per-cell hazards are always
-            // active and always visualised now (see ActionDispatcher.Step() and
-            // AerialObstacleVisualizer), matching how the trained policy actually
-            // experienced them, not something a demo button turns on.
-
             var animalBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -88), new Vector2(-24, 40), new Color(0.2f, 0.15f, 0.1f, 1f));
             var animalBtn = animalBtnGO.AddComponent<Button>();
@@ -136,9 +131,21 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             animalBtn.onClick.AddListener(ToggleAnimalDisturbance);
 
+            // Obstacles button -- purely a visibility toggle for the hazard
+            // markers (see DemoConditions.ShowHazardMarkers). The real hazard
+            // grid the policy reasons over is always active regardless of
+            // this button; it never gets touched by it.
+            var obstaclesBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(12, -136), new Vector2(-24, 40), new Color(0.25f, 0.1f, 0.1f, 1f));
+            var obstaclesBtn = obstaclesBtnGO.AddComponent<Button>();
+            _obstaclesButtonImg = obstaclesBtnGO.GetComponent<Image>();
+            _obstaclesButtonLabel = MakeText(obstaclesBtnGO, "Obstacles: On", 14, TextAnchor.MiddleCenter,
+                new Vector2(6, 0), new Vector2(-6, 0));
+            obstaclesBtn.onClick.AddListener(ToggleObstacleMarkers);
+
             // Zone button -- cycles through every real zone in the manifest.
             var zoneBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(12, -136), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
+                new Vector2(12, -184), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
             var zoneBtn = zoneBtnGO.AddComponent<Button>();
             _zoneButtonLabel = MakeText(zoneBtnGO, "Zone: --", 14, TextAnchor.MiddleCenter,
                 new Vector2(6, 0), new Vector2(-6, 0));
@@ -192,6 +199,12 @@ namespace ARIA.UI
             RefreshDemoControlLabels();
         }
 
+        private void ToggleObstacleMarkers()
+        {
+            DemoConditions.ShowHazardMarkers = !DemoConditions.ShowHazardMarkers;
+            RefreshDemoControlLabels();
+        }
+
         private void CycleZone()
         {
             if (drone == null || drone.ZoneManifest == null || drone.ZoneManifest.Count <= 1) return;
@@ -218,6 +231,12 @@ namespace ARIA.UI
             _animalButtonImg.color = DemoConditions.AnimalDisturbanceEnabled
                 ? new Color(0.55f, 0.35f, 0.05f, 0.95f)
                 : new Color(0.2f, 0.15f, 0.1f, 0.95f);
+
+            _obstaclesButtonLabel.text = DemoConditions.ShowHazardMarkers
+                ? "Obstacles: On" : "Obstacles: Off";
+            _obstaclesButtonImg.color = DemoConditions.ShowHazardMarkers
+                ? new Color(0.55f, 0.15f, 0.1f, 0.95f)
+                : new Color(0.25f, 0.1f, 0.1f, 0.95f);
 
             if (_zoneButtonLabel != null)
             {

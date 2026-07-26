@@ -28,19 +28,33 @@ namespace ARIA.Core
         public const int STATE_OBSTACLE   = 6;
         public const int N_STATES         = 7;
 
-        // Episode
-        public const int   MAX_STEPS     = 1000;
-        public const float INITIAL_SEEDS = 500f; // used to normalise seeds_remaining in drone_vector
+        // Episode length matches configs/config.py exactly (found drifted
+        // during a full parity audit against rwanda_env.py: was 1000 here
+        // vs. the real 1800 the deployed policy was trained under).
+        public const int   MAX_STEPS     = 1800;
 
-        // Battery / energy
+        // Deliberately kept at 500 rather than matching config.py's real
+        // 1000 -- a product decision, not a parity bug. Also used to
+        // normalise seeds_remaining in drone_vector, so the policy still
+        // sees a valid 1.0 -> 0.0 depletion signal either way; it just
+        // reaches empty in half the placements.
+        public const float INITIAL_SEEDS = 500f;
+
+        // Battery / energy -- BATTERY_RETURN_THRESH/BATTERY_CRITICAL also
+        // found drifted from configs/config.py's real 0.10/0.05 during the
+        // same audit. BATTERY_NET_DRAIN_SUNNY (a Unity-only workaround
+        // constant) is gone -- EnergySystem now uses WeatherSystem's real
+        // rainfall-proportional SolarRate directly, matching
+        // energy_system.py's actual formula, which fixes the same frozen-
+        // battery bug that constant existed to patch around, without
+        // diverging from the real formula to do it.
         public const float BATTERY_MAX           = 1.0f;
         public const float BATTERY_INIT          = 1.0f;
         public const float BATTERY_DRAIN_SUNNY   = 0.002f;   // per step in sun
         public const float BATTERY_DRAIN_RAIN    = 0.004f;   // per step in rain (2x drain)
         public const float SOLAR_CHARGE_RATE     = 0.002f;   // per step when sunny -- exactly offsets BATTERY_DRAIN_SUNNY
-        public const float BATTERY_NET_DRAIN_SUNNY = 0.0003f; // avionics/compute draw solar can't fully cover -- without this the battery reads a frozen 100% for the entire sunny majority of any demo, since solar exactly cancels the base drain above
-        public const float BATTERY_RETURN_THRESH = 0.05f;    // return to base below this
-        public const float BATTERY_CRITICAL      = 0.00f;    // emergency land below this
+        public const float BATTERY_RETURN_THRESH = 0.10f;    // return to base below this (distance-aware floor -- see EnergySystem.Step)
+        public const float BATTERY_CRITICAL      = 0.05f;    // emergency land below this
         public const int   RETURN_DESCENT_RANGE  = 8;         // start descending this many cells out from base
 
         // Weather
@@ -69,7 +83,7 @@ namespace ARIA.Core
         // that number.
         public const float ZONE_MIN_SUITABILITY = 0.24f;
 
-        public const int MIN_SEED_SPACING = 3;
+        public const int MIN_SEED_SPACING = 5; // matches configs/config.py exactly (was 3 -- found drifted during parity audit)
 
         public const int N_SEASONS = 6;
         public static readonly int SEASON_LENGTH = MAX_STEPS / N_SEASONS;

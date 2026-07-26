@@ -22,6 +22,13 @@ namespace ARIA.Core
         public bool BatteryDepleted;
 
         public bool MissionComplete;
+
+        // Placement was attempted but refused -- mirrors rwanda_env.py's
+        // w_redundant_penalty (already-covered cell, not a reseed) and the
+        // reward function's slope penalty (cell too steep to plant, from
+        // the same real no_plant mask used for is_suitable).
+        public bool RedundantPlacementBlocked;
+        public bool TooSteepBlocked;
     }
 
     public static class ActionDispatcher
@@ -34,29 +41,32 @@ namespace ARIA.Core
             float rainVal = DemoConditions.GetEffectiveRainfall(realRain, s.Timestep);
             s.Weather.Step(rainVal, s.Timestep);
 
-            // Weather cleared mid-return -- cancel the emergency and let the battery recharge.
-            if (s.BatteryCriticalReturning && s.Weather.IsSunny())
-            {
-                s.BatteryCriticalReturning = false;
-                s.DroneState = ARIAConstants.STATE_SEEDING;
-            }
-
-            float batteryBeforeStep = s.Energy.Battery;
-            var energyInfo = s.Energy.Step(s.Weather);
+            // Mirrors energy_system.py's step(steps_to_base) exactly -- see
+            // EnergySystem.Step for why a fixed return threshold was a real
+            // bug, not just a simplification.
+            int stepsToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
+            var energyInfo = s.Energy.Step(s.Weather, stepsToBase);
             s.Season = s.Weather.CurrentSeason;
 
-            if (s.BatteryCriticalReturning)
-            {
-                s.Energy.SetBattery(batteryBeforeStep);
-            }
-
-            if (action == ARIAConstants.EMERGENCY)
+            // Mirrors rwanda_env.py's step() exactly: "if action == EMERGENCY
+            // or energy_info['is_critical']" terminates immediately, wherever
+            // the drone happens to be -- there is no "try to fly home first"
+            // grace period in the real trained environment. The distance-aware
+            // ShouldReturn threshold above is what's actually supposed to get
+            // the drone back to base with margin to spare; IsCritical is the
+            // hard safety cutoff for when that didn't happen in time, not a
+            // normal end state reached via a scripted return flight. (An
+            // earlier version of this code held the battery steady and let a
+            // "critical return" fly all the way home before terminating, and
+            // cancelled the whole thing if the weather turned sunny mid-flight
+            // -- neither of those exist in rwanda_env.py; the battery just
+            // keeps draining normally every step, exactly as it does here now.)
+            if (action == ARIAConstants.EMERGENCY || energyInfo.IsCritical)
             {
                 result.EmergencyLand = true;
                 result.Terminated = true;
                 result.BatteryDepleted = true;
                 s.MissionCompleteReturning = false;
-                s.BatteryCriticalReturning = false;
                 s.Timestep++;
                 return result;
             }
@@ -112,49 +122,20 @@ namespace ARIA.Core
                 // Matches env/rwanda_env.py's step() exactly: obstacles are real, static
                 // terrain features (from compute_obstacle() in preprocess.py) that always
                 // block low-altitude flight into them, unconditionally -- not something a
-                // demo toggle turns on. There used to be a "Obstacles" button that swapped
-                // in a handful of synthetic random obstacles and only enforced blocking
-                // while it was on; the real per-cell hazard map now applies every step,
-                // exactly like the trained policy actually experienced it.
+                // demo toggle turns on. Blocking simply holds the drone at its current
+                // cell for this step (rwanda_env.py never rescues the move with an
+                // automatic reroute search) -- it's on the trained policy to pick a
+                // different direction, or climb via ALT_UP, on a later step, exactly as
+                // it actually learned to. An earlier version of this searched adjacent
+                // directions (CW/CCW/reverse) and auto-relocated the drone within the
+                // same step; that was never something the policy was trained under.
                 bool obstacleAtDestination = s.Zone.ObsGrid[newY, newX] > ARIAConstants.OBSTACLE_THRESHOLD;
                 bool blocked = obstacleAtDestination && s.Altitude < ARIAConstants.OBSTACLE_SAFE_ALTITUDE;
-
-                bool wasTransitHop = s.DroneState == ARIAConstants.STATE_NAVIGATING;
 
                 if (blocked)
                 {
                     result.ObstacleHit = true;
                     s.DroneState = ARIAConstants.STATE_OBSTACLE;
-
-                    int cwIdx  = FindDirectionIndex(dx, -dy);   // 90 deg clockwise
-                    int ccwIdx = FindDirectionIndex(-dx, dy);   // 90 deg counter-clockwise
-                    int revIdx = FindDirectionIndex(-dy, -dx);  // reverse, tried last
-
-                    Span<int> tryOrder = stackalloc int[8];
-                    int n = 0;
-                    if (cwIdx  >= 0) tryOrder[n++] = cwIdx;
-                    if (ccwIdx >= 0) tryOrder[n++] = ccwIdx;
-                    for (int i = 0; i < ARIAConstants.DIRECTIONS.Length; i++)
-                        if (i != cwIdx && i != ccwIdx && i != revIdx) tryOrder[n++] = i;
-                    if (revIdx >= 0) tryOrder[n++] = revIdx;
-
-                    for (int k = 0; k < n; k++)
-                    {
-                        var (ty, tx) = ARIAConstants.DIRECTIONS[tryOrder[k]];
-                        int altX = Mathf.Clamp(s.X + tx, 0, ARIAConstants.ZONE_SIZE - 1);
-                        int altY = Mathf.Clamp(s.Y + ty, 0, ARIAConstants.ZONE_SIZE - 1);
-                        bool altBlocked = s.Zone.ObsGrid[altY, altX] > ARIAConstants.OBSTACLE_THRESHOLD;
-                        if (!altBlocked && (altX != s.X || altY != s.Y))
-                        {
-                            s.X = altX;
-                            s.Y = altY;
-                            result.ObstacleCleared = true;
-                            s.DroneState = wasTransitHop
-                                ? ARIAConstants.STATE_NAVIGATING
-                                : ARIAConstants.STATE_SEEDING;
-                            break;
-                        }
-                    }
                 }
                 else
                 {
@@ -163,14 +144,32 @@ namespace ARIA.Core
                 }
 
                 bool alreadyPlanted = s.CoverageMap[s.Y, s.X] >= 1.0f;
-                if (s.DroneState == ARIAConstants.STATE_SEEDING && s.SeedsRemaining > 0 && !alreadyPlanted)
+                bool isReseed        = s.ReseedingTargets.Contains((s.Y, s.X));
+                bool noPlant         = s.Zone.NoPlant[s.Y, s.X];
+
+                // Mirrors rwanda_env.py's step() exactly: a reseed attempt is
+                // a deliberate correction, not accidental redundancy, so it
+                // bypasses the already-planted block -- without this
+                // exception a reseed target could never actually be
+                // replanted even after being successfully reached, since its
+                // cell was already marked covered by the original (failed)
+                // seed. The queue could then only ever shrink by timing out,
+                // never by succeeding.
+                bool blockedRedundant = alreadyPlanted && !isReseed;
+                // Too-steep-to-plant is hard-blocked regardless of reseed
+                // status, matching how no_plant feeds is_suitable identically
+                // for both cases in reward_function.py -- there is no reseed
+                // exception for slope there either.
+                bool blockedSlope = noPlant;
+
+                if (s.DroneState == ARIAConstants.STATE_SEEDING && s.SeedsRemaining > 0
+                    && !blockedRedundant && !blockedSlope)
                 {
                     float soil  = s.Zone.SoilAt(s.Y, s.X);
                     float rain  = s.Zone.Terrain[s.Y, s.X, 3];
                     float slope = s.Zone.SlopeAt(s.Y, s.X) * 90f;
                     float prox  = s.Zone.DistGrid[s.Y, s.X];
                     bool inProtected = prox >= ARIAConstants.PROTECTED_PROXIMITY_THRESHOLD;
-                    bool noPlant     = s.Zone.NoPlant[s.Y, s.X];
 
                     soil = float.IsNaN(soil) ? 0f : soil;
                     rain = float.IsNaN(rain) ? 0f : rain;
@@ -179,8 +178,6 @@ namespace ARIA.Core
                     float rainMin = ARIAConstants.SPECIES_RAIN_MIN[speciesId];
                     bool isSuitable = !noPlant && !inProtected
                         && rain >= rainMin && soil >= ARIAConstants.ZONE_MIN_SOIL;
-
-                    bool isReseed = s.ReseedingTargets.Contains((s.Y, s.X));
 
                     s.Growth.Register(speciesId, s.X, s.Y, s.Timestep,
                         soil, rain, slope, prox, isSuitable, inProtected);
@@ -200,6 +197,14 @@ namespace ARIA.Core
                     result.SeedDropped = true;
                     result.IsSuitable = isSuitable;
                 }
+                else if (blockedRedundant)
+                {
+                    result.RedundantPlacementBlocked = true;
+                }
+                else if (blockedSlope)
+                {
+                    result.TooSteepBlocked = true;
+                }
             }
 
             s.CoverDeployed = s.Weather.IsRainy();
@@ -216,11 +221,15 @@ namespace ARIA.Core
                 s.ReseedSpeciesMap.Clear();
             }
 
-            // Sunny weather keeps recharging the battery, so only rain forces an emergency return.
-            if (energyInfo.ShouldReturn && activelySeeding && !s.Weather.IsSunny())
+            // Mirrors rwanda_env.py's should_return check exactly -- no
+            // weather condition on it there. (An earlier version of this
+            // code only triggered a battery return in rain, since sunny
+            // weather was treated as "recharging enough to not need it";
+            // that's not how the real threshold works -- see
+            // EnergySystem.Step's distance-aware ShouldReturn.)
+            if (energyInfo.ShouldReturn && activelySeeding)
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
-                s.BatteryCriticalReturning = true;
                 result.ReturningBattery = true;
             }
 
@@ -243,19 +252,18 @@ namespace ARIA.Core
                     s.MissionsCompleted++;
                     result.Landed = true;
 
+                    // Critical-battery termination now fires immediately at
+                    // the top of Step() (matching rwanda_env.py), the moment
+                    // energyInfo.IsCritical goes true -- not after a
+                    // completed return flight -- so a landing here can only
+                    // be a voluntary/battery-driven return that made it back
+                    // safely, or the mission-complete flight.
                     if (s.MissionCompleteReturning)
                     {
                         s.Energy.Recharge(0.5f);
                         result.MissionComplete = true;
                         result.Terminated = true;
                         s.MissionCompleteReturning = false;
-                    }
-                    else if (s.BatteryCriticalReturning)
-                    {
-                        s.Energy.SetBattery(0f);
-                        result.BatteryDepleted = true;
-                        result.Terminated = true;
-                        s.BatteryCriticalReturning = false;
                     }
                     else
                     {
@@ -294,17 +302,22 @@ namespace ARIA.Core
             }
 
             s.Timestep++;
-            result.Truncated = s.Timestep >= ARIAConstants.MAX_STEPS;
+
+            // MAX_STEPS is the episode-length bound the policy was trained
+            // under in rwanda_env.py, but that's a training-time sample-
+            // efficiency cap, not a promise that the zone actually finishes
+            // getting seeded. Normal completion already happens above via
+            // MissionComplete (seed budget fully placed / nowhere left to
+            // plant) or BatteryDepleted -- truncating on step count alone
+            // would let the live demo give up and reset a zone while seeds
+            // are still sitting unused in the hopper, which is not
+            // acceptable for the demo: it should always finish seeding
+            // before it stops. This is now purely a safety valve against a
+            // genuinely stranded last seed (e.g. a target no path can ever
+            // reach), not a real end state.
+            result.Truncated = s.Timestep >= ARIAConstants.MAX_STEPS * 4;
 
             return result;
-        }
-
-        private static int FindDirectionIndex(int dy, int dx)
-        {
-            for (int i = 0; i < ARIAConstants.DIRECTIONS.Length; i++)
-                if (ARIAConstants.DIRECTIONS[i].dy == dy && ARIAConstants.DIRECTIONS[i].dx == dx)
-                    return i;
-            return -1;
         }
 
         private static float[,] ExtractChannel(ZoneData zone, int channel)

@@ -37,25 +37,33 @@ namespace ARIA.Systems
             EmptyEvents   = 0;
         }
 
-        public EnergyStepResult Step(WeatherSystem weather)
+        /// <summary>
+        /// Mirrors energy_system.py's step() exactly. stepsToBase is the
+        /// Chebyshev distance from the drone's current position to base
+        /// (matches the diagonal scripted return movement: dx/dy both
+        /// close simultaneously each step, so steps needed =
+        /// max(|dx|,|dy|), not Manhattan distance) -- used to make
+        /// ShouldReturn distance-aware. A fixed threshold was a real,
+        /// documented bug in Python (see the matching comment there): the
+        /// margin between "should return" and "critical" only covers
+        /// 12-25 steps of flight, but the drone can range far further
+        /// than that from base, so a drone already beyond the margin
+        /// when a fixed threshold fired couldn't physically survive the
+        /// trip back.
+        /// </summary>
+        public EnergyStepResult Step(WeatherSystem weather, int stepsToBase = 0)
         {
             bool sunny = weather.IsSunny();
+            bool rainy = weather.IsRainy();
 
-            if (sunny)
-            {
-                // BATTERY_NET_DRAIN_SUNNY is already the net shortfall after solar offset,
-                // not an additional drain on top of it -- adding SolarInput here as well
-                // double-counts the offset and cancels the drain back out to +net.
-                SolarInput    = ARIAConstants.SOLAR_CHARGE_RATE;
-                DrainThisStep = ARIAConstants.BATTERY_NET_DRAIN_SUNNY;
-                Battery = Mathf.Clamp(Battery - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
-            }
-            else
-            {
-                SolarInput    = 0f;
-                DrainThisStep = ARIAConstants.BATTERY_DRAIN_RAIN;
-                Battery = Mathf.Clamp(Battery - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
-            }
+            // weather.SolarRate is already rainfall-proportional (full
+            // SOLAR_CHARGE_RATE at zero rainfall, tapering to 0 as
+            // rainfall approaches RAINFALL_SUNNY_THRESH), matching
+            // weather_system.py's solar_rate exactly -- no separate
+            // "net drain" workaround constant needed.
+            SolarInput    = sunny ? weather.SolarRate : 0f;
+            DrainThisStep = rainy ? ARIAConstants.BATTERY_DRAIN_RAIN : ARIAConstants.BATTERY_DRAIN_SUNNY;
+            Battery = Mathf.Clamp(Battery + SolarInput - DrainThisStep, 0f, ARIAConstants.BATTERY_MAX);
 
             TotalSolar += SolarInput;
             TotalDrain += DrainThisStep;
@@ -63,12 +71,15 @@ namespace ARIA.Systems
             if (Battery <= ARIAConstants.BATTERY_CRITICAL)
                 EmptyEvents++;
 
+            float safeMargin  = stepsToBase * ARIAConstants.BATTERY_DRAIN_RAIN + ARIAConstants.BATTERY_CRITICAL;
+            float returnThresh = Mathf.Max(ARIAConstants.BATTERY_RETURN_THRESH, safeMargin);
+
             return new EnergyStepResult
             {
                 Battery      = Battery,
                 SolarInput   = SolarInput,
                 Drain        = DrainThisStep,
-                ShouldReturn = Battery < ARIAConstants.BATTERY_RETURN_THRESH,
+                ShouldReturn = Battery < returnThresh,
                 IsCritical   = Battery <= ARIAConstants.BATTERY_CRITICAL,
             };
         }
@@ -77,12 +88,6 @@ namespace ARIA.Systems
         public void Recharge(float amount = 1.0f)
         {
             Battery = Mathf.Min(ARIAConstants.BATTERY_INIT, Battery + amount);
-        }
-
-        // Holds the battery steady during a critical-battery return, or zeroes it on landing.
-        public void SetBattery(float value)
-        {
-            Battery = Mathf.Clamp(value, 0f, ARIAConstants.BATTERY_MAX);
         }
 
         /// <summary>Normalised battery level [0,1] -- matches get_state().</summary>
