@@ -6,6 +6,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await getSession();
+  const isForester = session?.role === 'FORESTER';
+  const userId = session ? Number(session.sub) : null;
+
+  // Foresters only ever see their own simulation runs; Admins see
+  // everything (attributed by user full name where it's shown per-row).
+  const episodeFilter = isForester && userId != null ? { user_id: userId } : {};
+  const seedFilter = isForester && userId != null ? { episode: { user_id: userId } } : {};
 
   let episodes: Awaited<ReturnType<typeof prisma.episode.findMany>> = [];
   let totalEpisodes = 0;
@@ -15,23 +22,25 @@ export default async function DashboardPage() {
 
   try {
     episodes = await prisma.episode.findMany({
+      where: episodeFilter,
       orderBy: { episode_id: 'desc' },
       take: 50,
       include: {
         zone: true,
+        user: { select: { name: true } },
         _count: {
           select: { seeds: true }
         }
       }
     });
 
-    totalEpisodes = await prisma.episode.count();
-    totalSeeds = await prisma.seed.count();
+    totalEpisodes = await prisma.episode.count({ where: episodeFilter });
+    totalSeeds = await prisma.seed.count({ where: seedFilter });
 
     // Seed lifecycle stage breakdown for the pie chart. Aggregated in JS
     // rather than via Prisma groupBy -- groupBy on a nullable column errored
     // against the pg driver adapter used here (poisoned the whole request).
-    const allStages = await prisma.seed.findMany({ select: { stage: true } });
+    const allStages = await prisma.seed.findMany({ where: seedFilter, select: { stage: true } });
     const stageCountMap: Record<string, number> = {};
     for (const s of allStages) {
       const key = s.stage || 'Unknown';

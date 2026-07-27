@@ -7,16 +7,22 @@ export const dynamic = 'force-dynamic';
 
 export default async function FailuresPage() {
   const session = await getSession();
+  const isAdmin = session?.role === 'ADMIN';
+  const isForester = session?.role === 'FORESTER';
+  const userId = session ? Number(session.sub) : null;
 
   let recentFailures: Awaited<ReturnType<typeof prisma.seed.findMany>> = [];
   let dataUnavailable = false;
 
   try {
     recentFailures = await prisma.seed.findMany({
-      where: { stage: 'Dead' },
+      where: {
+        stage: 'Dead',
+        ...(isForester && userId != null ? { episode: { user_id: userId } } : {}),
+      },
       orderBy: { seed_id: 'desc' },
       take: 50,
-      include: { episode: { include: { zone: true } } },
+      include: { episode: { include: { zone: true, user: { select: { name: true } } } } },
     });
   } catch (error) {
     console.error('Failures data fetch failed:', error);
@@ -27,7 +33,11 @@ export default async function FailuresPage() {
     <DashboardShell
       session={session ? { name: session.name, role: session.role } : null}
       title="Failures & Reseed Targets"
-      subtitle="Every seed that died, why, and which reseed target it fed into."
+      subtitle={
+        isForester
+          ? 'Every seed of yours that died, why, and which reseed target it fed into.'
+          : 'Every seed that died, why, and which reseed target it fed into -- all users.'
+      }
       dataUnavailable={dataUnavailable}
     >
       <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -41,6 +51,7 @@ export default async function FailuresPage() {
               <tr>
                 <th className="px-3 sm:px-6 py-3 font-medium rounded-tl-lg">Seed</th>
                 <th className="px-3 sm:px-6 py-3 font-medium">Zone</th>
+                {isAdmin && <th className="px-3 sm:px-6 py-3 font-medium">User</th>}
                 <th className="px-3 sm:px-6 py-3 font-medium">Reason</th>
                 <th className="px-3 sm:px-6 py-3 font-medium rounded-tr-lg">Dropped At Step</th>
               </tr>
@@ -50,6 +61,11 @@ export default async function FailuresPage() {
                 <tr key={s.seed_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-3 sm:px-6 py-3 font-medium">#{s.seed_id}</td>
                   <td className="px-3 sm:px-6 py-3">{s.episode?.zone?.name || 'Unknown'}</td>
+                  {isAdmin && (
+                    <td className="px-3 sm:px-6 py-3 text-slate-500 dark:text-slate-400">
+                      {s.episode?.user?.name || '—'}
+                    </td>
+                  )}
                   <td className="px-3 sm:px-6 py-3">
                     <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-medium">
                       {s.fail_reason || 'unknown'}

@@ -45,7 +45,11 @@ export default function DashboardClient({
     <DashboardShell
       session={session}
       title="System Monitoring"
-      subtitle="Real-time telemetrics from the ARIA simulation"
+      subtitle={
+        session?.role === 'FORESTER'
+          ? 'Real-time telemetrics from your own simulation runs'
+          : 'Real-time telemetrics from the ARIA simulation -- all users'
+      }
       dataUnavailable={dataUnavailable}
       headerRight={
         dataUnavailable ? (

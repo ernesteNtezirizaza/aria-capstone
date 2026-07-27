@@ -7,15 +7,19 @@ export const dynamic = 'force-dynamic';
 
 export default async function EpisodesPage() {
   const session = await getSession();
+  const isAdmin = session?.role === 'ADMIN';
+  const isForester = session?.role === 'FORESTER';
+  const userId = session ? Number(session.sub) : null;
 
   let episodes: Awaited<ReturnType<typeof prisma.episode.findMany>> = [];
   let dataUnavailable = false;
 
   try {
     episodes = await prisma.episode.findMany({
+      where: isForester && userId != null ? { user_id: userId } : {},
       orderBy: { episode_id: 'desc' },
       take: 100,
-      include: { zone: true, _count: { select: { seeds: true } } },
+      include: { zone: true, user: { select: { name: true } }, _count: { select: { seeds: true } } },
     });
   } catch (error) {
     console.error('Episodes data fetch failed:', error);
@@ -26,7 +30,11 @@ export default async function EpisodesPage() {
     <DashboardShell
       session={session ? { name: session.name, role: session.role } : null}
       title="Recent Episodes Log"
-      subtitle="Every episode the live simulation has reported."
+      subtitle={
+        isForester
+          ? 'Every episode you have run.'
+          : 'Every episode the live simulation has reported -- all users.'
+      }
       dataUnavailable={dataUnavailable}
     >
       <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -40,6 +48,7 @@ export default async function EpisodesPage() {
               <tr>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tl-lg">Episode ID</th>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Zone</th>
+                {isAdmin && <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">User</th>}
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Suitable %</th>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Spacing Violations</th>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Reseeding Count</th>
@@ -51,6 +60,11 @@ export default async function EpisodesPage() {
                 <tr key={ep.episode_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium">#{ep.episode_id}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">{ep.zone?.name || 'Unknown'}</td>
+                  {isAdmin && (
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500 dark:text-slate-400">
+                      {ep.user?.name || '—'}
+                    </td>
+                  )}
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">
                     {ep.pct_suitable_seeded != null ? `${(ep.pct_suitable_seeded * 100).toFixed(1)}%` : 'N/A'}
                   </td>
