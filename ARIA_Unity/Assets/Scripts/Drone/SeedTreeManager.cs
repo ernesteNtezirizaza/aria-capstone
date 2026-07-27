@@ -357,6 +357,34 @@ namespace ARIA.Drone
             };
         }
 
+        // Real tree meshes (RealTreeBuilder) use glTFast's 'glTF/PbrMetallicRoughness'
+        // shader, which exposes neither "_Color" nor "_BaseColor" -- so an
+        // Material.color / HasProperty("_Color") check silently no-ops on them
+        // (confirmed live via RealTreeBuilder's own diagnostic). Enumerating the
+        // shader's actual declared properties finds whichever one is really a
+        // Color regardless of its name, so this works on both the real meshes
+        // and any plain procedural marker (sprouts, etc.) still using Standard.
+        private static void TintTowards(GameObject target, Color towardColor, float blend)
+        {
+            foreach (var rend in target.GetComponentsInChildren<Renderer>())
+            {
+                foreach (var mat in rend.materials)
+                {
+                    var shader = mat.shader;
+                    int propCount = shader.GetPropertyCount();
+                    for (int i = 0; i < propCount; i++)
+                    {
+                        if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
+                        {
+                            string propName = shader.GetPropertyName(i);
+                            Color current = mat.GetColor(propName);
+                            mat.SetColor(propName, Color.Lerp(current, towardColor, blend));
+                        }
+                    }
+                }
+            }
+        }
+
         private IEnumerator TransitionTo(TreeVisual visual, SeedStage newStage)
         {
             // Dead is its own branch below, so an early death just withers the sprout in place.
@@ -376,10 +404,7 @@ namespace ARIA.Drone
 
                     if (!visual.IsSuitable)
                     {
-                        foreach (var rend in tree.GetComponentsInChildren<Renderer>())
-                            foreach (var mat in rend.materials)
-                                if (mat.HasProperty("_Color"))
-                                    mat.color = Color.Lerp(mat.color, Color.gray, 0.4f);
+                        TintTowards(tree, Color.gray, 0.4f);
                     }
 
                     visual.TreeObject = tree;
@@ -397,10 +422,7 @@ namespace ARIA.Drone
             if (newStage == SeedStage.Dead)
             {
                 // Grey out and shrink the existing marker in place -- reads as "died here".
-                foreach (var rend in target.GetComponentsInChildren<Renderer>())
-                    foreach (var mat in rend.materials)
-                        if (mat.HasProperty("_Color"))
-                            mat.color = Color.Lerp(mat.color, new Color(0.35f, 0.3f, 0.25f), 0.7f);
+                TintTowards(target, new Color(0.35f, 0.3f, 0.25f), 0.7f);
                 endScale = startScale * 0.4f;
             }
             else

@@ -55,31 +55,27 @@ namespace ARIA.Drone
             tree.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
             Color tint = existing ? Tint[speciesId] * 0.6f : Tint[speciesId];
-            bool loggedShader = false;
             foreach (var rend in tree.GetComponentsInChildren<Renderer>())
             {
                 foreach (var mat in rend.materials)
                 {
-                    // TEMP DIAGNOSTIC: confirmed live the canopy still
-                    // renders pale/washed after the lighting fix, which
-                    // only makes sense if this tint assignment isn't
-                    // actually landing. Logging the real shader + property
-                    // name once, instead of guessing a second property
-                    // name blind -- glTFast may have assigned a shader
-                    // that exposes "_BaseColor" (URP/Lit-style) rather
-                    // than "_Color" (Standard), in which case HasProperty
-                    // ("_Color") silently returns false and this whole
-                    // tint block has never actually run.
-                    if (!loggedShader)
+                    // Confirmed live: this material's shader is glTFast's
+                    // own 'glTF/PbrMetallicRoughness', which has neither
+                    // "_Color" nor "_BaseColor" -- that's why two attempts
+                    // at guessing a specific property name both silently
+                    // no-opped. Rather than guess a third name, enumerate
+                    // the shader's actual declared properties at runtime
+                    // and set whichever one is really a Color, regardless
+                    // of what it's called.
+                    var shader = mat.shader;
+                    int propCount = shader.GetPropertyCount();
+                    for (int i = 0; i < propCount; i++)
                     {
-                        loggedShader = true;
-                        Debug.Log($"[RealTreeDiag] species={speciesId} shader='{mat.shader.name}' " +
-                            $"hasColor={mat.HasProperty("_Color")} hasBaseColor={mat.HasProperty("_BaseColor")} " +
-                            $"mainColorBefore={(mat.HasProperty("_Color") ? mat.color.ToString() : "n/a")}");
+                        if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
+                        {
+                            mat.SetColor(shader.GetPropertyName(i), tint);
+                        }
                     }
-
-                    if (mat.HasProperty("_Color")) mat.color = tint;
-                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
                 }
             }
 
