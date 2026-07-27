@@ -55,10 +55,33 @@ namespace ARIA.Drone
             tree.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
             Color tint = existing ? Tint[speciesId] * 0.6f : Tint[speciesId];
+            bool loggedShader = false;
             foreach (var rend in tree.GetComponentsInChildren<Renderer>())
+            {
                 foreach (var mat in rend.materials)
-                    if (mat.HasProperty("_Color"))
-                        mat.color = tint;
+                {
+                    // TEMP DIAGNOSTIC: confirmed live the canopy still
+                    // renders pale/washed after the lighting fix, which
+                    // only makes sense if this tint assignment isn't
+                    // actually landing. Logging the real shader + property
+                    // name once, instead of guessing a second property
+                    // name blind -- glTFast may have assigned a shader
+                    // that exposes "_BaseColor" (URP/Lit-style) rather
+                    // than "_Color" (Standard), in which case HasProperty
+                    // ("_Color") silently returns false and this whole
+                    // tint block has never actually run.
+                    if (!loggedShader)
+                    {
+                        loggedShader = true;
+                        Debug.Log($"[RealTreeDiag] species={speciesId} shader='{mat.shader.name}' " +
+                            $"hasColor={mat.HasProperty("_Color")} hasBaseColor={mat.HasProperty("_BaseColor")} " +
+                            $"mainColorBefore={(mat.HasProperty("_Color") ? mat.color.ToString() : "n/a")}");
+                    }
+
+                    if (mat.HasProperty("_Color")) mat.color = tint;
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
+                }
+            }
 
             return tree;
         }
