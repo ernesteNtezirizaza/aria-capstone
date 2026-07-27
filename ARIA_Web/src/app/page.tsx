@@ -54,14 +54,18 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
-            <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
+            {checkedSession && user && (
+              <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
+            )}
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             {user?.role === 'ADMIN' && (
               <Link href="/admin/users" className="hover:text-white transition-colors">Users</Link>
             )}
-            <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
-              Go to Dashboard
-            </Link>
+            {checkedSession && user && (
+              <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
+                Go to Dashboard
+              </Link>
+            )}
             {checkedSession && (
               user ? (
                 <button
@@ -96,14 +100,18 @@ export default function LandingPage() {
           <div className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md px-4 py-4 flex flex-col gap-4 text-sm font-medium text-slate-300">
             <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Features</Link>
             <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
-            <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
+            {checkedSession && user && (
+              <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
+            )}
             <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Privacy Policy</Link>
             {user?.role === 'ADMIN' && (
               <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Users</Link>
             )}
-            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
-              Go to Dashboard
-            </Link>
+            {checkedSession && user && (
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
+                Go to Dashboard
+              </Link>
+            )}
             {checkedSession && (
               user ? (
                 <button
