@@ -1,11 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { Activity, Target, AlertTriangle, Sprout, ArrowLeft, Database, Skull, CloudOff, LogOut, Users } from 'lucide-react';
-import Link from 'next/link';
+import { Activity, Target, AlertTriangle, Sprout, Database, Skull, CloudOff, Users } from 'lucide-react';
+import DashboardSidebar from '@/components/DashboardSidebar';
 
 type SessionInfo = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
 type PerUserStat = { userId: number; name: string; email: string; episodeCount: number };
@@ -33,14 +32,6 @@ export default function DashboardClient({
   session?: SessionInfo;
   perUserStats?: PerUserStat[];
 }) {
-  const router = useRouter();
-
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-    router.refresh();
-  }
-
   // Format data for charts
   const chartData = [...episodes].reverse().map((ep, idx) => ({
     name: `Ep ${ep.episode_id}`,
@@ -55,13 +46,12 @@ export default function DashboardClient({
   const recentFailures = seedMonitoring?.recentFailures || [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      <DashboardSidebar session={session} />
+      <div className="flex-1 min-w-0 max-w-7xl px-4 py-8">
       {/* Header */}
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4">
         <div>
-          <Link href="/" className="inline-flex items-center text-sm text-indigo-500 hover:text-indigo-400 mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Home
-          </Link>
           <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Real-time telemetrics from the ARIA simulation</p>
         </div>
@@ -76,24 +66,6 @@ export default function DashboardClient({
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Live Connection
             </div>
-          )}
-          {session?.role === 'ADMIN' && (
-            <Link
-              href="/admin/users"
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-800 text-sm font-medium transition-colors"
-            >
-              <Users className="w-4 h-4" />
-              User Management
-            </Link>
-          )}
-          {session && (
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-800 text-sm font-medium transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              {session.name}
-            </button>
           )}
         </div>
       </header>
@@ -342,6 +314,7 @@ export default function DashboardClient({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
