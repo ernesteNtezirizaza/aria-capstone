@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, Trash2, RefreshCw, X } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { UserPlus, Trash2, RefreshCw, Pencil, X } from 'lucide-react';
 
 type Role = 'ADMIN' | 'FORESTER';
 type Status = 'PENDING' | 'ACTIVE' | 'DISABLED';
@@ -28,6 +29,20 @@ const ROLE_STYLES: Record<Role, string> = {
   FORESTER: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
 };
 
+// Small top-right toast for action feedback, used instead of per-row inline
+// text so success/error is equally visible regardless of scroll position.
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2800,
+  timerProgressBar: true,
+  didOpen: (el) => {
+    el.onmouseenter = Swal.stopTimer;
+    el.onmouseleave = Swal.resumeTimer;
+  },
+});
+
 export default function AdminUsersClient({
   initialUsers,
   currentUserId,
@@ -37,7 +52,7 @@ export default function AdminUsersClient({
 }) {
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [showCreate, setShowCreate] = useState(false);
-  const [rowError, setRowError] = useState<Record<number, string>>({});
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [busyRow, setBusyRow] = useState<number | null>(null);
 
   async function refetch() {
@@ -48,29 +63,9 @@ export default function AdminUsersClient({
     }
   }
 
-  async function handleRoleChange(user: AdminUser, role: Role) {
-    setBusyRow(user.id);
-    setRowError((e) => ({ ...e, [user.id]: '' }));
-    try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not update role.');
-      await refetch();
-    } catch (err) {
-      setRowError((e) => ({ ...e, [user.id]: err instanceof Error ? err.message : 'Could not update role.' }));
-    } finally {
-      setBusyRow(null);
-    }
-  }
-
   async function handleStatusToggle(user: AdminUser) {
     const nextStatus: Status = user.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED';
     setBusyRow(user.id);
-    setRowError((e) => ({ ...e, [user.id]: '' }));
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PATCH',
@@ -80,8 +75,9 @@ export default function AdminUsersClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not update status.');
       await refetch();
+      Toast.fire({ icon: 'success', title: `${user.name} ${nextStatus === 'ACTIVE' ? 'activated' : 'disabled'}` });
     } catch (err) {
-      setRowError((e) => ({ ...e, [user.id]: err instanceof Error ? err.message : 'Could not update status.' }));
+      Toast.fire({ icon: 'error', title: err instanceof Error ? err.message : 'Could not update status.' });
     } finally {
       setBusyRow(null);
     }
@@ -89,7 +85,6 @@ export default function AdminUsersClient({
 
   async function handleResendInvite(user: AdminUser) {
     setBusyRow(user.id);
-    setRowError((e) => ({ ...e, [user.id]: '' }));
     try {
       const res = await fetch('/api/auth/resend-otp', {
         method: 'POST',
@@ -98,24 +93,37 @@ export default function AdminUsersClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not resend invitation.');
+      Toast.fire({ icon: 'success', title: `Invitation resent to ${user.email}` });
     } catch (err) {
-      setRowError((e) => ({ ...e, [user.id]: err instanceof Error ? err.message : 'Could not resend invitation.' }));
+      Toast.fire({ icon: 'error', title: err instanceof Error ? err.message : 'Could not resend invitation.' });
     } finally {
       setBusyRow(null);
     }
   }
 
   async function handleDelete(user: AdminUser) {
-    if (!window.confirm(`Delete ${user.name} (${user.email})? This cannot be undone.`)) return;
+    const result = await Swal.fire({
+      title: `Delete ${user.name}?`,
+      html: `This will permanently remove <b>${user.email}</b>. This can't be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
+
     setBusyRow(user.id);
-    setRowError((e) => ({ ...e, [user.id]: '' }));
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not delete user.');
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      Toast.fire({ icon: 'success', title: `${user.name} deleted` });
     } catch (err) {
-      setRowError((e) => ({ ...e, [user.id]: err instanceof Error ? err.message : 'Could not delete user.' }));
+      Toast.fire({ icon: 'error', title: err instanceof Error ? err.message : 'Could not delete user.' });
     } finally {
       setBusyRow(null);
     }
@@ -159,15 +167,9 @@ export default function AdminUsersClient({
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-slate-500 dark:text-slate-300">{user.email}</td>
                     <td className="px-4 sm:px-6 py-4">
-                      <select
-                        value={user.role}
-                        disabled={busy || isSelf}
-                        onChange={(e) => handleRoleChange(user, e.target.value as Role)}
-                        className={`text-xs font-medium rounded-full border px-2.5 py-1 bg-transparent disabled:opacity-50 ${ROLE_STYLES[user.role]}`}
-                      >
-                        <option className="bg-white dark:bg-slate-900" value="ADMIN">ADMIN</option>
-                        <option className="bg-white dark:bg-slate-900" value="FORESTER">FORESTER</option>
-                      </select>
+                      <span className={`text-xs font-medium rounded-full border px-2.5 py-1 ${ROLE_STYLES[user.role]}`}>
+                        {user.role}
+                      </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4">
                       <span className={`text-xs font-medium rounded-full border px-2.5 py-1 ${STATUS_STYLES[user.status]}`}>
@@ -181,6 +183,14 @@ export default function AdminUsersClient({
                     </td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingUser(user)}
+                          disabled={busy}
+                          title="Edit user"
+                          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         {user.status === 'PENDING' && (
                           <button
                             onClick={() => handleResendInvite(user)}
@@ -209,9 +219,6 @@ export default function AdminUsersClient({
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      {rowError[user.id] && (
-                        <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 text-right">{rowError[user.id]}</p>
-                      )}
                     </td>
                   </tr>
                 );
@@ -230,12 +237,29 @@ export default function AdminUsersClient({
           onCreated={() => {
             setShowCreate(false);
             refetch();
+            Toast.fire({ icon: 'success', title: 'User created & invite sent' });
+          }}
+        />
+      )}
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          isSelf={editingUser.id === currentUserId}
+          onClose={() => setEditingUser(null)}
+          onSaved={() => {
+            setEditingUser(null);
+            refetch();
+            Toast.fire({ icon: 'success', title: 'User updated' });
           }}
         />
       )}
     </div>
   );
 }
+
+const modalInputClass =
+  'w-full rounded-xl bg-white/5 border border-slate-700 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50';
 
 function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('');
@@ -264,9 +288,6 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     }
   }
 
-  const inputClass =
-    'w-full rounded-xl bg-white/5 border border-slate-700 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50';
-
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8">
@@ -279,15 +300,15 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">Full name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Jane Doe" />
+            <input required value={name} onChange={(e) => setName(e.target.value)} className={modalInputClass} placeholder="Jane Doe" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="jane@example.com" />
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={modalInputClass} placeholder="jane@example.com" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={modalInputClass}>
               <option value="FORESTER">Forester</option>
               <option value="ADMIN">Admin</option>
             </select>
@@ -307,6 +328,92 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
             className="w-full rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2.5 transition-colors"
           >
             {loading ? 'Creating...' : 'Create user & send invite'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditUserModal({
+  user,
+  isSelf,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  isSelf: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(user.name);
+  const [role, setRole] = useState<Role>(user.role);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, ...(isSelf ? {} : { role }) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update user.');
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update user.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white">Edit user</h2>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Full name</label>
+            <input required value={name} onChange={(e) => setName(e.target.value)} className={modalInputClass} placeholder="Jane Doe" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+            <input value={user.email} disabled className={`${modalInputClass} opacity-50 cursor-not-allowed`} />
+            <p className="text-xs text-slate-500 mt-1">Email can&apos;t be changed.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Role</label>
+            <select
+              value={role}
+              disabled={isSelf}
+              onChange={(e) => setRole(e.target.value as Role)}
+              className={`${modalInputClass} ${isSelf ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <option value="FORESTER">Forester</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            {isSelf && <p className="text-xs text-slate-500 mt-1">You can&apos;t change your own role.</p>}
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2.5 transition-colors"
+          >
+            {loading ? 'Saving...' : 'Save changes'}
           </button>
         </form>
       </div>

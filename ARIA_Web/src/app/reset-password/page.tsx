@@ -13,7 +13,7 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
 
   const [email, setEmail] = useState(searchParams.get('email') || '');
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(searchParams.get('otp') || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

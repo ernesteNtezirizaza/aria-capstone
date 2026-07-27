@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 
 const patchSchema = z.object({
+  name: z.string().min(1, 'Name is required.').optional(),
   role: z.enum(['ADMIN', 'FORESTER']).optional(),
   status: z.enum(['ACTIVE', 'DISABLED']).optional(),
 });
@@ -30,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
-  const { role, status } = parsed.data;
+  const { name, role, status } = parsed.data;
 
   const target = await prisma.user.findUnique({ where: { id: targetId } });
   if (!target) {
@@ -56,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const updated = await prisma.user.update({
     where: { id: targetId },
-    data: { ...(role ? { role } : {}), ...(status ? { status } : {}) },
+    data: { ...(name ? { name } : {}), ...(role ? { role } : {}), ...(status ? { status } : {}) },
     select: { id: true, name: true, email: true, role: true, status: true },
   });
 
