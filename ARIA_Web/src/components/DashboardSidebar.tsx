@@ -4,14 +4,21 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Rocket, Users, LogOut, Menu, X, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Rocket, UserCog, Skull, BarChart3, Database, LogOut, Menu, X, ArrowLeft } from 'lucide-react';
 
 type SessionInfo = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  // exact: true for '/dashboard' -- otherwise every sibling sub-page below
+  // (failures/activity/episodes, which all share the '/dashboard' prefix
+  // but are NOT children of the overview page) would prefix-match it too,
+  // highlighting "Dashboard" simultaneously with whichever page is active.
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, exact: true },
+  { href: '/dashboard/failures', label: 'Failures & Reseeds', icon: Skull, adminOnly: false },
+  { href: '/dashboard/activity', label: 'User Activity', icon: BarChart3, adminOnly: true },
+  { href: '/dashboard/episodes', label: 'Episodes Log', icon: Database, adminOnly: false },
   { href: '/simulation', label: 'Simulation', icon: Rocket, adminOnly: false },
-  { href: '/admin/users', label: 'User Management', icon: Users, adminOnly: true },
+  { href: '/admin/users', label: 'User Management', icon: UserCog, adminOnly: true },
 ];
 
 export default function DashboardSidebar({ session }: { session?: SessionInfo }) {
@@ -39,7 +46,9 @@ export default function DashboardSidebar({ session }: { session?: SessionInfo })
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {items.map((item) => {
-          const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          const active = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname?.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link

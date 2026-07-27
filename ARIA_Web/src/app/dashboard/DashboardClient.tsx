@@ -3,11 +3,10 @@
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { Activity, Target, AlertTriangle, Sprout, Database, Skull, CloudOff, Users } from 'lucide-react';
-import DashboardSidebar from '@/components/DashboardSidebar';
+import { Activity, Target, AlertTriangle, Sprout, CloudOff } from 'lucide-react';
+import DashboardShell from '@/components/DashboardShell';
 
 type SessionInfo = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
-type PerUserStat = { userId: number; name: string; email: string; episodeCount: number };
 
 const STAGE_COLORS: Record<string, string> = {
   Dropped: '#94a3b8',
@@ -23,17 +22,15 @@ export default function DashboardClient({
   seedMonitoring,
   dataUnavailable,
   session,
-  perUserStats,
 }: {
   episodes: any[];
   stats: any;
-  seedMonitoring?: { stageCounts: any[]; recentFailures: any[] };
+  seedMonitoring?: { stageCounts: any[] };
   dataUnavailable?: boolean;
   session?: SessionInfo;
-  perUserStats?: PerUserStat[];
 }) {
   // Format data for charts
-  const chartData = [...episodes].reverse().map((ep, idx) => ({
+  const chartData = [...episodes].reverse().map((ep) => ({
     name: `Ep ${ep.episode_id}`,
     reseeding: ep.reseeding_count || 0,
     suitable: (ep.pct_suitable_seeded || 0) * 100, // convert to percentage
@@ -43,50 +40,38 @@ export default function DashboardClient({
   const stageData = (seedMonitoring?.stageCounts || [])
     .filter((s) => s.stage && s.stage !== 'Unknown')
     .map((s) => ({ name: s.stage as string, value: s.count as number }));
-  const recentFailures = seedMonitoring?.recentFailures || [];
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen">
-      <DashboardSidebar session={session} />
-      <div className="flex-1 min-w-0 max-w-7xl px-4 py-8">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Real-time telemetrics from the ARIA simulation</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {dataUnavailable ? (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm font-medium border border-amber-500/20">
-              <CloudOff className="w-4 h-4" />
-              No Data Available
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Connection
-            </div>
-          )}
-        </div>
-      </header>
-
-      {dataUnavailable && (
-        <div className="mb-10 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
-          Telemetry data couldn&apos;t be loaded right now. This shows an empty dashboard rather than an error page -- try refreshing shortly, or check back once new simulation runs have posted data.
-        </div>
-      )}
-
+    <DashboardShell
+      session={session}
+      title="System Monitoring"
+      subtitle="Real-time telemetrics from the ARIA simulation"
+      dataUnavailable={dataUnavailable}
+      headerRight={
+        dataUnavailable ? (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm font-medium border border-amber-500/20">
+            <CloudOff className="w-4 h-4" />
+            No Data Available
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Connection
+          </div>
+        )
+      }
+    >
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard 
-          title="Total Episodes" 
-          value={stats.totalEpisodes.toLocaleString()} 
+        <StatCard
+          title="Total Episodes"
+          value={stats.totalEpisodes.toLocaleString()}
           icon={<Activity className="w-5 h-5 text-blue-500" />}
           trend="+12% from last hour"
         />
-        <StatCard 
-          title="Total Seeds Placed" 
-          value={stats.totalSeeds.toLocaleString()} 
+        <StatCard
+          title="Total Seeds Placed"
+          value={stats.totalSeeds.toLocaleString()}
           icon={<Sprout className="w-5 h-5 text-emerald-500" />}
           trend="Across all zones"
         />
@@ -146,7 +131,7 @@ export default function DashboardClient({
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px' }}
                   itemStyle={{ color: '#34d399' }}
                 />
@@ -168,7 +153,7 @@ export default function DashboardClient({
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px' }}
                   cursor={{ fill: '#334155', opacity: 0.1 }}
                 />
@@ -179,144 +164,31 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* Seed Monitoring */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-        {/* Stage breakdown */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Sprout className="w-5 h-5 text-emerald-500" />
-            Seed Lifecycle Breakdown
-          </h3>
-          {stageData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={stageData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                    {stageData.map((entry, idx) => (
-                      <Cell key={idx} fill={STAGE_COLORS[entry.name] || '#6366f1'} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-slate-500 text-sm">No seed lifecycle data yet.</div>
-          )}
-        </div>
-
-        {/* Recent failures */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Skull className="w-5 h-5 text-red-500" />
-            Recent Failures &amp; Reseed Targets
-          </h3>
-          <div className="overflow-x-auto -mx-2 px-2 max-h-64 overflow-y-auto">
-            <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 sticky top-0">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Seed</th>
-                  <th className="px-3 py-2 font-medium">Zone</th>
-                  <th className="px-3 py-2 font-medium">Reason</th>
-                  <th className="px-3 py-2 font-medium">Dropped At Step</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {recentFailures.map((s: any) => (
-                  <tr key={s.seed_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-3 py-2 font-medium">#{s.seed_id}</td>
-                    <td className="px-3 py-2">{s.episode?.zone?.name || 'Unknown'}</td>
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-medium">
-                        {s.fail_reason || 'unknown'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-slate-400 font-mono text-xs">{s.dropped_at_step ?? 'N/A'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {recentFailures.length === 0 && (
-              <div className="p-8 text-center text-slate-500 text-sm">No seed failures recorded yet.</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Per-user simulation activity -- admin only */}
-      {perUserStats && (
-        <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-10">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Users className="w-5 h-5 text-cyan-500" />
-            Simulation Activity by User
-          </h3>
-          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-            <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
-                <tr>
-                  <th className="px-3 sm:px-6 py-3 font-medium rounded-tl-lg">User</th>
-                  <th className="px-3 sm:px-6 py-3 font-medium">Email</th>
-                  <th className="px-3 sm:px-6 py-3 font-medium rounded-tr-lg">Episodes Run</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {perUserStats.map((u) => (
-                  <tr key={u.userId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-3 sm:px-6 py-3 font-medium">{u.name}</td>
-                    <td className="px-3 sm:px-6 py-3 text-slate-400">{u.email}</td>
-                    <td className="px-3 sm:px-6 py-3 font-mono">{u.episodeCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {perUserStats.length === 0 && (
-              <div className="p-8 text-center text-slate-500 text-sm">
-                No simulation runs have been tagged to a user yet.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Episodes Table */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Seed Lifecycle Breakdown */}
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-          <Database className="w-5 h-5 text-slate-400" />
-          Recent Episodes Log
+          <Sprout className="w-5 h-5 text-emerald-500" />
+          Seed Lifecycle Breakdown
         </h3>
-        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
-              <tr>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tl-lg">Episode ID</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Zone</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Suitable %</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium">Spacing Violations</th>
-                <th className="px-3 sm:px-6 py-3 sm:py-4 font-medium rounded-tr-lg">Reseeding Count</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {episodes.slice(0, 10).map((ep) => (
-                <tr key={ep.episode_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium">#{ep.episode_id}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">{ep.zone?.name || 'Unknown'}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.pct_suitable_seeded != null ? `${(ep.pct_suitable_seeded * 100).toFixed(1)}%` : 'N/A'}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.spacing_violations ?? 'N/A'}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono">{ep.reseeding_count ?? 'N/A'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {episodes.length === 0 && (
-            <div className="p-12 text-center text-slate-500">
-              No simulation data received yet. Run the Unity simulation to see live data.
-            </div>
-          )}
-        </div>
+        {stageData.length > 0 ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={stageData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2}>
+                  {stageData.map((entry, idx) => (
+                    <Cell key={idx} fill={STAGE_COLORS[entry.name] || '#6366f1'} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-slate-500 text-sm">No seed lifecycle data yet.</div>
+        )}
       </div>
-      </div>
-    </div>
+    </DashboardShell>
   );
 }
 
