@@ -132,13 +132,20 @@ namespace ARIA.Drone
             GameObject lightObj = new GameObject("Directional Light");
             var light = lightObj.AddComponent<Light>();
             light.type = LightType.Directional;
-            // Confirmed live: 1.25 intensity + the trilight ambient below
-            // stacked past white on most terrain albedos (Standard shader
-            // is albedo * (direct*NdotL + ambient), and both terms were too
-            // hot at once) -- the whole zone washed out to a flat pale
-            // yellow, destroying the natural-earth-tone palette entirely.
-            // Toned down together rather than just one or the other.
-            light.intensity = 0.85f;
+            // Confirmed live twice now, on two different lit objects: 1.25
+            // intensity + the trilight ambient originally here washed out
+            // the terrain (since fixed by making terrain Unlit, which sidesteps
+            // this entirely), and the still-lit real tree canopies later
+            // showed the exact same white/washed-out symptom. The actual
+            // arithmetic was never fixed, only worked around for terrain:
+            // Standard shader is albedo * (direct*NdotL + ambient), and even
+            // at 0.85 intensity, direct*NdotL (~0.85*0.9 ~= 0.77) plus flat
+            // ambient (0.30) totals ~1.07 -- already past 1.0 before the
+            // albedo multiply, so anything with a moderately bright colour
+            // (like the tree species tints) clips straight to white. Cut
+            // hard enough that direct + ambient stays comfortably under 1.0
+            // even at a near-vertical NdotL.
+            light.intensity = 0.55f;
             light.color = new Color(1f, 0.97f, 0.92f); // warm sunlight, not flat white
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.8f;
@@ -149,7 +156,7 @@ namespace ARIA.Drone
             // default for a freshly-added Light is LightShadows.None).
             RenderSettings.sun = light;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.30f, 0.32f, 0.35f);
+            RenderSettings.ambientLight = new Color(0.18f, 0.19f, 0.21f);
 
             // Confirmed live, separately from the light/ambient fix above:
             // the terrain was STILL washed out pale after that fix, because
