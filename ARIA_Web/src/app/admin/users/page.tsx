@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import DashboardShell from '@/components/DashboardShell';
 import AdminUsersClient from './AdminUsersClient';
 
 export const dynamic = 'force-dynamic';
@@ -24,8 +25,12 @@ export default async function AdminUsersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <DashboardShell
+      session={{ name: session.name, role: session.role }}
+      title="User Management"
+      subtitle="Create and manage Admin and Forester accounts."
+    >
       <AdminUsersClient initialUsers={users} currentUserId={Number(session.sub)} />
-    </div>
+    </DashboardShell>
   );
 }

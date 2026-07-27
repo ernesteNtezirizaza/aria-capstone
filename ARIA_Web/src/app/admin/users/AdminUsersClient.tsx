@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, UserPlus, Trash2, RefreshCw, Users, X } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, X } from 'lucide-react';
 
 type Role = 'ADMIN' | 'FORESTER';
 type Status = 'PENDING' | 'ACTIVE' | 'DISABLED';
@@ -19,14 +18,14 @@ type AdminUser = {
 };
 
 const STATUS_STYLES: Record<Status, string> = {
-  PENDING: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  DISABLED: 'bg-red-500/10 text-red-400 border-red-500/20',
+  PENDING: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+  ACTIVE: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+  DISABLED: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20',
 };
 
 const ROLE_STYLES: Record<Role, string> = {
-  ADMIN: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  FORESTER: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  ADMIN: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/20',
+  FORESTER: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
 };
 
 export default function AdminUsersClient({
@@ -123,18 +122,8 @@ export default function AdminUsersClient({
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-        <div>
-          <Link href="/dashboard" className="inline-flex items-center text-sm text-emerald-400 hover:text-emerald-300 mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Users className="w-7 h-7 text-emerald-400" />
-            User Management
-          </h1>
-          <p className="text-slate-400 mt-1">Create and manage Admin and Forester accounts.</p>
-        </div>
+    <div>
+      <div className="flex justify-end mb-6">
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors"
@@ -142,12 +131,12 @@ export default function AdminUsersClient({
           <UserPlus className="w-4 h-4" />
           New User
         </button>
-      </header>
+      </div>
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
+            <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-medium">Name</th>
                 <th className="px-4 sm:px-6 py-4 font-medium">Email</th>
@@ -158,17 +147,17 @@ export default function AdminUsersClient({
                 <th className="px-4 sm:px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {users.map((user) => {
                 const isSelf = user.id === currentUserId;
                 const busy = busyRow === user.id;
                 return (
-                  <tr key={user.id} className="hover:bg-slate-800/30 transition-colors align-top">
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors align-top">
                     <td className="px-4 sm:px-6 py-4 font-medium">
                       {user.name}
                       {isSelf && <span className="ml-2 text-xs text-slate-500">(you)</span>}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-slate-300">{user.email}</td>
+                    <td className="px-4 sm:px-6 py-4 text-slate-500 dark:text-slate-300">{user.email}</td>
                     <td className="px-4 sm:px-6 py-4">
                       <select
                         value={user.role}
@@ -176,8 +165,8 @@ export default function AdminUsersClient({
                         onChange={(e) => handleRoleChange(user, e.target.value as Role)}
                         className={`text-xs font-medium rounded-full border px-2.5 py-1 bg-transparent disabled:opacity-50 ${ROLE_STYLES[user.role]}`}
                       >
-                        <option className="bg-slate-900" value="ADMIN">ADMIN</option>
-                        <option className="bg-slate-900" value="FORESTER">FORESTER</option>
+                        <option className="bg-white dark:bg-slate-900" value="ADMIN">ADMIN</option>
+                        <option className="bg-white dark:bg-slate-900" value="FORESTER">FORESTER</option>
                       </select>
                     </td>
                     <td className="px-4 sm:px-6 py-4">
@@ -197,7 +186,7 @@ export default function AdminUsersClient({
                             onClick={() => handleResendInvite(user)}
                             disabled={busy}
                             title="Resend invitation email"
-                            className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors"
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
@@ -206,7 +195,7 @@ export default function AdminUsersClient({
                           <button
                             onClick={() => handleStatusToggle(user)}
                             disabled={busy || isSelf}
-                            className="text-xs px-3 py-1.5 rounded-full border border-slate-700 hover:bg-white/10 text-slate-300 disabled:opacity-50 transition-colors"
+                            className="text-xs px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-colors"
                           >
                             {user.status === 'DISABLED' ? 'Activate' : 'Disable'}
                           </button>
@@ -215,13 +204,13 @@ export default function AdminUsersClient({
                           onClick={() => handleDelete(user)}
                           disabled={busy || isSelf}
                           title="Delete user"
-                          className="p-2 rounded-full hover:bg-red-500/10 text-slate-400 hover:text-red-400 disabled:opacity-50 transition-colors"
+                          className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                       {rowError[user.id] && (
-                        <p className="text-xs text-red-400 mt-1.5 text-right">{rowError[user.id]}</p>
+                        <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 text-right">{rowError[user.id]}</p>
                       )}
                     </td>
                   </tr>
