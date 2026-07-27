@@ -25,26 +25,31 @@ namespace ARIA.Systems
 
         public void Reset() => Events.Clear();
 
-        public void Step(GrowthEngine growth, int timestep)
+        // Returns the real disturbance-tier reward for this tick, mirroring
+        // disturbance_engine.py's step(): each actual kill pays growth.Kill's
+        // delayed-death penalty plus an extra -w_disturbance.
+        public float Step(GrowthEngine growth, int timestep)
         {
+            float reward = 0f;
             var alive = growth.Alive();
-            if (alive.Count == 0) return;
+            if (alive.Count == 0) return reward;
 
             // Corridor proximity is 0 for most seeds, so guarantee one real kill per check.
-            Kill(growth, alive[_rng.Next(alive.Count)], timestep);
+            reward += Kill(growth, alive[_rng.Next(alive.Count)], timestep);
 
             foreach (var seed in alive)
             {
                 float p = DISTURBANCE_BASE_PROB * seed.CorridorProximity;
                 if (p > 0f && (float)_rng.NextDouble() < p)
-                    Kill(growth, seed, timestep);
+                    reward += Kill(growth, seed, timestep);
             }
+            return reward;
         }
 
-        private void Kill(GrowthEngine growth, Seed seed, int timestep)
+        private float Kill(GrowthEngine growth, Seed seed, int timestep)
         {
-            if (seed.Stage == SeedStage.Dead) return; // may have just been killed above
-            growth.Kill(seed.SeedId, timestep, "disturbance");
+            if (seed.Stage == SeedStage.Dead) return 0f; // may have just been killed above
+            float penalty = growth.Kill(seed.SeedId, timestep, "disturbance");
             Events.Add(new DisturbanceEvent
             {
                 SeedId = seed.SeedId,
@@ -52,6 +57,7 @@ namespace ARIA.Systems
                 Timestep = timestep,
                 Proximity = seed.CorridorProximity,
             });
+            return penalty - ARIAConstants.REWARD_W_DISTURBANCE;
         }
     }
 }

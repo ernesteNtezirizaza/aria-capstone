@@ -1,11 +1,20 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { getSession } from '@/lib/auth';
 
 export const metadata = {
   title: 'Live Simulation | ARIA',
 };
 
-export default function SimulationPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function SimulationPage() {
+  const session = await getSession();
+  // Tags telemetry this session posts with the logged-in user, so Admins
+  // can see per-user simulation activity on the dashboard. The Unity build
+  // reads this from the iframe's own query string (Application.absoluteURL).
+  const src = session ? `/simulation/index.html?uid=${session.sub}` : '/simulation/index.html';
+
   return (
     <div className="h-screen flex flex-col bg-slate-950 text-slate-50">
       <header className="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md shrink-0">
@@ -22,7 +31,7 @@ export default function SimulationPage() {
       </header>
       <main className="flex-1 min-h-0">
         <iframe
-          src="/simulation/index.html"
+          src={src}
           title="ARIA Unity Simulation"
           className="w-full h-full border-0 block"
           allow="autoplay; fullscreen"

@@ -1,10 +1,14 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { Activity, Target, AlertTriangle, Sprout, ArrowLeft, Database, Skull, CloudOff } from 'lucide-react';
+import { Activity, Target, AlertTriangle, Sprout, ArrowLeft, Database, Skull, CloudOff, LogOut, Users } from 'lucide-react';
 import Link from 'next/link';
+
+type SessionInfo = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
+type PerUserStat = { userId: number; name: string; email: string; episodeCount: number };
 
 const STAGE_COLORS: Record<string, string> = {
   Dropped: '#94a3b8',
@@ -14,7 +18,29 @@ const STAGE_COLORS: Record<string, string> = {
   Dead: '#ef4444',
 };
 
-export default function DashboardClient({ episodes, stats, seedMonitoring, dataUnavailable }: { episodes: any[], stats: any, seedMonitoring?: { stageCounts: any[], recentFailures: any[] }, dataUnavailable?: boolean }) {
+export default function DashboardClient({
+  episodes,
+  stats,
+  seedMonitoring,
+  dataUnavailable,
+  session,
+  perUserStats,
+}: {
+  episodes: any[];
+  stats: any;
+  seedMonitoring?: { stageCounts: any[]; recentFailures: any[] };
+  dataUnavailable?: boolean;
+  session?: SessionInfo;
+  perUserStats?: PerUserStat[];
+}) {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  }
+
   // Format data for charts
   const chartData = [...episodes].reverse().map((ep, idx) => ({
     name: `Ep ${ep.episode_id}`,
@@ -39,17 +65,37 @@ export default function DashboardClient({ episodes, stats, seedMonitoring, dataU
           <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Real-time telemetrics from the ARIA simulation</p>
         </div>
-        {dataUnavailable ? (
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm font-medium border border-amber-500/20">
-            <CloudOff className="w-4 h-4" />
-            No Data Available
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Connection
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {dataUnavailable ? (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm font-medium border border-amber-500/20">
+              <CloudOff className="w-4 h-4" />
+              No Data Available
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium border border-emerald-500/20">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Connection
+            </div>
+          )}
+          {session?.role === 'ADMIN' && (
+            <Link
+              href="/admin/users"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-800 text-sm font-medium transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              User Management
+            </Link>
+          )}
+          {session && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-slate-800 text-sm font-medium transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              {session.name}
+            </button>
+          )}
+        </div>
       </header>
 
       {dataUnavailable && (
@@ -78,11 +124,11 @@ export default function DashboardClient({ episodes, stats, seedMonitoring, dataU
           icon={<Target className="w-5 h-5 text-indigo-500" />}
           trend="Reseed pipeline activity"
         />
-        <StatCard 
-          title="Avg Suitable %" 
-          value={`${(stats.avgSuitable * 100).toFixed(1)}%`} 
+        <StatCard
+          title="Avg Reward"
+          value={stats.avgReward.toFixed(1)}
           icon={<AlertTriangle className="w-5 h-5 text-amber-500" />}
-          trend="Accuracy metric"
+          trend="Trained-policy reward per episode"
         />
       </div>
 
@@ -225,6 +271,41 @@ export default function DashboardClient({ episodes, stats, seedMonitoring, dataU
           </div>
         </div>
       </div>
+
+      {/* Per-user simulation activity -- admin only */}
+      {perUserStats && (
+        <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-10">
+          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <Users className="w-5 h-5 text-cyan-500" />
+            Simulation Activity by User
+          </h3>
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 font-medium rounded-tl-lg">User</th>
+                  <th className="px-3 sm:px-6 py-3 font-medium">Email</th>
+                  <th className="px-3 sm:px-6 py-3 font-medium rounded-tr-lg">Episodes Run</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {perUserStats.map((u) => (
+                  <tr key={u.userId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-3 sm:px-6 py-3 font-medium">{u.name}</td>
+                    <td className="px-3 sm:px-6 py-3 text-slate-400">{u.email}</td>
+                    <td className="px-3 sm:px-6 py-3 font-mono">{u.episodeCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {perUserStats.length === 0 && (
+              <div className="p-8 text-center text-slate-500 text-sm">
+                No simulation runs have been tagged to a user yet.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent Episodes Table */}
       <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">

@@ -85,6 +85,40 @@ namespace ARIA.Core
 
         public const int MIN_SEED_SPACING = 5; // matches configs/config.py exactly (was 3 -- found drifted during parity audit)
 
+        // Mirrors configs.config.MAX_SLOPE_DEG's real-dataset fallback value
+        // (P95 of Rwanda slope) -- used by the reward function's slope
+        // penalty term, same fallback-vs-real-dataset caveat as
+        // ZONE_MIN_SUITABILITY above.
+        public const float MAX_SLOPE_DEG = 17.7f;
+
+        // Reward weights -- mirrors configs/config.py's REWARD dict exactly
+        // (w_soil/w_rain/w_slope already exist above as ZONE_SUIT_W_*).
+        // Used by ActionDispatcher.Step() to compute a real per-step reward
+        // matching env/reward_function.py + rwanda_env.py's step(), not the
+        // earlier flat +1.0/-0.5-style approximation this replaced.
+        public const float REWARD_STEP_PENALTY         = 0.4f;
+        public const float REWARD_W_SPACING            = 3.5f;
+        public const float REWARD_W_PROTECTED          = 10.0f;
+        public const float REWARD_W_DISTURBANCE        = 0.6f;
+        public const float REWARD_W_GERM               = 4.0f;
+        public const float REWARD_W_DIVERSITY          = 0.5f;
+        public const float REWARD_W_RESEED             = 3.0f;
+        public const float REWARD_W_SUITABLE_BONUS     = 4.0f;
+        public const float REWARD_W_NEW_COVERAGE_BONUS = 0.5f;
+        public const float REWARD_W_REDUNDANT_PENALTY  = -0.5f;
+        public const float REWARD_BATTERY_SAVE         = 1.0f;
+        public const float REWARD_BATTERY_EMPTY        = -5.0f;
+        public const float REWARD_OBSTACLE_CLEAR       = 0.5f;
+        public const float REWARD_OBSTACLE_HIT         = -3.0f;
+        public const float REWARD_COVER_CORRECT        = 0.0f;
+        public const float REWARD_COVER_WRONG          = -0.1f;
+        // rwanda_env.py's ABORT_ACTION branch uses a hardcoded -1.0 for a bad
+        // abort, NOT REWARD["bad_abort"] (-20.0, defined in config.py but
+        // never actually referenced from real step() code) -- mirrored here
+        // as the literal -1.0 to match real trained-policy behaviour rather
+        // than the unused config value.
+        public const float REWARD_BAD_ABORT_ACTUAL     = -1.0f;
+
         public const int N_SEASONS = 6;
         public static readonly int SEASON_LENGTH = MAX_STEPS / N_SEASONS;
 

@@ -20,6 +20,10 @@ namespace ARIA.Systems
         public int spacing_violations;
         public int protected_area_seeds;
         public int reseeding_count;
+        // Real cumulative episode reward, mirroring rwanda_env.py's
+        // episode_reward exactly (see ActionDispatcher.Step()'s per-step
+        // reward computation) -- not a training-side-only metric anymore.
+        public float reward;
     }
 
     [System.Serializable]
@@ -38,6 +42,10 @@ namespace ARIA.Systems
         public TelemetryZone zone;
         public TelemetryEpisode episode;
         public List<TelemetrySeed> seeds;
+        // 0 means "no logged-in user for this session" -- JsonUtility has no
+        // clean nullable-int support, and real DB user ids start at 1
+        // (autoincrement), so 0 is a safe "none" sentinel.
+        public int user_id;
     }
 
     public class TelemetryManager : MonoBehaviour
@@ -66,12 +74,12 @@ namespace ARIA.Systems
         /// <summary>
         /// Gathers statistics from the EpisodeState and sends them via HTTP POST to the Web Dashboard.
         /// </summary>
-        public void SendEpisodeTelemetry(EpisodeState state, RealZoneJson zoneMeta = null)
+        public void SendEpisodeTelemetry(EpisodeState state, RealZoneJson zoneMeta = null, float episodeReward = 0f)
         {
-            StartCoroutine(PostTelemetryCoroutine(state, zoneMeta));
+            StartCoroutine(PostTelemetryCoroutine(state, zoneMeta, episodeReward));
         }
 
-        private IEnumerator PostTelemetryCoroutine(EpisodeState state, RealZoneJson zoneMeta)
+        private IEnumerator PostTelemetryCoroutine(EpisodeState state, RealZoneJson zoneMeta, float episodeReward)
         {
             // Zone name/agro-zone come from the real loaded zone file when available.
             TelemetryPayload payload = new TelemetryPayload
@@ -86,9 +94,11 @@ namespace ARIA.Systems
                     pct_suitable_seeded = CalculateSuitableSeededPct(state),
                     spacing_violations = CalculateSpacingViolations(state),
                     protected_area_seeds = CalculateProtectedAreaSeeds(state),
-                    reseeding_count = CalculateReseedingCount(state)
+                    reseeding_count = CalculateReseedingCount(state),
+                    reward = episodeReward
                 },
-                seeds = BuildSeedList(state)
+                seeds = BuildSeedList(state),
+                user_id = GetUserIdFromUrl()
             };
 
             string jsonData = JsonUtility.ToJson(payload);
@@ -232,6 +242,28 @@ namespace ARIA.Systems
             }
             return seedList;
         }
+        // The web app's /simulation page appends ?uid=<id> to the iframe's own
+        // src when a user is logged in (see ARIA_Web's simulation/page.tsx),
+        // so the WebGL build's own document URL carries it -- read straight
+        // off Application.absoluteURL rather than needing a JS bridge call.
+        private int GetUserIdFromUrl()
+        {
+            string url = Application.absoluteURL;
+            int qIndex = string.IsNullOrEmpty(url) ? -1 : url.IndexOf('?');
+            if (qIndex < 0) return 0;
+
+            string query = url.Substring(qIndex + 1);
+            foreach (string pair in query.Split('&'))
+            {
+                string[] kv = pair.Split('=');
+                if (kv.Length == 2 && kv[0] == "uid" && int.TryParse(kv[1], out int uid))
+                {
+                    return uid;
+                }
+            }
+            return 0;
+        }
+
         private void LoadEnvFile()
         {
             string envPath = System.IO.Path.Combine(System.IO.Directory.GetParent(Application.dataPath).FullName, ".env");

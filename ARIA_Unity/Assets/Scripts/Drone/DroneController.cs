@@ -399,19 +399,16 @@ namespace ARIA.Drone
             LastResult = result;
             State.LastResult = result; // keep EpisodeState in sync for TerrainRenderer etc.
 
+            // Real per-step reward, computed in ActionDispatcher.Step() to
+            // mirror rwanda_env.py's step()/reward_function.py exactly --
+            // replaces an earlier flat +1.0/-0.5-style approximation that
+            // didn't match the trained policy's actual reward formula.
+            CumulativeReward += result.Reward;
+
             if (result.SeedDropped)
             {
-                CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
                 SpawnSeedVisual();
             }
-            // Mirrors config.py's REWARD["w_redundant_penalty"] (-0.5) and
-            // the reward function's slope penalty at its floor value
-            // (w_slope=1.0 * slope_pen capped at 1.0 for any no_plant cell).
-            if (result.RedundantPlacementBlocked) CumulativeReward -= 0.5f;
-            if (result.TooSteepBlocked) CumulativeReward -= 1.0f;
-            if (result.ObstacleHit) CumulativeReward -= 1.0f;
-            if (result.ValidAbort) CumulativeReward += 5.0f;
-            if (result.MissionComplete) CumulativeReward += 10.0f;
 
             if (result.MissionComplete) LastEpisodeEndedByMissionComplete = true;
 
@@ -451,7 +448,7 @@ namespace ARIA.Drone
             if (result.Terminated || result.Truncated)
             {
                 _episodeActive = false;
-                TelemetryManager.Instance?.SendEpisodeTelemetry(State, CurrentZoneMeta);
+                TelemetryManager.Instance?.SendEpisodeTelemetry(State, CurrentZoneMeta, CumulativeReward);
                 OnEpisodeEnded?.Invoke(this);
 
                 if (result.BatteryDepleted || result.MissionComplete)

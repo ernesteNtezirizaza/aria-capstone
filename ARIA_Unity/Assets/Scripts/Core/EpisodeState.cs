@@ -29,6 +29,10 @@ namespace ARIA.Core
         public int   DroneState;
         public int   BaseX, BaseY;
         public bool  AbortTriggered;
+        // Mirrors rwanda_env.py's self.valid_abort_rewarded: a valid abort
+        // only pays REWARD_BATTERY_SAVE the first time per episode, so a
+        // policy can't camp on repeated free-abort attempts for reward.
+        public bool  ValidAbortRewarded;
         public int   MissionsCompleted;
         public int   ObstaclesAvoided;
 
@@ -87,6 +91,7 @@ namespace ARIA.Core
             MissionsCompleted = 0;
             ObstaclesAvoided = 0;
             AbortTriggered = false;
+            ValidAbortRewarded = false;
             MissionCompleteReturning = false;
             BaseX = ARIAConstants.ZONE_SIZE / 2;
             BaseY = 0; // Bottom edge of the grid, nearest to the helipad

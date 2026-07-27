@@ -29,6 +29,10 @@ namespace ARIA.Core
         // the same real no_plant mask used for is_suitable).
         public bool RedundantPlacementBlocked;
         public bool TooSteepBlocked;
+
+        // Real per-step reward, mirroring rwanda_env.py's step() total_r
+        // exactly (see ActionDispatcher.Step() for the full breakdown).
+        public float Reward;
     }
 
     public static class ActionDispatcher
@@ -67,6 +71,15 @@ namespace ARIA.Core
                 result.Terminated = true;
                 result.BatteryDepleted = true;
                 s.MissionCompleteReturning = false;
+                // Mirrors rwanda_env.py exactly: a voluntary EMERGENCY while
+                // not actually critical pays nothing (punishment is the lost
+                // future seeding reward); genuine battery death pays
+                // battery_empty. Either way this returns before the
+                // universal step penalty below -- matching Python, which
+                // also returns here without ever reaching its own.
+                result.Reward = (action == ARIAConstants.EMERGENCY && !energyInfo.IsCritical)
+                    ? 0f
+                    : ARIAConstants.REWARD_BATTERY_EMPTY;
                 s.Timestep++;
                 return result;
             }
@@ -75,19 +88,33 @@ namespace ARIA.Core
             {
                 float zoneScore = s.ZoneSuitability();
                 if (zoneScore < ARIAConstants.ZONE_MIN_SUITABILITY)
+                {
                     result.ValidAbort = true;
+                    // Mirrors rwanda_env.py's valid_abort_rewarded: pays out
+                    // only the first time per episode.
+                    if (!s.ValidAbortRewarded)
+                    {
+                        result.Reward += ARIAConstants.REWARD_BATTERY_SAVE;
+                        s.ValidAbortRewarded = true;
+                    }
+                }
                 else
+                {
                     result.BadAbort = true;
+                    result.Reward += ARIAConstants.REWARD_BAD_ABORT_ACTUAL;
+                }
                 s.DroneState = ARIAConstants.STATE_RETURNING;
                 s.AbortTriggered = true;
             }
             else if (action == ARIAConstants.COVER_DEPLOY)
             {
                 s.CoverDeployed = true;
+                result.Reward += s.Weather.IsRainy() ? ARIAConstants.REWARD_COVER_CORRECT : ARIAConstants.REWARD_COVER_WRONG;
             }
             else if (action == ARIAConstants.COVER_RETRACT)
             {
                 s.CoverDeployed = false;
+                result.Reward += s.Weather.IsSunny() ? ARIAConstants.REWARD_COVER_CORRECT : ARIAConstants.REWARD_COVER_WRONG;
             }
             else if (action == ARIAConstants.ALT_UP)
             {
@@ -99,7 +126,9 @@ namespace ARIA.Core
                     s.ObstaclesAvoided++;
                     s.DroneState = ARIAConstants.STATE_SEEDING;
                     result.ObstacleCleared = true;
+                    result.Reward += ARIAConstants.REWARD_OBSTACLE_CLEAR;
                 }
+                // else: no reward for unnecessary altitude increase, matching rwanda_env.py.
             }
             else if (action == ARIAConstants.ALT_DOWN)
             {
@@ -107,7 +136,11 @@ namespace ARIA.Core
             }
             else if (action == ARIAConstants.HOVER_ACTION)
             {
-                
+                // Mirrors rwanda_env.py's hover_penalty() exactly: this is IN
+                // ADDITION to the universal step penalty applied at the end
+                // of Step(), so hovering costs step_penalty twice over --
+                // a real quirk of the trained reward, not a bug to "fix" here.
+                result.Reward += -ARIAConstants.REWARD_STEP_PENALTY;
             }
             else if (s.DroneState != ARIAConstants.STATE_RETURNING &&
                      s.DroneState != ARIAConstants.STATE_LANDING)
@@ -135,6 +168,7 @@ namespace ARIA.Core
                 if (blocked)
                 {
                     result.ObstacleHit = true;
+                    result.Reward += ARIAConstants.REWARD_OBSTACLE_HIT;
                     s.DroneState = ARIAConstants.STATE_OBSTACLE;
                 }
                 else
@@ -179,12 +213,71 @@ namespace ARIA.Core
                     bool isSuitable = !noPlant && !inProtected
                         && rain >= rainMin && soil >= ARIAConstants.ZONE_MIN_SOIL;
 
+                    // Coverage bonus/penalty -- skipped entirely for a genuine
+                    // reseed, since revisiting a known failure is deliberate
+                    // correction, not redundancy (mirrors rwanda_env.py). Note:
+                    // "already_covered" can't actually happen here in Unity,
+                    // since blockedRedundant already excludes alreadyPlanted
+                    // && !isReseed from reaching this branch -- kept for
+                    // structural fidelity to rwanda_env.py regardless.
+                    if (!isReseed)
+                    {
+                        if (alreadyPlanted) result.Reward += ARIAConstants.REWARD_W_REDUNDANT_PENALTY;
+                        else if (isSuitable) result.Reward += ARIAConstants.REWARD_W_NEW_COVERAGE_BONUS;
+                    }
+
+                    // Tier 1 placement reward -- mirrors reward_function.py's placement().
+                    float rainOk = Mathf.Max(0f, rain - rainMin) / (1f - rainMin + 1e-6f);
+                    float slopePen = Mathf.Min(slope / ARIAConstants.MAX_SLOPE_DEG, 1f);
+
+                    // Spacing/cluster check against every seed ever dropped
+                    // this episode (Python's self.seeded set is never pruned,
+                    // so reusing Growth.Seeds -- unpruned itself -- matches
+                    // exactly), skipped for a genuine reseed.
+                    float cluster = 0f;
+                    if (!isReseed)
+                    {
+                        foreach (var existingSeed in s.Growth.Seeds.Values)
+                        {
+                            int manhattan = Mathf.Abs(existingSeed.X - s.X) + Mathf.Abs(existingSeed.Y - s.Y);
+                            if (manhattan < ARIAConstants.MIN_SEED_SPACING)
+                            {
+                                cluster = -ARIAConstants.REWARD_W_SPACING;
+                                break;
+                            }
+                        }
+                    }
+
+                    float protectedPen = inProtected ? -ARIAConstants.REWARD_W_PROTECTED : 0f;
+                    float distPen = -ARIAConstants.REWARD_W_DISTURBANCE * prox;
+                    float reseedBonus = isReseed ? ARIAConstants.REWARD_W_RESEED : 0f;
+
+                    bool isRainy = s.Weather.IsRainy();
+                    float coverR;
+                    if (isRainy && s.CoverDeployed) coverR = ARIAConstants.REWARD_COVER_CORRECT;
+                    else if (isRainy && !s.CoverDeployed) coverR = ARIAConstants.REWARD_COVER_WRONG;
+                    else if (!isRainy && s.CoverDeployed) coverR = ARIAConstants.REWARD_COVER_WRONG;
+                    else coverR = 0f;
+
+                    // Diversity entropy needs this species' count incremented
+                    // first, matching reward_function.py's placement() order
+                    // (species_counts[species_id] += 1 before _diversity()).
+                    s.SpeciesCounts[speciesId]++;
+                    float diversityR = SpeciesDiversityReward(s.SpeciesCounts);
+
+                    float suitableBonus = isSuitable ? ARIAConstants.REWARD_W_SUITABLE_BONUS : 0f;
+
+                    result.Reward +=
+                        ARIAConstants.ZONE_SUIT_W_SOIL * soil
+                        + ARIAConstants.ZONE_SUIT_W_RAIN * rainOk
+                        - ARIAConstants.ZONE_SUIT_W_SLOPE * slopePen
+                        + cluster + protectedPen + distPen + reseedBonus + coverR + diversityR + suitableBonus;
+
                     s.Growth.Register(speciesId, s.X, s.Y, s.Timestep,
                         soil, rain, slope, prox, isSuitable, inProtected);
 
                     s.CoverageMap[s.Y, s.X] = 1.0f;
                     if (!noPlant) s.CoveredPlantableCells++;
-                    s.SpeciesCounts[speciesId]++;
                     s.SeedsRemaining -= 1;
 
                     if (isReseed)
@@ -200,10 +293,26 @@ namespace ARIA.Core
                 else if (blockedRedundant)
                 {
                     result.RedundantPlacementBlocked = true;
+                    // Unlike rwanda_env.py (where a redundant placement still
+                    // drops a real, duplicate seed and only adds this as a
+                    // penalty), Unity blocks the drop entirely here -- no seed
+                    // is consumed or registered. Applying just the penalty
+                    // term is the closest faithful value for what Unity's
+                    // simulation actually does at this branch, not a claim
+                    // that the full tier-1 formula also ran.
+                    result.Reward += ARIAConstants.REWARD_W_REDUNDANT_PENALTY;
                 }
                 else if (blockedSlope)
                 {
                     result.TooSteepBlocked = true;
+                    // Unlike rwanda_env.py (where a no_plant cell still runs
+                    // the full placement formula, just with is_suitable=false
+                    // dragging is_suitable-dependent terms to zero), Unity
+                    // blocks the drop entirely -- no seed consumed. Applying
+                    // the slope penalty at its ceiling (w_slope * 1.0) is the
+                    // same stand-in this branch already used before reward
+                    // parity, not a claim the full formula ran.
+                    result.Reward += -ARIAConstants.ZONE_SUIT_W_SLOPE;
                 }
             }
 
@@ -231,6 +340,7 @@ namespace ARIA.Core
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
                 result.ReturningBattery = true;
+                result.Reward += ARIAConstants.REWARD_BATTERY_SAVE;
             }
 
             if (s.DroneState == ARIAConstants.STATE_RETURNING)
@@ -288,9 +398,10 @@ namespace ARIA.Core
             if (s.Timestep % MONITORING_INTERVAL == 0 && s.Timestep > 0)
             {
                 float[,] rainMap = ExtractChannel(s.Zone, 3);
-                var maturedPositions = s.Growth.Step(s.Timestep, rainMap);
+                var (maturedPositions, growthReward) = s.Growth.Step(s.Timestep, rainMap);
+                result.Reward += growthReward;
                 if (DemoConditions.AnimalDisturbanceEnabled)
-                    s.Disturbance.Step(s.Growth, s.Timestep);
+                    result.Reward += s.Disturbance.Step(s.Growth, s.Timestep);
 
                 // Close the reseed feedback loop: any seed that matured this
                 // step, at a position that was a pending reseed, is a real
@@ -340,7 +451,34 @@ namespace ARIA.Core
             // reach), not a real end state.
             result.Truncated = s.Timestep >= ARIAConstants.MAX_STEPS * 4;
 
+            // Universal per-step penalty -- mirrors rwanda_env.py's step()
+            // exactly: applied every non-early-return step regardless of
+            // action (including on top of hover's own extra penalty above),
+            // but never on the EmergencyLand path, which returns before this
+            // point, exactly as Python's does too.
+            result.Reward += -ARIAConstants.REWARD_STEP_PENALTY;
+
             return result;
+        }
+
+        // Mirrors reward_function.py's _diversity(): Shannon entropy of
+        // species placement counts so far this episode, normalised by
+        // ln(N_SPECIES) so it stays in a comparable range regardless of
+        // species count.
+        private static float SpeciesDiversityReward(System.Collections.Generic.Dictionary<int, int> speciesCounts)
+        {
+            int total = 0;
+            foreach (var c in speciesCounts.Values) total += c;
+            if (total == 0) return 0f;
+
+            float h = 0f;
+            foreach (var c in speciesCounts.Values)
+            {
+                if (c <= 0) continue;
+                float p = (float)c / total;
+                h += -p * Mathf.Log(p);
+            }
+            return ARIAConstants.REWARD_W_DIVERSITY * h / Mathf.Log(ARIAConstants.N_SPECIES);
         }
 
         private static float[,] ExtractChannel(ZoneData zone, int channel)

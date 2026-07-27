@@ -1,12 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Activity, Database, Zap, TreePine, Cpu, Network, Menu, X } from 'lucide-react';
+import { ArrowRight, Activity, Database, Zap, TreePine, Cpu, Network, Menu, X, LogOut } from 'lucide-react';
+
+type SessionUser = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
 
 export default function LandingPage() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<SessionUser>(null);
+  const [checkedSession, setCheckedSession] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => setCheckedSession(true));
+  }, []);
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-emerald-500/30">
@@ -36,9 +56,27 @@ export default function LandingPage() {
             <Link href="#architecture" className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" className="hover:text-white transition-colors">Simulation</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            {user?.role === 'ADMIN' && (
+              <Link href="/admin/users" className="hover:text-white transition-colors">Users</Link>
+            )}
             <Link href="/dashboard" className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md">
               Go to Dashboard
             </Link>
+            {checkedSession && (
+              user ? (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  {user.name}
+                </button>
+              ) : (
+                <Link href="/login" className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all">
+                  Login
+                </Link>
+              )
+            )}
           </div>
 
           {/* Mobile menu toggle */}
@@ -60,9 +98,34 @@ export default function LandingPage() {
             <Link href="#architecture" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Architecture</Link>
             <Link href="/simulation" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Simulation</Link>
             <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Privacy Policy</Link>
+            {user?.role === 'ADMIN' && (
+              <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors">Users</Link>
+            )}
             <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md text-center">
               Go to Dashboard
             </Link>
+            {checkedSession && (
+              user ? (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Logout ({user.name})
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-center"
+                >
+                  Login
+                </Link>
+              )
+            )}
           </div>
         )}
       </nav>

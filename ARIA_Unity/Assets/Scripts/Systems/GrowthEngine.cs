@@ -42,11 +42,6 @@ namespace ARIA.Systems
         public float[] RecommendFeatures; // kept so a later outcome can update the recommender
     }
 
-    public struct GrowthStepResult
-    {
-        public float Reward; // delayed maturity/death reward (NOT used for visuals, kept for parity)
-    }
-
     public class GrowthEngine
     {
         private readonly int _zoneSize;
@@ -99,10 +94,14 @@ namespace ARIA.Systems
 
         // Returns the (x,y) of every seed that matured THIS call, so
         // MonitoringSystem can credit any pending reseed at that position
-        // with a real success outcome (see MonitoringSystem.ResolveMatured).
-        public List<(int x, int y)> Step(int timestep, float[,] rainMap)
+        // with a real success outcome (see MonitoringSystem.ResolveMatured),
+        // plus the real delayed growth-tier reward for this tick (mirrors
+        // growth_engine.py's step(): -w_germ*0.5 per natural death,
+        // +w_germ per maturity).
+        public (List<(int x, int y)> matured, float reward) Step(int timestep, float[,] rainMap)
         {
             var matured = new List<(int x, int y)>();
+            float reward = 0f;
             foreach (var kv in new List<KeyValuePair<int, Seed>>(Seeds))
             {
                 var s = kv.Value;
@@ -124,6 +123,7 @@ namespace ARIA.Systems
                 if ((float)_rng.NextDouble() > s.SurvivalProb)
                 {
                     s.Stage = SeedStage.Dead;
+                    reward += -ARIAConstants.REWARD_W_GERM * 0.5f;
                     FailedCells.Add(new FailedCell
                     {
                         X = s.X, Y = s.Y,
@@ -153,17 +153,25 @@ namespace ARIA.Systems
                 else if (s.Stage == SeedStage.Seedling && age >= matureT)
                 {
                     s.Stage = SeedStage.Mature;
+                    reward += ARIAConstants.REWARD_W_GERM;
                     matured.Add((s.X, s.Y));
                 }
             }
-            return matured;
+            return (matured, reward);
         }
 
-        // Unlike natural mortality in Step(), this can kill a Mature tree too (goats).
-        public void Kill(int seedId, int timestep, string reason = "disturbance")
+        // Unlike natural mortality in Step(), this can kill a Mature tree too
+        // (goats) -- a deliberate Unity-only divergence from growth_engine.py's
+        // kill(), which no-ops on an already-mature seed (Python's living()
+        // never offers mature seeds to disturbance in the first place). Since
+        // that specific state is unreachable in the trained environment, there
+        // is no "real" reward value for it; reusing the same natural-death
+        // penalty here is the simplest consistent choice, not a parity claim.
+        // Returns the reward delta (0 if the seed was already dead).
+        public float Kill(int seedId, int timestep, string reason = "disturbance")
         {
-            if (!Seeds.TryGetValue(seedId, out var s)) return;
-            if (s.Stage == SeedStage.Dead) return;
+            if (!Seeds.TryGetValue(seedId, out var s)) return 0f;
+            if (s.Stage == SeedStage.Dead) return 0f;
 
             s.Stage = SeedStage.Dead;
             FailedCells.Add(new FailedCell
@@ -178,6 +186,7 @@ namespace ARIA.Systems
                 Slope = s.SlopeScore,
                 CorridorProximity = s.CorridorProximity,
             });
+            return -ARIAConstants.REWARD_W_GERM * 0.5f;
         }
 
         public float[,] LifecycleMap()

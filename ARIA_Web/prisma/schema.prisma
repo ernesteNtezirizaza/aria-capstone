@@ -6,6 +6,44 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  ADMIN
+  FORESTER
+}
+
+enum UserStatus {
+  PENDING  // created by an admin, not yet verified/activated
+  ACTIVE
+  DISABLED
+}
+
+enum OtpPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+model User {
+  id             Int         @id @default(autoincrement())
+  name           String
+  email          String      @unique
+  passwordHash   String?     // null until the user verifies via OTP and sets a password
+  role           Role
+  status         UserStatus  @default(PENDING)
+
+  otpCodeHash    String?
+  otpPurpose     OtpPurpose?
+  otpExpiresAt   DateTime?
+
+  createdById    Int?
+  createdBy      User?       @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdUsers   User[]      @relation("CreatedUsers")
+
+  episodes       Episode[]
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
 model Zone {
   zone_id   Int       @id @default(autoincrement())
   name      String
@@ -17,10 +55,13 @@ model Episode {
   episode_id           Int     @id @default(autoincrement())
   zone_id              Int
   zone                 Zone    @relation(fields: [zone_id], references: [zone_id])
+  user_id              Int?
+  user                 User?   @relation(fields: [user_id], references: [id])
   pct_suitable_seeded  Float?
   spacing_violations   Int?
   protected_area_seeds Int?
   reseeding_count      Int?
+  reward               Float?
   seeds                Seed[]
 }
 
