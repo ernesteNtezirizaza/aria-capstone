@@ -108,6 +108,10 @@ class RewardFunction:
         return float(total), breakdown
 
     def _diversity(self) -> float:
+        """ Shannon entropy of species placement counts so far this episode,
+           normalised by ln(N_SPECIES) so it stays in [0, w_diversity]
+           regardless of species count -- higher when placements are spread
+           across species, 0 if only one species has ever been placed. """
         total = sum(self.species_counts.values())
         if total == 0:
             return 0.0

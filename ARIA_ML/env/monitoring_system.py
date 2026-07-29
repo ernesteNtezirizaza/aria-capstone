@@ -45,9 +45,17 @@ class MonitoringSystem:
         self.pending_reseeds = {}
 
     def reset(self):
+        """ Deliberately a no-op: called on every episode boundary, but the
+           reseed queue/history/recommender state are meant to persist
+           across episodes within a run -- only full_reset() actually
+           clears them, for a genuine fresh start (e.g. between separate
+           experiments). """
         pass
 
     def full_reset(self):
+        """ The real reset reset() deliberately isn't -- wipes all queued/
+           logged reseed state. Does NOT reset the recommender itself
+           (that's meant to keep what it's learned across full resets too). """
         self.failed_cells.clear()
         self.reseed_queue.clear()
         self.reseed_log.clear()

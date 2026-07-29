@@ -17,6 +17,9 @@ class DisturbanceEngine:
         self.events.clear()
 
     def step(self, growth_engine, timestep):
+        """ Rolls a per-seed disturbance chance, scaled by how close each
+           living seed is to a protected-area boundary (corridor_proximity),
+           and kills any seed that fails the roll via growth_engine.kill(). """
         events, reward = [], 0.0
         for seed in growth_engine.living():
             p = DISTURBANCE_BASE_PROB * seed.corridor_proximity

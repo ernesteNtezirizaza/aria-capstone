@@ -70,6 +70,10 @@ class GrowthEngine:
 
     def register(self, species_id, x, y, timestep,
                  soil, rain, slope, prox, suitable, protected):
+        """ Creates and tracks a new Seed from the placement-time conditions
+           at (x, y) -- soil/rain/slope/prox feed step()'s later survival
+           roll, suitable/protected are recorded for the monitoring/reseed
+           pipeline. Returns the new seed's id. """
         s = Seed(
             seed_id=self._nid, species_id=species_id,
             x=x, y=y, dropped_at=timestep,
@@ -82,6 +86,12 @@ class GrowthEngine:
         return s.seed_id
 
     def step(self, timestep, rain_map) -> Tuple[List[dict], float]:
+        """ Advances every living seed by one monitoring tick: rolls each
+           seed's natural-mortality chance (from a soil/rain/slope/corridor
+           quality score), then advances surviving seeds through their
+           dropped -> germinating -> seedling -> mature stages by age.
+           Returns (events, reward) -- reward is the delayed Tier 2 payout
+           (+w_germ on maturity, -w_germ*0.5 on death). """
         events, reward = [], 0.0
         for sid, s in list(self.seeds.items()):
             if s.stage in ("dead", "mature"):
@@ -139,6 +149,10 @@ class GrowthEngine:
         return events, reward
 
     def kill(self, seed_id, timestep, reason="disturbance"):
+        """ External-cause death (e.g. animal disturbance), as opposed to
+           step()'s own natural-mortality roll. Records the failure for
+           reseeding and returns the same -w_germ*0.5 penalty step() uses,
+           for the caller to add to its own reward total. """
         if seed_id not in self.seeds:
             return 0.0
         s = self.seeds[seed_id]
@@ -171,6 +185,9 @@ class GrowthEngine:
                 if s.stage not in ("dead", "mature")]
 
     def summary(self):
+        """ reseeding_count counts cells holding both a dead seed and a
+           living one at the same (x, y) -- i.e. cells that were replanted
+           after an earlier failure there. """
         all_s = list(self.seeds.values())
         if not all_s:
             return {"total": 0, "mature": 0, "dead": 0,

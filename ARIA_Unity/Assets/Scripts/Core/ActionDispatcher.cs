@@ -37,6 +37,13 @@ namespace ARIA.Core
 
     public static class ActionDispatcher
     {
+        /* The full per-timestep transition, mirroring rwanda_env.py's
+           step() exactly: advances weather/energy, dispatches the chosen
+           action (move+seed, hover, abort, cover, altitude, or emergency),
+           scores it via the same multi-tier reward formula as
+           reward_function.py, and updates drone/mission state. Growth,
+           disturbance, and reseed-queue updates happen in DroneController,
+           which calls this once per simulated step. */
         public static StepResult Step(EpisodeState s, int action, System.Random rng)
         {
             var result = new StepResult();

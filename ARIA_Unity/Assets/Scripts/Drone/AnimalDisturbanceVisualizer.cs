@@ -83,6 +83,10 @@ namespace ARIA.Drone
             }
         }
 
+        /* Organic wandering via 2D Perlin noise (seeded by each goat's own
+           instance ID so they don't all move in lockstep), offset around
+           the goat's current WanderCenter -- re-picked periodically by
+           RetargetGoat rather than wandering forever around one point. */
         private void Wander(Goat goat)
         {
             goat.RetargetTimer -= Time.deltaTime;

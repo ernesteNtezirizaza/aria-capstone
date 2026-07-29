@@ -75,6 +75,9 @@ def reproj_to_grid(path, band=1, resampling=Resampling.bilinear):
 
 
 def load_layers():
+    """ Loads and reprojects all raw EDA input layers onto the common EDA
+       grid. Returns (dem, slope_deg, soil_composite, rain_norm, soil_names,
+       n_rain_months). """
     print("Loading DEM...")
     dem = reproj_to_grid(DEM_PATH)
     dem[dem <= 0] = np.nan

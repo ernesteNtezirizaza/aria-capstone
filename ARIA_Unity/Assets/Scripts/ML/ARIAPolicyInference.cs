@@ -39,6 +39,11 @@ namespace ARIA.ML
             _worker?.Dispose();
         }
 
+        /* Runs one forward pass of the exported ONNX policy: wraps each
+           Observation field as a named tensor matching export_to_onnx.py's
+           OBS_SPEC input names exactly, feeds them through the Sentis
+           worker, and returns the raw action logits (NOT yet turned into
+           an action -- see ActionSelector.SelectArgmax). */
         public float[] Infer(Observation obs)
         {
             if (!_initialised)

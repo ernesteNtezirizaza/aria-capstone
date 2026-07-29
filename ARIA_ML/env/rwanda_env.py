@@ -241,6 +241,12 @@ class RwandaReforestEnv(gym.Env):
         return obs, info
 
     def step(self, action: int):
+        """ The full per-timestep MDP transition: advances weather/energy,
+           dispatches the chosen action (move+seed, hover, abort, cover,
+           altitude, or emergency), scores it via RewardFunction, then
+           advances growth/disturbance on the configured interval and
+           updates the reseed queue. Returns the standard Gymnasium
+           (obs, reward, terminated, truncated, info) tuple. """
         assert self.action_space.contains(action)
 
         total_r = 0.0
@@ -655,6 +661,9 @@ class RwandaReforestEnv(gym.Env):
         return float(rel_dy), float(rel_dx), float(manhattan_dist)
 
     def _obs(self) -> Dict:
+        """ Assembles the full Dict observation matching observation_space
+           (see the class docstring's STATE section for what each of the 8
+           components represents) from the current episode state. """
         half = OBS_WINDOW // 2
         padded = np.pad(self.terrain,
                         ((half, half), (half, half), (0, 0)), mode="edge")
@@ -738,6 +747,9 @@ class RwandaReforestEnv(gym.Env):
         }
 
     def _metrics(self) -> dict:
+        """ Per-episode evaluation metrics (EVAL_METRICS), e.g.
+           pct_suitable_seeded / seeding_efficiency -- this is what
+           generalisation_test() in training/train_ppo.py logs per zone. """
         seeds = list(self.growth.seeds.values())
         if not seeds:
             return {m: 0.0 for m in EVAL_METRICS}
@@ -823,6 +835,10 @@ class RwandaReforestEnv(gym.Env):
         }
 
     def render(self, mode="rgb_array"):
+        """ Debug-only RGB visualisation (not used by the Unity build, which
+           has its own real renderer): grey = no-plant, blue tint =
+           disturbance risk, red tint = obstacle, red/green = dead/living
+           seed lifecycle stage, yellow pixel = current drone position. """
         canvas = np.zeros((ZONE_SIZE, ZONE_SIZE, 3), dtype=np.uint8)
         soil   = np.nan_to_num(self.terrain[:, :, 2], nan=0.0)
         bg     = (soil * 180).astype(np.uint8)

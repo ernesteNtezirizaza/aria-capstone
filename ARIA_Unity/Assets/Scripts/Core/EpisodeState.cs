@@ -74,6 +74,11 @@ namespace ARIA.Core
             ResetEpisode(rng);
         }
 
+        /* Re-initialises every piece of per-episode state (position,
+           battery, coverage, mission counters, reseed queue) for a fresh
+           run against the same loaded Zone -- everything EXCEPT the Zone
+           itself and, deliberately, Monitor's reseed history (see its own
+           Reset() below). */
         public void ResetEpisode(System.Random rng = null)
         {
             rng = rng ?? new System.Random();
@@ -139,6 +144,14 @@ namespace ARIA.Core
 
         public float ZoneSuitability() => Zone.ZoneSuitability();
 
+        /* The 6 global generalisation features matching Python's
+           _terrain_stats()/zone_terrain_stats() (mean elevation/slope/
+           soil/rain/landcover + plantable fraction). NOTE: elev and lc
+           elevation and landcover channels are already normalised to [0,1]
+           by preprocess.py, matching rwanda_env.py's own _terrain_stats()
+           fix -- do NOT divide them again by 3000/10 here, or two of the
+           six generalisation features silently crush to near-zero
+           regardless of the real terrain. */
         public float[] TerrainStats()
         {
             float elevSum = 0f, slopeSum = 0f, soilSum = 0f, rainSum = 0f, lcSum = 0f;
@@ -159,11 +172,11 @@ namespace ARIA.Core
             }
 
             int n = size * size;
-            float elev  = (elevSum / n) / 3000f;   
+            float elev  = elevSum / n;
             float slope = slopeSum / n;
             float soil  = soilSum / n;
             float rain  = rainSum / n;
-            float lc    = (lcSum / n) / 10f;       
+            float lc    = lcSum / n;
             float plant = (float)plantableCount / n;
 
             return new float[]
@@ -173,6 +186,9 @@ namespace ARIA.Core
             };
         }
 
+        /* Assembles the full observation the ONNX policy consumes, matching
+           rwanda_env.py's _obs()/observation_space exactly (terrain window,
+           drone/mission vectors, the four zone-wide maps, terrain stats). */
         public Observation BuildObservation()
         {
             var obs = new Observation();

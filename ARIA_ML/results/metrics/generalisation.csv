@@ -1,7 +1,7 @@
 zone,pct_suitable_seeded,seeding_ceiling,seeding_efficiency,mean_soil_score,species_entropy,spacing_violations,protected_area_seeds,seasonal_rain_score,reseeding_count,missions_completed,battery_empty_events,obstacles_avoided
-zone_0_Congo-Nile_Divide_South,0.032,0.0992,0.3227,0.4012,1.5736,13865.58,0.0,0.2031,20.44,3.94,0.32,0.0
-zone_1_Kivu_Belt_Southwest,0.0347,0.0694,0.4992,0.564,1.5707,23533.16,0.0,0.207,26.78,4.44,0.48,0.0
-zone_2_Central_Plateau_East,0.0379,0.0694,0.546,0.5539,1.6027,25231.84,0.0,0.2068,31.44,4.76,0.44,0.0
-zone_3_Northern_Plateau_East,0.0277,0.0992,0.2793,0.3393,1.5778,10068.0,0.0,0.1978,22.48,4.04,0.3,0.0
-zone_4_Eastern_Savanna_South,0.034,0.0694,0.4903,0.5806,1.5936,25874.42,0.0,0.2042,29.56,3.74,0.42,0.0
-zone_5_Southern_Valley_East,0.0315,0.0787,0.4004,0.4307,1.6001,25441.04,0.0,0.2082,32.78,5.48,0.26,0.0
+zone_0_Congo-Nile_Divide_South,0.0439,0.0992,0.4422,0.5202,1.599,12784.46,0.0,0.2089,16.16,2.76,0.84,0.0
+zone_1_Kivu_Belt_Southwest,0.0291,0.0694,0.419,0.5584,1.5989,9605.52,0.0,0.2096,12.42,2.5,0.82,0.0
+zone_2_Central_Plateau_East,0.0379,0.0694,0.5454,0.553,1.5994,15051.06,0.0,0.2142,17.88,3.36,0.64,0.0
+zone_3_Northern_Plateau_East,0.0482,0.0992,0.4856,0.5037,1.6003,13432.5,0.0,0.2042,18.08,4.76,0.62,0.0
+zone_4_Eastern_Savanna_South,0.042,0.0694,0.6047,0.5866,1.6003,21520.82,0.0,0.2104,26.6,4.14,0.42,0.0
+zone_5_Southern_Valley_East,0.0392,0.0787,0.4976,0.5439,1.5974,12814.06,0.0,0.2159,18.1,3.46,0.58,0.0

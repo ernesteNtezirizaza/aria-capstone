@@ -96,6 +96,10 @@ def _load_species_from_dataset(global_max_mm):
         return None
 
     def _growth_params(raw):
+        """ Maps the dataset's free-text growth-rate label to
+           (germ_steps, mature_steps) -- steps until germination and until
+           full maturity, used by growth_engine.py's stage-advancement
+           timeline. Unrecognised labels fall back to a medium-ish default. """
         raw = str(raw).strip().lower()
         if "fast"   in raw: return 8,  60
         if "slow"   in raw: return 25, 150

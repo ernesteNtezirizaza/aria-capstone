@@ -159,6 +159,11 @@ namespace ARIA.Core
             return 0; // dy/dx are always in {-1,0,1} from Math.Sign, so this never actually falls through
         }
 
+        /* Deterministically picks among the species whose rain_min this
+           cell's rainfall actually clears -- the x*7+y*13 hash just spreads
+           the choice across cells (so nearby cells don't all pick the same
+           species) without needing an RNG instance threaded through this
+           static class. */
         private static int BestSpeciesFor(ZoneData zone, int x, int y)
         {
             float rain = zone.Terrain[y, x, 3];

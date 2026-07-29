@@ -33,6 +33,9 @@ TRAIN_ZONES_IN_DEMO = [0, 17, 29]
 
 
 def run_zone(model, split, zone_id, display_name, n_episodes):
+    """ Runs n_episodes deterministic-off rollouts of model against one zone
+       and averages each episode's metrics dict together. Returns None
+       (skipping the zone) if no episode ever reported metrics. """
     env = Monitor(RwandaReforestEnv(zone_id=zone_id, split=split, seed=42,
                                      species_recommender=SHARED_SPECIES_RECOMMENDER))
     ep_metrics = []

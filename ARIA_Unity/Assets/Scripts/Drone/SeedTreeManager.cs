@@ -329,6 +329,10 @@ namespace ARIA.Drone
             return mound;
         }
 
+        /* Currently an identity passthrough -- kept as its own seam (rather
+           than using groundPos directly in SpawnSprout) so a future visual
+           offset/jitter per sprout has one place to change, without
+           touching the actual simulation grid position. */
         private Vector3 ComputeRenderPos(Vector3 groundPos)
         {
             return groundPos;
@@ -413,6 +417,11 @@ namespace ARIA.Drone
             }
         }
 
+        /* Handles every stage change after the initial sprout: swaps the
+           sprout marker for a real tree mesh on the Seedling/Mature
+           transition, then tweens whichever visual is currently active
+           (sprout or tree) from its old scale to the new stage's target
+           scale over tweenDuration. */
         private IEnumerator TransitionTo(TreeVisual visual, SeedStage newStage)
         {
             /* Dead is its own branch below, so an early death just withers the sprout in place. */

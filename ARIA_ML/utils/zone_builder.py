@@ -18,6 +18,10 @@ from configs.config import (
 
 
 def get_bounds(col, row):
+    """ Converts a zone's (col, row) grid position into its real-world
+       lat/lon bounding box, by scaling ZONE_SIZE cells against the
+       national grid's per-cell degree size (derived from RWANDA_BOUNDS /
+       GRID_COLS / GRID_ROWS). """
     lx = (RWANDA_BOUNDS["right"] - RWANDA_BOUNDS["left"]) / GRID_COLS
     ly = (RWANDA_BOUNDS["top"]   - RWANDA_BOUNDS["bottom"]) / GRID_ROWS
     return {
@@ -29,6 +33,10 @@ def get_bounds(col, row):
 
 
 def extract(grid, col, row):
+    """ Slices one ZONE_SIZE x ZONE_SIZE patch out of a full national grid
+       at (col, row). Zero-pads instead of shrinking when the national
+       grid's edge cuts a zone short, so every exported zone is always
+       exactly ZONE_SIZE x ZONE_SIZE regardless of position. """
     rs = row * ZONE_SIZE
     re = min(rs + ZONE_SIZE, grid.shape[0])
     cs = col * ZONE_SIZE

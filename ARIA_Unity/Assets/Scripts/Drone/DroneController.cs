@@ -231,6 +231,12 @@ namespace ARIA.Drone
             StartCoroutine(LoadZoneAndStart(ZoneManifest[index], index));
         }
 
+        /* Resets to a fresh EpisodeState against the currently-loaded zone
+           and (re)plans the scripted coverage sweep -- CoverageOverride
+           only actually resets its sweep progress when the previous
+           episode finished via a genuine mission-complete, so a mid-sweep
+           restart (e.g. after battery-critical) continues where it left
+           off rather than restarting the whole zone sweep. */
         public void StartNewEpisode()
         {
             if (_currentZoneData == null)
@@ -274,6 +280,10 @@ namespace ARIA.Drone
             StartNewEpisode();
         }
 
+        /* One-time takeoff animation: places the drone at the grey helipad
+           ground position, then climbs/turns toward its actual starting
+           grid cell before the real step loop takes over. Purely visual --
+           episode state itself is already fully initialised before this runs. */
         private IEnumerator IntroSequence()
         {
             IsPlayingIntro = true;
@@ -340,6 +350,12 @@ namespace ARIA.Drone
             OnIntroFinished?.Invoke(this);
         }
 
+        /* Two independent jobs run here every frame: smoothly interpolating
+           the drone's visual transform toward wherever the last simulated
+           step moved it (_moveFrom -> _moveTo), and a separate stepInterval
+           timer that fires the next actual simulation tick (RunOneStep())
+           -- so movement always looks continuous regardless of how
+           infrequently the underlying step logic itself runs. */
         void Update()
         {
             if (_episodeActive && _stepLoopEnabled && !IsPlayingIntro)
@@ -366,6 +382,11 @@ namespace ARIA.Drone
             RunOneStep();
         }
 
+        /* One simulated tick: builds the observation, runs the ONNX policy,
+           lets CoverageOverride substitute its own scripted action while
+           actively seeding (see CoverageOverride's class docs), then hands
+           the final action to ActionDispatcher.Step() and reacts to the
+           result (visuals, reward, episode end). */
         private void RunOneStep()
         {
             if (policyInference == null)
@@ -416,7 +437,6 @@ namespace ARIA.Drone
             if (result.SeedDropped)
             {
                 CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
-                SpawnSeedVisual();
             }
             if (result.ObstacleHit) CumulativeReward -= 1.0f;
             if (result.ValidAbort) CumulativeReward += 5.0f;
@@ -513,21 +533,6 @@ namespace ARIA.Drone
             return new Vector3(gridX * cellSize, y, gridY * cellSize);
         }
 
-        private void SpawnSeedVisual()
-        {
-            GameObject seed = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            seed.transform.position = transform.position - new Vector3(0, 1.5f, 0);
-            seed.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f);
-            var renderer = seed.GetComponent<Renderer>();
-            renderer.material.color = new Color(0.1f, 0.9f, 0.2f);
-
-            var rb = seed.AddComponent<Rigidbody>();
-            rb.mass = 1f;
-            rb.linearDamping = 0.5f;
-
-            Destroy(seed, 4f);
-        }
-
         private Vector3 GetHelipadGroundPos()
         {
             float worldSize = ARIAConstants.ZONE_SIZE * cellSize;
@@ -535,6 +540,9 @@ namespace ARIA.Drone
             return new Vector3(worldSize * 0.5f, 0f, -padDistance);
         }
 
+        /* Sets the interpolation target for Update()'s smooth per-frame
+           lerp -- doesn't move the drone immediately, just tells Update()
+           where to ease toward next. */
         private void SnapToGridPosition()
         {
             _moveFrom = transform.position;
@@ -543,6 +551,9 @@ namespace ARIA.Drone
             _moveElapsed = 0f;
         }
 
+        /* Unlike SnapToGridPosition(), teleports the drone's actual
+           transform immediately -- used right after episode start/reset,
+           where there's no previous position worth easing from. */
         private void HardSnapToGridPosition()
         {
             bool returning = State.DroneState == ARIAConstants.STATE_RETURNING;
