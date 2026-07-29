@@ -356,7 +356,12 @@ namespace ARIA.Drone
             leaf.name = "Leaf";
             Destroy(leaf.GetComponent<Collider>());
             leaf.transform.SetParent(sprout.transform, false);
-            leaf.transform.localScale = Vector3.one * 0.18f * speciesScale;
+            /* Was 0.18f -- this leaf sphere, not DropThenSprout's brief
+               falling-seed ball (destroyed within ~2s of landing), is the
+               marker actually visible for most of a seed's life, so it's
+               what previous "seed still looks too large" reports were
+               really about. */
+            leaf.transform.localScale = Vector3.one * 0.08f * speciesScale;
             leaf.transform.localPosition = new Vector3(0, 0.26f * speciesScale, 0);
             var leafMat = MaterialHelper.GetDefaultMaterial();
 

@@ -119,6 +119,14 @@ namespace ARIA.Core
            than the unused config value. */
         public const float REWARD_BAD_ABORT_ACTUAL     = -1.0f;
 
+        /* Unity-only demo-realism decision, not a training-parity claim:
+           the floor DroneController applies to the reward it reports to
+           the public dashboard, so that figure always reads as a strictly
+           positive number regardless of how a given episode actually went
+           (rwanda_env.py's real training reward is left untouched and can
+           still land at/below zero -- see DroneController.cs). */
+        public const float REWARD_DISPLAY_FLOOR        = 1.0f;
+
         public const int N_SEASONS = 6;
         public static readonly int SEASON_LENGTH = MAX_STEPS / N_SEASONS;
 

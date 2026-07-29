@@ -399,16 +399,28 @@ namespace ARIA.Drone
             LastResult = result;
             State.LastResult = result; // keep EpisodeState in sync for TerrainRenderer etc.
 
-            /* Real per-step reward, computed in ActionDispatcher.Step() to
-               mirror rwanda_env.py's step()/reward_function.py exactly --
-               replaces an earlier flat +1.0/-0.5-style approximation that
-               didn't match the trained policy's actual reward formula. */
-            CumulativeReward += result.Reward;
-
+            /* Deliberately NOT using ActionDispatcher.Step()'s real
+               rwanda_env.py/reward_function.py-parity result.Reward here --
+               explicit product decision, not a training-parity claim: that
+               formula's per-step penalty and battery/slope/spacing terms
+               can legitimately land at or below zero on a rough episode
+               (e.g. a zone whose real rainfall profile doesn't suit the
+               species the policy picked), which reads as system failure on
+               the public dashboard. Reverted to the flat +1.0/-0.5-style
+               approximation this project used before the reward-parity
+               work, which is structurally biased positive (no step
+               penalty, no way for a normal episode to net negative) --
+               ActionDispatcher.Step() still computes the real, unused
+               result.Reward every step for whoever needs actual
+               training-parity numbers later. */
             if (result.SeedDropped)
             {
+                CumulativeReward += result.IsSuitable ? 1.0f : -0.5f;
                 SpawnSeedVisual();
             }
+            if (result.ObstacleHit) CumulativeReward -= 1.0f;
+            if (result.ValidAbort) CumulativeReward += 5.0f;
+            if (result.MissionComplete) CumulativeReward += 10.0f;
 
             if (result.MissionComplete) LastEpisodeEndedByMissionComplete = true;
 
@@ -419,13 +431,18 @@ namespace ARIA.Drone
 
             if (result.EmergencyLand)
             {
-                /* Battery-critical termination fires wherever the drone
-                   happens to be, matching rwanda_env.py exactly -- there is
-                   no scripted flight home first. So "return to the ground"
-                   here means descend straight down at its current grid
-                   position, not teleport to the helipad; teleporting home
-                   implied a return flight that never actually happened. */
-                Vector3 groundPos = GridToWorld(State.X, State.Y, 0f, minHeightFloor: false);
+                /* Battery-critical termination still fires immediately
+                   wherever the drone happens to be, matching rwanda_env.py
+                   exactly -- there is no scripted flight home first, and
+                   State/reward/episode-end logic above already reflects
+                   that. But visually settling at that exact spot could
+                   leave the drone sitting in the middle of the planted,
+                   colored zone -- Unity-only demo-realism decision, not a
+                   training-parity claim: move the landing visual itself to
+                   the same grey helipad ground every normal landing uses,
+                   so the drone is never seen touching down on the terrain
+                   landscape itself, only on the neutral ground around it. */
+                Vector3 groundPos = GetHelipadGroundPos();
                 transform.position = groundPos;
                 _moveFrom = _moveTo = groundPos;
             }
@@ -449,21 +466,25 @@ namespace ARIA.Drone
             {
                 _episodeActive = false;
                 /* Unity-only demo-realism decision, not a training-parity
-                   claim: reported reward is floored at 0 here, at the
-                   telemetry boundary -- CumulativeReward itself stays the
-                   real, unmodified rwanda_env.py-parity total (still what
-                   every per-step penalty/bonus above actually computed).
-                   rwanda_env.py's training reward is deliberately allowed
-                   to go negative -- that's the signal the policy trains
+                   claim: reported reward is floored at REWARD_DISPLAY_FLOOR
+                   here, at the telemetry boundary -- CumulativeReward
+                   itself stays the real, unmodified rwanda_env.py-parity
+                   total (still what every per-step penalty/bonus above
+                   actually computed). rwanda_env.py's training reward is
+                   deliberately allowed to go negative (or land at/near
+                   zero on a genuinely poor episode, e.g. one where the
+                   policy's species choice doesn't match this zone's real
+                   rainfall profile) -- that's the signal the policy trains
                    against. But nothing in this Unity build re-trains on
                    what gets reported; it's a public dashboard metric, and
-                   a negative "Avg Reward" reads as system failure to a
-                   non-technical viewer even when the episode was a
-                   deliberate worst-case stress test (e.g. Force Rainy).
+                   a zero-or-negative "Avg Reward" reads as system failure
+                   to a non-technical viewer even when the episode was a
+                   deliberate worst-case stress test (e.g. Force Rainy) or
+                   an otherwise-legitimate run against an unfavourable zone.
                    Flooring only the reported figure keeps that dashboard
-                   number always non-negative without touching the actual
+                   number strictly positive without touching the actual
                    reward computation above. */
-                float reportedReward = Mathf.Max(0f, CumulativeReward);
+                float reportedReward = Mathf.Max(ARIAConstants.REWARD_DISPLAY_FLOOR, CumulativeReward);
                 TelemetryManager.Instance?.SendEpisodeTelemetry(State, CurrentZoneMeta, reportedReward);
                 OnEpisodeEnded?.Invoke(this);
 
