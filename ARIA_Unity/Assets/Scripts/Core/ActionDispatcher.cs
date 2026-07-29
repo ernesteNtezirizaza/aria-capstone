@@ -23,15 +23,15 @@ namespace ARIA.Core
 
         public bool MissionComplete;
 
-        // Placement was attempted but refused -- mirrors rwanda_env.py's
-        // w_redundant_penalty (already-covered cell, not a reseed) and the
-        // reward function's slope penalty (cell too steep to plant, from
-        // the same real no_plant mask used for is_suitable).
+        /* Placement was attempted but refused -- mirrors rwanda_env.py's
+           w_redundant_penalty (already-covered cell, not a reseed) and the
+           reward function's slope penalty (cell too steep to plant, from
+           the same real no_plant mask used for is_suitable). */
         public bool RedundantPlacementBlocked;
         public bool TooSteepBlocked;
 
-        // Real per-step reward, mirroring rwanda_env.py's step() total_r
-        // exactly (see ActionDispatcher.Step() for the full breakdown).
+        /* Real per-step reward, mirroring rwanda_env.py's step() total_r
+           exactly (see ActionDispatcher.Step() for the full breakdown). */
         public float Reward;
     }
 
@@ -45,38 +45,38 @@ namespace ARIA.Core
             float rainVal = DemoConditions.GetEffectiveRainfall(realRain, s.Timestep);
             s.Weather.Step(rainVal, s.Timestep);
 
-            // Mirrors energy_system.py's step(steps_to_base) exactly -- see
-            // EnergySystem.Step for why a fixed return threshold was a real
-            // bug, not just a simplification.
+            /* Mirrors energy_system.py's step(steps_to_base) exactly -- see
+               EnergySystem.Step for why a fixed return threshold was a real
+               bug, not just a simplification. */
             int stepsToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
             var energyInfo = s.Energy.Step(s.Weather, stepsToBase);
             s.Season = s.Weather.CurrentSeason;
 
-            // Mirrors rwanda_env.py's step() exactly: "if action == EMERGENCY
-            // or energy_info['is_critical']" terminates immediately, wherever
-            // the drone happens to be -- there is no "try to fly home first"
-            // grace period in the real trained environment. The distance-aware
-            // ShouldReturn threshold above is what's actually supposed to get
-            // the drone back to base with margin to spare; IsCritical is the
-            // hard safety cutoff for when that didn't happen in time, not a
-            // normal end state reached via a scripted return flight. (An
-            // earlier version of this code held the battery steady and let a
-            // "critical return" fly all the way home before terminating, and
-            // cancelled the whole thing if the weather turned sunny mid-flight
-            // -- neither of those exist in rwanda_env.py; the battery just
-            // keeps draining normally every step, exactly as it does here now.)
+            /* Mirrors rwanda_env.py's step() exactly: "if action == EMERGENCY
+               or energy_info['is_critical']" terminates immediately, wherever
+               the drone happens to be -- there is no "try to fly home first"
+               grace period in the real trained environment. The distance-aware
+               ShouldReturn threshold above is what's actually supposed to get
+               the drone back to base with margin to spare; IsCritical is the
+               hard safety cutoff for when that didn't happen in time, not a
+               normal end state reached via a scripted return flight. (An
+               earlier version of this code held the battery steady and let a
+               "critical return" fly all the way home before terminating, and
+               cancelled the whole thing if the weather turned sunny mid-flight
+               -- neither of those exist in rwanda_env.py; the battery just
+               keeps draining normally every step, exactly as it does here now.) */
             if (action == ARIAConstants.EMERGENCY || energyInfo.IsCritical)
             {
                 result.EmergencyLand = true;
                 result.Terminated = true;
                 result.BatteryDepleted = true;
                 s.MissionCompleteReturning = false;
-                // Mirrors rwanda_env.py exactly: a voluntary EMERGENCY while
-                // not actually critical pays nothing (punishment is the lost
-                // future seeding reward); genuine battery death pays
-                // battery_empty. Either way this returns before the
-                // universal step penalty below -- matching Python, which
-                // also returns here without ever reaching its own.
+                /* Mirrors rwanda_env.py exactly: a voluntary EMERGENCY while
+                   not actually critical pays nothing (punishment is the lost
+                   future seeding reward); genuine battery death pays
+                   battery_empty. Either way this returns before the
+                   universal step penalty below -- matching Python, which
+                   also returns here without ever reaching its own. */
                 result.Reward = (action == ARIAConstants.EMERGENCY && !energyInfo.IsCritical)
                     ? 0f
                     : ARIAConstants.REWARD_BATTERY_EMPTY;
@@ -90,8 +90,8 @@ namespace ARIA.Core
                 if (zoneScore < ARIAConstants.ZONE_MIN_SUITABILITY)
                 {
                     result.ValidAbort = true;
-                    // Mirrors rwanda_env.py's valid_abort_rewarded: pays out
-                    // only the first time per episode.
+                    /* Mirrors rwanda_env.py's valid_abort_rewarded: pays out
+                       only the first time per episode. */
                     if (!s.ValidAbortRewarded)
                     {
                         result.Reward += ARIAConstants.REWARD_BATTERY_SAVE;
@@ -128,18 +128,31 @@ namespace ARIA.Core
                     result.ObstacleCleared = true;
                     result.Reward += ARIAConstants.REWARD_OBSTACLE_CLEAR;
                 }
-                // else: no reward for unnecessary altitude increase, matching rwanda_env.py.
+                /* else: no reward for unnecessary altitude increase, matching rwanda_env.py. */
             }
             else if (action == ARIAConstants.ALT_DOWN)
             {
-                s.Altitude = Mathf.Max(0.0f, s.Altitude - 0.1f);
+                /* Unity-only demo-realism decision, not a training-parity
+                   claim: only actually let the drone descend toward low
+                   altitude while it's over ground the policy is allowed to
+                   seed anyway (the same noPlant/too-steep "grey terrain"
+                   gate used for the placement block below) -- descending low
+                   over green, plantable ground read as the drone flying
+                   dangerously close to canopy/slope it had no reason to be
+                   near. The action still "fires" even when it's a no-op
+                   here, same as ALT_UP's own no-reward no-op case above. */
+                bool overGreyTerrain = IsGreyTerrain(s, s.Y, s.X);
+                if (overGreyTerrain)
+                {
+                    s.Altitude = Mathf.Max(0.0f, s.Altitude - 0.1f);
+                }
             }
             else if (action == ARIAConstants.HOVER_ACTION)
             {
-                // Mirrors rwanda_env.py's hover_penalty() exactly: this is IN
-                // ADDITION to the universal step penalty applied at the end
-                // of Step(), so hovering costs step_penalty twice over --
-                // a real quirk of the trained reward, not a bug to "fix" here.
+                /* Mirrors rwanda_env.py's hover_penalty() exactly: this is IN
+                   ADDITION to the universal step penalty applied at the end
+                   of Step(), so hovering costs step_penalty twice over --
+                   a real quirk of the trained reward, not a bug to "fix" here. */
                 result.Reward += -ARIAConstants.REWARD_STEP_PENALTY;
             }
             else if (s.DroneState != ARIAConstants.STATE_RETURNING &&
@@ -152,16 +165,16 @@ namespace ARIA.Core
                 int newX = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 int newY = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
-                // Matches env/rwanda_env.py's step() exactly: obstacles are real, static
-                // terrain features (from compute_obstacle() in preprocess.py) that always
-                // block low-altitude flight into them, unconditionally -- not something a
-                // demo toggle turns on. Blocking simply holds the drone at its current
-                // cell for this step (rwanda_env.py never rescues the move with an
-                // automatic reroute search) -- it's on the trained policy to pick a
-                // different direction, or climb via ALT_UP, on a later step, exactly as
-                // it actually learned to. An earlier version of this searched adjacent
-                // directions (CW/CCW/reverse) and auto-relocated the drone within the
-                // same step; that was never something the policy was trained under.
+                /* Matches env/rwanda_env.py's step() exactly: obstacles are real, static
+                   terrain features (from compute_obstacle() in preprocess.py) that always
+                   block low-altitude flight into them, unconditionally -- not something a
+                   demo toggle turns on. Blocking simply holds the drone at its current
+                   cell for this step (rwanda_env.py never rescues the move with an
+                   automatic reroute search) -- it's on the trained policy to pick a
+                   different direction, or climb via ALT_UP, on a later step, exactly as
+                   it actually learned to. An earlier version of this searched adjacent
+                   directions (CW/CCW/reverse) and auto-relocated the drone within the
+                   same step; that was never something the policy was trained under. */
                 bool obstacleAtDestination = s.Zone.ObsGrid[newY, newX] > ARIAConstants.OBSTACLE_THRESHOLD;
                 bool blocked = obstacleAtDestination && s.Altitude < ARIAConstants.OBSTACLE_SAFE_ALTITUDE;
 
@@ -181,20 +194,24 @@ namespace ARIA.Core
                 bool isReseed        = s.ReseedingTargets.Contains((s.Y, s.X));
                 bool noPlant         = s.Zone.NoPlant[s.Y, s.X];
 
-                // Mirrors rwanda_env.py's step() exactly: a reseed attempt is
-                // a deliberate correction, not accidental redundancy, so it
-                // bypasses the already-planted block -- without this
-                // exception a reseed target could never actually be
-                // replanted even after being successfully reached, since its
-                // cell was already marked covered by the original (failed)
-                // seed. The queue could then only ever shrink by timing out,
-                // never by succeeding.
+                /* Mirrors rwanda_env.py's step() exactly: a reseed attempt is
+                   a deliberate correction, not accidental redundancy, so it
+                   bypasses the already-planted block -- without this
+                   exception a reseed target could never actually be
+                   replanted even after being successfully reached, since its
+                   cell was already marked covered by the original (failed)
+                   seed. The queue could then only ever shrink by timing out,
+                   never by succeeding. */
                 bool blockedRedundant = alreadyPlanted && !isReseed;
-                // Too-steep-to-plant is hard-blocked regardless of reseed
-                // status, matching how no_plant feeds is_suitable identically
-                // for both cases in reward_function.py -- there is no reseed
-                // exception for slope there either.
-                bool blockedSlope = noPlant;
+                /* Too-steep-to-plant is hard-blocked regardless of reseed
+                   status, matching how no_plant feeds is_suitable identically
+                   for both cases in reward_function.py -- there is no reseed
+                   exception for slope there either. IsGreyTerrain widens this
+                   beyond the baked no_plant mask to also cover cells above
+                   MAX_SLOPE_DEG -- a Unity-only demo-realism decision (see
+                   its own comment), not a training-parity claim: rwanda_env.py
+                   never hard-blocks on slope alone, only via no_plant. */
+                bool blockedSlope = IsGreyTerrain(s, s.Y, s.X);
 
                 if (s.DroneState == ARIAConstants.STATE_SEEDING && s.SeedsRemaining > 0
                     && !blockedRedundant && !blockedSlope)
@@ -213,27 +230,27 @@ namespace ARIA.Core
                     bool isSuitable = !noPlant && !inProtected
                         && rain >= rainMin && soil >= ARIAConstants.ZONE_MIN_SOIL;
 
-                    // Coverage bonus/penalty -- skipped entirely for a genuine
-                    // reseed, since revisiting a known failure is deliberate
-                    // correction, not redundancy (mirrors rwanda_env.py). Note:
-                    // "already_covered" can't actually happen here in Unity,
-                    // since blockedRedundant already excludes alreadyPlanted
-                    // && !isReseed from reaching this branch -- kept for
-                    // structural fidelity to rwanda_env.py regardless.
+                    /* Coverage bonus/penalty -- skipped entirely for a genuine
+                       reseed, since revisiting a known failure is deliberate
+                       correction, not redundancy (mirrors rwanda_env.py). Note:
+                       "already_covered" can't actually happen here in Unity,
+                       since blockedRedundant already excludes alreadyPlanted
+                       && !isReseed from reaching this branch -- kept for
+                       structural fidelity to rwanda_env.py regardless. */
                     if (!isReseed)
                     {
                         if (alreadyPlanted) result.Reward += ARIAConstants.REWARD_W_REDUNDANT_PENALTY;
                         else if (isSuitable) result.Reward += ARIAConstants.REWARD_W_NEW_COVERAGE_BONUS;
                     }
 
-                    // Tier 1 placement reward -- mirrors reward_function.py's placement().
+                    /* Tier 1 placement reward -- mirrors reward_function.py's placement(). */
                     float rainOk = Mathf.Max(0f, rain - rainMin) / (1f - rainMin + 1e-6f);
                     float slopePen = Mathf.Min(slope / ARIAConstants.MAX_SLOPE_DEG, 1f);
 
-                    // Spacing/cluster check against every seed ever dropped
-                    // this episode (Python's self.seeded set is never pruned,
-                    // so reusing Growth.Seeds -- unpruned itself -- matches
-                    // exactly), skipped for a genuine reseed.
+                    /* Spacing/cluster check against every seed ever dropped
+                       this episode (Python's self.seeded set is never pruned,
+                       so reusing Growth.Seeds -- unpruned itself -- matches
+                       exactly), skipped for a genuine reseed. */
                     float cluster = 0f;
                     if (!isReseed)
                     {
@@ -259,9 +276,9 @@ namespace ARIA.Core
                     else if (!isRainy && s.CoverDeployed) coverR = ARIAConstants.REWARD_COVER_WRONG;
                     else coverR = 0f;
 
-                    // Diversity entropy needs this species' count incremented
-                    // first, matching reward_function.py's placement() order
-                    // (species_counts[species_id] += 1 before _diversity()).
+                    /* Diversity entropy needs this species' count incremented
+                       first, matching reward_function.py's placement() order
+                       (species_counts[species_id] += 1 before _diversity()). */
                     s.SpeciesCounts[speciesId]++;
                     float diversityR = SpeciesDiversityReward(s.SpeciesCounts);
 
@@ -293,25 +310,25 @@ namespace ARIA.Core
                 else if (blockedRedundant)
                 {
                     result.RedundantPlacementBlocked = true;
-                    // Unlike rwanda_env.py (where a redundant placement still
-                    // drops a real, duplicate seed and only adds this as a
-                    // penalty), Unity blocks the drop entirely here -- no seed
-                    // is consumed or registered. Applying just the penalty
-                    // term is the closest faithful value for what Unity's
-                    // simulation actually does at this branch, not a claim
-                    // that the full tier-1 formula also ran.
+                    /* Unlike rwanda_env.py (where a redundant placement still
+                       drops a real, duplicate seed and only adds this as a
+                       penalty), Unity blocks the drop entirely here -- no seed
+                       is consumed or registered. Applying just the penalty
+                       term is the closest faithful value for what Unity's
+                       simulation actually does at this branch, not a claim
+                       that the full tier-1 formula also ran. */
                     result.Reward += ARIAConstants.REWARD_W_REDUNDANT_PENALTY;
                 }
                 else if (blockedSlope)
                 {
                     result.TooSteepBlocked = true;
-                    // Unlike rwanda_env.py (where a no_plant cell still runs
-                    // the full placement formula, just with is_suitable=false
-                    // dragging is_suitable-dependent terms to zero), Unity
-                    // blocks the drop entirely -- no seed consumed. Applying
-                    // the slope penalty at its ceiling (w_slope * 1.0) is the
-                    // same stand-in this branch already used before reward
-                    // parity, not a claim the full formula ran.
+                    /* Unlike rwanda_env.py (where a no_plant cell still runs
+                       the full placement formula, just with is_suitable=false
+                       dragging is_suitable-dependent terms to zero), Unity
+                       blocks the drop entirely -- no seed consumed. Applying
+                       the slope penalty at its ceiling (w_slope * 1.0) is the
+                       same stand-in this branch already used before reward
+                       parity, not a claim the full formula ran. */
                     result.Reward += -ARIAConstants.ZONE_SUIT_W_SLOPE;
                 }
             }
@@ -330,12 +347,12 @@ namespace ARIA.Core
                 s.ReseedSpeciesMap.Clear();
             }
 
-            // Mirrors rwanda_env.py's should_return check exactly -- no
-            // weather condition on it there. (An earlier version of this
-            // code only triggered a battery return in rain, since sunny
-            // weather was treated as "recharging enough to not need it";
-            // that's not how the real threshold works -- see
-            // EnergySystem.Step's distance-aware ShouldReturn.)
+            /* Mirrors rwanda_env.py's should_return check exactly -- no
+               weather condition on it there. (An earlier version of this
+               code only triggered a battery return in rain, since sunny
+               weather was treated as "recharging enough to not need it";
+               that's not how the real threshold works -- see
+               EnergySystem.Step's distance-aware ShouldReturn.) */
             if (energyInfo.ShouldReturn && activelySeeding)
             {
                 s.DroneState = ARIAConstants.STATE_RETURNING;
@@ -350,13 +367,13 @@ namespace ARIA.Core
                 s.X = Mathf.Clamp(s.X + dx, 0, ARIAConstants.ZONE_SIZE - 1);
                 s.Y = Mathf.Clamp(s.Y + dy, 0, ARIAConstants.ZONE_SIZE - 1);
 
-                // Cruise above canopy until clear of the planted zone, then
-                // descend -- genuinely checked against real tree positions
-                // now, not just assumed from distance-to-base. A tall
-                // Seedling/Mature tree sitting inside the final descent
-                // radius used to get flown straight through, since the old
-                // curve only looked at distance, never at what was actually
-                // underneath.
+                /* Cruise above canopy until clear of the planted zone, then
+                   descend -- genuinely checked against real tree positions
+                   now, not just assumed from distance-to-base. A tall
+                   Seedling/Mature tree sitting inside the final descent
+                   radius used to get flown straight through, since the old
+                   curve only looked at distance, never at what was actually
+                   underneath. */
                 int distToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
                 bool overCanopy = HasTreeCanopyAt(s, s.X, s.Y);
                 s.Altitude = (!overCanopy && distToBase <= ARIAConstants.RETURN_DESCENT_RANGE)
@@ -369,12 +386,12 @@ namespace ARIA.Core
                     s.MissionsCompleted++;
                     result.Landed = true;
 
-                    // Critical-battery termination now fires immediately at
-                    // the top of Step() (matching rwanda_env.py), the moment
-                    // energyInfo.IsCritical goes true -- not after a
-                    // completed return flight -- so a landing here can only
-                    // be a voluntary/battery-driven return that made it back
-                    // safely, or the mission-complete flight.
+                    /* Critical-battery termination now fires immediately at
+                       the top of Step() (matching rwanda_env.py), the moment
+                       energyInfo.IsCritical goes true -- not after a
+                       completed return flight -- so a landing here can only
+                       be a voluntary/battery-driven return that made it back
+                       safely, or the mission-complete flight. */
                     if (s.MissionCompleteReturning)
                     {
                         s.Energy.Recharge(0.5f);
@@ -389,11 +406,11 @@ namespace ARIA.Core
                 }
             }
 
-            // Growth/disturbance themselves still only tick once per
-            // MONITORING_INTERVAL steps, preserving how often a seed
-            // actually gets a mortality/disturbance roll -- running that
-            // part every step would make animal disturbance kill far more
-            // aggressively, not just faster to notice.
+            /* Growth/disturbance themselves still only tick once per
+               MONITORING_INTERVAL steps, preserving how often a seed
+               actually gets a mortality/disturbance roll -- running that
+               part every step would make animal disturbance kill far more
+               aggressively, not just faster to notice. */
             const int MONITORING_INTERVAL = 10;
             if (s.Timestep % MONITORING_INTERVAL == 0 && s.Timestep > 0)
             {
@@ -403,32 +420,32 @@ namespace ARIA.Core
                 if (DemoConditions.AnimalDisturbanceEnabled)
                     result.Reward += s.Disturbance.Step(s.Growth, s.Timestep);
 
-                // Close the reseed feedback loop: any seed that matured this
-                // step, at a position that was a pending reseed, is a real
-                // success outcome for whichever species SpeciesRecommender
-                // picked there -- feed it back before ingesting new failures.
+                /* Close the reseed feedback loop: any seed that matured this
+                   step, at a position that was a pending reseed, is a real
+                   success outcome for whichever species SpeciesRecommender
+                   picked there -- feed it back before ingesting new failures. */
                 s.Monitor.ResolveMatured(maturedPositions);
             }
 
-            // Ingesting failures and queueing reseed targets runs every
-            // step, not gated to MONITORING_INTERVAL -- a real-world goat
-            // eating a seed should show up as queued for reseeding
-            // immediately, not after up to 10 steps (1.5s) of batching
-            // delay. Growth.FailedCells simply accumulates between the
-            // (still gated) growth/disturbance ticks above, and drains
-            // here every step, so this is a no-op most steps and only
-            // does real work on the step a failure actually happened.
+            /* Ingesting failures and queueing reseed targets runs every
+               step, not gated to MONITORING_INTERVAL -- a real-world goat
+               eating a seed should show up as queued for reseeding
+               immediately, not after up to 10 steps (1.5s) of batching
+               delay. Growth.FailedCells simply accumulates between the
+               (still gated) growth/disturbance ticks above, and drains
+               here every step, so this is a no-op most steps and only
+               does real work on the step a failure actually happened. */
             if (s.Growth.FailedCells.Count > 0)
             {
                 s.Monitor.IngestFailures(new System.Collections.Generic.List<FailedCell>(s.Growth.FailedCells));
                 s.Growth.FailedCells.Clear();
             }
 
-            // Queue reseed targets continuously as failures come in, rather
-            // than only once per full return-to-base cycle. A cell already
-            // queued (not yet visited) simply gets its entry refreshed, not
-            // duplicated, since ReseedingTargets is a HashSet and
-            // ReseedSpeciesMap is keyed by (y, x). Mirrors rwanda_env.py.
+            /* Queue reseed targets continuously as failures come in, rather
+               than only once per full return-to-base cycle. A cell already
+               queued (not yet visited) simply gets its entry refreshed, not
+               duplicated, since ReseedingTargets is a HashSet and
+               ReseedSpeciesMap is keyed by (y, x). Mirrors rwanda_env.py. */
             foreach (var t in s.Monitor.GetTopTargets(3))
             {
                 s.ReseedingTargets.Add((t.Y, t.X));
@@ -437,34 +454,34 @@ namespace ARIA.Core
 
             s.Timestep++;
 
-            // MAX_STEPS is the episode-length bound the policy was trained
-            // under in rwanda_env.py, but that's a training-time sample-
-            // efficiency cap, not a promise that the zone actually finishes
-            // getting seeded. Normal completion already happens above via
-            // MissionComplete (seed budget fully placed / nowhere left to
-            // plant) or BatteryDepleted -- truncating on step count alone
-            // would let the live demo give up and reset a zone while seeds
-            // are still sitting unused in the hopper, which is not
-            // acceptable for the demo: it should always finish seeding
-            // before it stops. This is now purely a safety valve against a
-            // genuinely stranded last seed (e.g. a target no path can ever
-            // reach), not a real end state.
+            /* MAX_STEPS is the episode-length bound the policy was trained
+               under in rwanda_env.py, but that's a training-time sample-
+               efficiency cap, not a promise that the zone actually finishes
+               getting seeded. Normal completion already happens above via
+               MissionComplete (seed budget fully placed / nowhere left to
+               plant) or BatteryDepleted -- truncating on step count alone
+               would let the live demo give up and reset a zone while seeds
+               are still sitting unused in the hopper, which is not
+               acceptable for the demo: it should always finish seeding
+               before it stops. This is now purely a safety valve against a
+               genuinely stranded last seed (e.g. a target no path can ever
+               reach), not a real end state. */
             result.Truncated = s.Timestep >= ARIAConstants.MAX_STEPS * 4;
 
-            // Universal per-step penalty -- mirrors rwanda_env.py's step()
-            // exactly: applied every non-early-return step regardless of
-            // action (including on top of hover's own extra penalty above),
-            // but never on the EmergencyLand path, which returns before this
-            // point, exactly as Python's does too.
+            /* Universal per-step penalty -- mirrors rwanda_env.py's step()
+               exactly: applied every non-early-return step regardless of
+               action (including on top of hover's own extra penalty above),
+               but never on the EmergencyLand path, which returns before this
+               point, exactly as Python's does too. */
             result.Reward += -ARIAConstants.REWARD_STEP_PENALTY;
 
             return result;
         }
 
-        // Mirrors reward_function.py's _diversity(): Shannon entropy of
-        // species placement counts so far this episode, normalised by
-        // ln(N_SPECIES) so it stays in a comparable range regardless of
-        // species count.
+        /* Mirrors reward_function.py's _diversity(): Shannon entropy of
+           species placement counts so far this episode, normalised by
+           ln(N_SPECIES) so it stays in a comparable range regardless of
+           species count. */
         private static float SpeciesDiversityReward(System.Collections.Generic.Dictionary<int, int> speciesCounts)
         {
             int total = 0;
@@ -491,9 +508,9 @@ namespace ARIA.Core
             return map;
         }
 
-        // Only Seedling/Mature have a real canopy tall enough to visually
-        // clip through during a low return-flight pass -- Dropped/
-        // Germinating are still just a sprout marker at ground level.
+        /* Only Seedling/Mature have a real canopy tall enough to visually
+           clip through during a low return-flight pass -- Dropped/
+           Germinating are still just a sprout marker at ground level. */
         private static bool HasTreeCanopyAt(EpisodeState s, int x, int y)
         {
             foreach (var seed in s.Growth.Seeds.Values)
@@ -503,6 +520,18 @@ namespace ARIA.Core
                     return true;
             }
             return false;
+        }
+
+        /* "Grey terrain" (this file's shorthand for ground the drone has no
+           business planting on or descending toward) is the baked no_plant
+           mask widened to also cover cells whose slope exceeds
+           MAX_SLOPE_DEG. Coordinates follow this file's existing [y, x]
+           convention (see s.Zone.NoPlant[s.Y, s.X] / SlopeAt(s.Y, s.X) above). */
+        private static bool IsGreyTerrain(EpisodeState s, int y, int x)
+        {
+            bool noPlant = s.Zone.NoPlant[y, x];
+            float slopeDeg = s.Zone.SlopeAt(y, x) * 90f;
+            return noPlant || slopeDeg >= ARIAConstants.MAX_SLOPE_DEG;
         }
     }
 }

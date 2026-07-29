@@ -60,7 +60,7 @@ namespace ARIA.Drone
         private readonly Dictionary<int, TreeVisual> _visuals = new Dictionary<int, TreeVisual>();
         private readonly HashSet<int> _dropAnimating = new HashSet<int>();
 
-        // Only used from Seedling onward -- Dropped/Germinating use the sprout marker instead.
+        /* Only used from Seedling onward -- Dropped/Germinating use the sprout marker instead. */
         private static float TreeScale(SeedStage stage)
         {
             switch (stage)
@@ -148,6 +148,27 @@ namespace ARIA.Drone
             float groundY = terrainRenderer != null ? terrainRenderer.GetHeight(seed.Y, seed.X) : 0f;
             Vector3 groundPos = new Vector3(worldX, groundY, worldZ);
 
+            /* A genuine reseed lands a brand-new Seed (its own SeedId) at the
+               exact same cell as an earlier one that already died there --
+               that old, shrunken grey marker was otherwise left behind
+               forever, sitting underneath/overlapping the new sprout as it
+               grows. From a distance that read as "the seed marker moved",
+               when really a second marker had appeared right on top of the
+               first. Clear any dead marker occupying this exact cell before
+               planting the new one. */
+            int seedIdToRemove = -1;
+            foreach (var kv in _visuals)
+            {
+                if (kv.Value.LastStage == SeedStage.Dead && kv.Value.GridWorldPos == groundPos)
+                {
+                    if (kv.Value.SproutObject != null) Destroy(kv.Value.SproutObject);
+                    if (kv.Value.TreeObject != null) Destroy(kv.Value.TreeObject);
+                    seedIdToRemove = kv.Key;
+                    break;
+                }
+            }
+            if (seedIdToRemove != -1) _visuals.Remove(seedIdToRemove);
+
             Vector3 startPos = drone != null ? drone.transform.position : groundPos + Vector3.up * 12f;
 
             var seedGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -155,7 +176,9 @@ namespace ARIA.Drone
             Destroy(seedGO.GetComponent<Collider>());
     
             Color speciesSeedColor = TreeBuilder.GetSeedColor(seed.SpeciesId);
-            float seedSize = 0.5f * cellSize * TreeBuilder.GetSeedScale(seed.SpeciesId);
+            /* Was 0.5f -- read as an oversized ball rather than a seed at
+               zone scale (cellSize=1 world unit per cell). */
+            float seedSize = 0.22f * cellSize * TreeBuilder.GetSeedScale(seed.SpeciesId);
             seedGO.transform.localScale = Vector3.one * seedSize;
             seedGO.transform.position = startPos;
             var seedMat = MaterialHelper.GetDefaultMaterial();
@@ -172,7 +195,7 @@ namespace ARIA.Drone
             trail.startColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0.8f);
             trail.endColor = new Color(speciesSeedColor.r, speciesSeedColor.g, speciesSeedColor.b, 0f);
 
-            // Rest ON the surface, not centred AT it, or half the sphere clips through terrain.
+            /* Rest ON the surface, not centred AT it, or half the sphere clips through terrain. */
             Vector3 restingPos = groundPos + Vector3.up * (seedSize * 0.5f);
 
             float fallHeight = Mathf.Max(0.1f, startPos.y - restingPos.y);
@@ -191,7 +214,7 @@ namespace ARIA.Drone
 
             var hole = SpawnHole(groundPos);
 
-            // Shrinks to a tiny nub without dipping below ground -- reads as sinking in.
+            /* Shrinks to a tiny nub without dipping below ground -- reads as sinking in. */
             Vector3 settledPos = groundPos + Vector3.up * (seedSize * 0.08f);
             float sinkT = 0f;
             while (sinkT < holeSinkDuration)
@@ -357,13 +380,13 @@ namespace ARIA.Drone
             };
         }
 
-        // Real tree meshes (RealTreeBuilder) use glTFast's 'glTF/PbrMetallicRoughness'
-        // shader, which exposes neither "_Color" nor "_BaseColor" -- so an
-        // Material.color / HasProperty("_Color") check silently no-ops on them
-        // (confirmed live via RealTreeBuilder's own diagnostic). Enumerating the
-        // shader's actual declared properties finds whichever one is really a
-        // Color regardless of its name, so this works on both the real meshes
-        // and any plain procedural marker (sprouts, etc.) still using Standard.
+        /* Real tree meshes (RealTreeBuilder) use glTFast's 'glTF/PbrMetallicRoughness'
+           shader, which exposes neither "_Color" nor "_BaseColor" -- so an
+           Material.color / HasProperty("_Color") check silently no-ops on them
+           (confirmed live via RealTreeBuilder's own diagnostic). Enumerating the
+           shader's actual declared properties finds whichever one is really a
+           Color regardless of its name, so this works on both the real meshes
+           and any plain procedural marker (sprouts, etc.) still using Standard. */
         private static void TintTowards(GameObject target, Color towardColor, float blend)
         {
             foreach (var rend in target.GetComponentsInChildren<Renderer>())
@@ -387,7 +410,7 @@ namespace ARIA.Drone
 
         private IEnumerator TransitionTo(TreeVisual visual, SeedStage newStage)
         {
-            // Dead is its own branch below, so an early death just withers the sprout in place.
+            /* Dead is its own branch below, so an early death just withers the sprout in place. */
             bool wasTreeStage = visual.LastStage == SeedStage.Seedling || visual.LastStage == SeedStage.Mature;
             bool isTreeStage  = newStage == SeedStage.Seedling || newStage == SeedStage.Mature;
 
@@ -421,18 +444,18 @@ namespace ARIA.Drone
 
             if (newStage == SeedStage.Dead)
             {
-                // Grey out and shrink the existing marker in place -- reads as "died here".
+                /* Grey out and shrink the existing marker in place -- reads as "died here". */
                 TintTowards(target, new Color(0.35f, 0.3f, 0.25f), 0.7f);
                 endScale = startScale * 0.4f;
             }
             else
             {
-                // Tree stages scale relative to RealTreeBuilder's own
-                // per-species base scale, not a flat 1.0 -- otherwise every
-                // species would converge on the same final size regardless
-                // of its intended scale factor. Sprouts have no such base
-                // (still TreeBuilder's plain procedural marker) and keep
-                // tweening toward their own full size of 1.
+                /* Tree stages scale relative to RealTreeBuilder's own
+                   per-species base scale, not a flat 1.0 -- otherwise every
+                   species would converge on the same final size regardless
+                   of its intended scale factor. Sprouts have no such base
+                   (still TreeBuilder's plain procedural marker) and keep
+                   tweening toward their own full size of 1. */
                 endScale = isTreeStage ? TreeScale(newStage) * visual.TreeBaseScale : 1f;
             }
 
