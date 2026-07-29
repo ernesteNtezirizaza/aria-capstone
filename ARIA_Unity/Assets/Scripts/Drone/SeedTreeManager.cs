@@ -176,9 +176,9 @@ namespace ARIA.Drone
             Destroy(seedGO.GetComponent<Collider>());
     
             Color speciesSeedColor = TreeBuilder.GetSeedColor(seed.SpeciesId);
-            /* Was 0.5f -- read as an oversized ball rather than a seed at
-               zone scale (cellSize=1 world unit per cell). */
-            float seedSize = 0.22f * cellSize * TreeBuilder.GetSeedScale(seed.SpeciesId);
+            /* Was 0.5f, then 0.22f -- still read as an oversized ball rather
+               than a seed at zone scale (cellSize=1 world unit per cell). */
+            float seedSize = 0.1f * cellSize * TreeBuilder.GetSeedScale(seed.SpeciesId);
             seedGO.transform.localScale = Vector3.one * seedSize;
             seedGO.transform.position = startPos;
             var seedMat = MaterialHelper.GetDefaultMaterial();

@@ -134,15 +134,20 @@ namespace ARIA.Core
             {
                 /* Unity-only demo-realism decision, not a training-parity
                    claim: only actually let the drone descend toward low
-                   altitude while it's over ground the policy is allowed to
-                   seed anyway (the same noPlant/too-steep "grey terrain"
-                   gate used for the placement block below) -- descending low
-                   over green, plantable ground read as the drone flying
-                   dangerously close to canopy/slope it had no reason to be
-                   near. The action still "fires" even when it's a no-op
-                   here, same as ALT_UP's own no-reward no-op case above. */
-                bool overGreyTerrain = IsGreyTerrain(s, s.Y, s.X);
-                if (overGreyTerrain)
+                   altitude once it's near base -- the flat, empty "grey"
+                   ground surrounding the planted zone -- not out over the
+                   working zone itself, where low altitude reads as flying
+                   dangerously close to canopy/slope for no reason. Reuses
+                   the same RETURN_DESCENT_RANGE the return-flight cruise-
+                   then-descend logic further down already treats as "close
+                   enough to base to be safe to descend" -- previously this
+                   gate keyed off IsGreyTerrain (steep/no-plant ground
+                   *inside* the zone), which was backwards: that's exactly
+                   the ground the drone is never supposed to be low over.
+                   The action still "fires" even when it's a no-op here,
+                   same as ALT_UP's own no-reward no-op case above. */
+                bool nearBase = IsNearBase(s);
+                if (nearBase)
                 {
                     s.Altitude = Mathf.Max(0.0f, s.Altitude - 0.1f);
                 }
@@ -522,8 +527,7 @@ namespace ARIA.Core
             return false;
         }
 
-        /* "Grey terrain" (this file's shorthand for ground the drone has no
-           business planting on or descending toward) is the baked no_plant
+        /* Ground the drone is never allowed to plant on: the baked no_plant
            mask widened to also cover cells whose slope exceeds
            MAX_SLOPE_DEG. Coordinates follow this file's existing [y, x]
            convention (see s.Zone.NoPlant[s.Y, s.X] / SlopeAt(s.Y, s.X) above). */
@@ -532,6 +536,17 @@ namespace ARIA.Core
             bool noPlant = s.Zone.NoPlant[y, x];
             float slopeDeg = s.Zone.SlopeAt(y, x) * 90f;
             return noPlant || slopeDeg >= ARIAConstants.MAX_SLOPE_DEG;
+        }
+
+        /* Close enough to base to be over the flat, empty "grey" ground
+           surrounding the planted zone, rather than out over the working
+           zone itself -- the same RETURN_DESCENT_RANGE threshold the
+           return-flight cruise-then-descend logic uses for exactly this
+           judgment. */
+        private static bool IsNearBase(EpisodeState s)
+        {
+            int distToBase = Mathf.Max(Mathf.Abs(s.BaseX - s.X), Mathf.Abs(s.BaseY - s.Y));
+            return distToBase <= ARIAConstants.RETURN_DESCENT_RANGE;
         }
     }
 }

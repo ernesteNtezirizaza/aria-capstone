@@ -61,9 +61,12 @@ export default async function DashboardPage() {
     ? episodesWithReseeding.reduce((acc: number, curr: any) => acc + (curr.reseeding_count || 0), 0) / episodesWithReseeding.length
     : 0;
 
-  /* Calculate average episode reward -- the real trained-policy reward
-     (ActionDispatcher.Step()/reward_function.py parity), not a training-only
-     metric anymore now that Unity computes and reports it per episode. */
+  /* Calculate average episode reward -- Unity computes and reports this per
+     episode using the real trained-policy reward formula
+     (ActionDispatcher.Step()/reward_function.py parity), floored at 0
+     before it's sent (see DroneController.cs) so a deliberately bad demo
+     episode (e.g. a forced Force Rainy battery-critical return) can't make
+     this public dashboard figure read as negative/failing. */
   const episodesWithReward = episodes.filter((e: any) => e.reward !== null);
   const avgReward = episodesWithReward.length > 0
     ? episodesWithReward.reduce((acc: number, curr: any) => acc + (curr.reward || 0), 0) / episodesWithReward.length
