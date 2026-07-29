@@ -2,9 +2,9 @@ using UnityEngine;
 
 public static class TreeBuilder
 {
-    // Species visual profiles, indexed to match ARIAConstants.SPECIES_NAMES exactly.
-    // Widely separated hues so all 5 species read as visually distinct at a glance
-    // (the 3 eucalyptus variants used to share nearly the same blue-green tone).
+    /* Species visual profiles, indexed to match ARIAConstants.SPECIES_NAMES exactly.
+       Widely separated hues so all 5 species read as visually distinct at a glance
+       (the 3 eucalyptus variants used to share nearly the same blue-green tone). */
     private static readonly Color[] CanopyColors = {
         new Color(0.30f, 0.55f, 0.40f),  // 0 Eucalyptus globulus  -- blue-green
         new Color(0.42f, 0.58f, 0.30f),  // 1 Grevillea robusta    -- silvery yellow-green
@@ -13,8 +13,8 @@ public static class TreeBuilder
         new Color(0.08f, 0.38f, 0.10f),  // 4 Artocarpus heterophyllus -- dense dark green
     };
 
-    // Falling-seed appearance -- lets a seed be recognisable as its species before
-    // it ever becomes a sprout, rather than every species dropping an identical marker.
+    /* Falling-seed appearance -- lets a seed be recognisable as its species before
+       it ever becomes a sprout, rather than every species dropping an identical marker. */
     private static readonly Color[] SeedColors = {
         new Color(0.85f, 0.60f, 0.10f),  // 0 Eucalyptus globulus  -- deep amber
         new Color(0.75f, 0.25f, 0.15f),  // 1 Grevillea robusta    -- reddish-brown
@@ -24,8 +24,8 @@ public static class TreeBuilder
     };
     private static readonly float[] SeedScales = { 0.45f, 0.5f, 0.45f, 0.5f, 0.75f }; // jackfruit seed is notably larger
 
-    // Sprout (Dropped/Germinating) marker scale -- a rough preview of the eventual
-    // canopy proportions, so early growth stages hint at species too.
+    /* Sprout (Dropped/Germinating) marker scale -- a rough preview of the eventual
+       canopy proportions, so early growth stages hint at species too. */
     private static readonly float[] SproutScales = { 0.5f, 0.6f, 0.5f, 0.55f, 0.7f };
 
     public static string GetName(int species)

@@ -15,10 +15,10 @@ namespace ARIA.Drone
     {
         private static readonly string[] PrefabNames = { "RealTree0", "RealTree1" };
 
-        // Mesh choice, scale, and tint per species -- same differentiation
-        // intent as TreeBuilder's per-species trunk/canopy profiles, just
-        // expressed as variations on the 2 real meshes instead of separate
-        // procedural geometry per species.
+        /* Mesh choice, scale, and tint per species -- same differentiation
+           intent as TreeBuilder's per-species trunk/canopy profiles, just
+           expressed as variations on the 2 real meshes instead of separate
+           procedural geometry per species. */
         private static readonly int[]   MeshIndex   = { 0, 1, 0, 1, 0 };
         private static readonly float[] ScaleFactor = { 1.00f, 0.85f, 0.95f, 1.05f, 1.25f };
         private static readonly Color[] Tint =
@@ -59,14 +59,14 @@ namespace ARIA.Drone
             {
                 foreach (var mat in rend.materials)
                 {
-                    // Confirmed live: this material's shader is glTFast's
-                    // own 'glTF/PbrMetallicRoughness', which has neither
-                    // "_Color" nor "_BaseColor" -- that's why two attempts
-                    // at guessing a specific property name both silently
-                    // no-opped. Rather than guess a third name, enumerate
-                    // the shader's actual declared properties at runtime
-                    // and set whichever one is really a Color, regardless
-                    // of what it's called.
+                    /* Confirmed live: this material's shader is glTFast's
+                       own 'glTF/PbrMetallicRoughness', which has neither
+                       "_Color" nor "_BaseColor" -- that's why two attempts
+                       at guessing a specific property name both silently
+                       no-opped. Rather than guess a third name, enumerate
+                       the shader's actual declared properties at runtime
+                       and set whichever one is really a Color, regardless
+                       of what it's called. */
                     var shader = mat.shader;
                     int propCount = shader.GetPropertyCount();
                     for (int i = 0; i < propCount; i++)

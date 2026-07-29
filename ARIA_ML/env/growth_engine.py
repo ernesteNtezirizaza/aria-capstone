@@ -62,9 +62,9 @@ class GrowthEngine:
         }
         self.events.clear()
         self.failed_cells.clear()
-        # Only safe to restart the ID counter from 0 if nothing survived --
-        # otherwise a new seed could reuse a surviving seed's dict key and
-        # silently overwrite it.
+        """ Only safe to restart the ID counter from 0 if nothing survived --
+           otherwise a new seed could reuse a surviving seed's dict key and
+           silently overwrite it. """
         if not self.seeds:
             self._nid = 0
 
@@ -87,10 +87,10 @@ class GrowthEngine:
             if s.stage in ("dead", "mature"):
                 continue
 
-            # Update rain from current season
+            """ Update rain from current season """
             s.rain_score = float(rain_map[s.y, s.x])
 
-            # Survival probability — calibrated so a high-quality seed
+            """ Survival probability — calibrated so a high-quality seed """
             mature_t   = SPECIES[s.species_id]["mature_steps"]
             score      = s.soil_score + s.rain_score - s.slope_score - s.corridor_proximity * 0.5
             quality    = sigmoid(score * 2.0)
@@ -98,7 +98,7 @@ class GrowthEngine:
             target_cumulative = 0.10 + 0.85 * quality
             s.survival_prob   = float(target_cumulative ** (1.0 / max(mature_t, 1)))
 
-            # Natural mortality
+            """ Natural mortality """
             if self.rng.random() > s.survival_prob:
                 s.stage = "dead"
                 r = -REWARD["w_germ"] * 0.5

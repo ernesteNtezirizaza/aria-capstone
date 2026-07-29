@@ -28,9 +28,9 @@ export async function createSessionToken(payload: SessionPayload): Promise<strin
     .sign(getSecretKey());
 }
 
-// Usable from both Route Handlers/Server Components (via getSession) and
-// middleware (which reads the raw cookie off the request itself, since
-// next/headers' cookies() isn't available there).
+/* Usable from both Route Handlers/Server Components (via getSession) and
+   middleware (which reads the raw cookie off the request itself, since
+   next/headers' cookies() isn't available there). */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());

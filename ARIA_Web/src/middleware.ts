@@ -3,13 +3,13 @@ import type { NextRequest } from 'next/server';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 
 const ADMIN_ONLY_PREFIXES = ['/admin'];
-// '/simulation' is deliberately an EXACT match only, not a '/simulation/*'
-// prefix: the Unity WebGL build's own static assets are served from
-// public/simulation/ (index.html, Build/*.gz, etc.), which share that same
-// URL prefix. A wildcard here redirected those asset requests to /login
-// instead of serving the actual files, breaking the embedded simulation
-// entirely -- the page route itself already checks the session server-side
-// (see simulation/page.tsx), so only that exact path needs gating here.
+/* '/simulation' is deliberately an EXACT match only, not a '/simulation/*'
+   prefix: the Unity WebGL build's own static assets are served from
+   public/simulation/ (index.html, Build/*.gz, etc.), which share that same
+   URL prefix. A wildcard here redirected those asset requests to /login
+   instead of serving the actual files, breaking the embedded simulation
+   entirely -- the page route itself already checks the session server-side
+   (see simulation/page.tsx), so only that exact path needs gating here. */
 const EXACT_PROTECTED_PATHS = ['/simulation'];
 const PROTECTED_PREFIXES = ['/dashboard', '/admin'];
 

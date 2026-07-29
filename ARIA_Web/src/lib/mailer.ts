@@ -17,10 +17,10 @@ function getTransporter() {
   });
 }
 
-// Prefers an explicit public URL, falls back to Vercel's own env vars (set
-// automatically on every deploy), then localhost for local dev -- so the
-// email's link always points at wherever this is actually running rather
-// than a hardcoded domain.
+/* Prefers an explicit public URL, falls back to Vercel's own env vars (set
+   automatically on every deploy), then localhost for local dev -- so the
+   email's link always points at wherever this is actually running rather
+   than a hardcoded domain. */
 function getAppUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;

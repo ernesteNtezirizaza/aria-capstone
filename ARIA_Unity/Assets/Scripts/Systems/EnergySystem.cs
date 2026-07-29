@@ -26,7 +26,7 @@ namespace ARIA.Systems
             Reset();
         }
 
-        // energy_system.py __init__ / reset()
+        /* energy_system.py __init__ / reset() */
         public void Reset()
         {
             Battery       = ARIAConstants.BATTERY_INIT;
@@ -57,12 +57,12 @@ namespace ARIA.Systems
 
             if (sunny)
             {
-                // Deliberate product decision, overriding the rainfall-
-                // proportional solar formula rwanda_env.py trained under:
-                // sunny weather fully sustains the battery at 100% rather
-                // than merely reducing drain by some fraction. Simpler,
-                // more intuitive demo behaviour -- sunny means safe, rainy
-                // means the battery actually drains.
+                /* Deliberate product decision, overriding the rainfall-
+                   proportional solar formula rwanda_env.py trained under:
+                   sunny weather fully sustains the battery at 100% rather
+                   than merely reducing drain by some fraction. Simpler,
+                   more intuitive demo behaviour -- sunny means safe, rainy
+                   means the battery actually drains. */
                 SolarInput    = ARIAConstants.BATTERY_MAX;
                 DrainThisStep = 0f;
                 Battery       = ARIAConstants.BATTERY_MAX;

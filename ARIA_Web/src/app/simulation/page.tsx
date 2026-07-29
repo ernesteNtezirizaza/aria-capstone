@@ -10,9 +10,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function SimulationPage() {
   const session = await getSession();
-  // Tags telemetry this session posts with the logged-in user, so Admins
-  // can see per-user simulation activity on the dashboard. The Unity build
-  // reads this from the iframe's own query string (Application.absoluteURL).
+  /* Tags telemetry this session posts with the logged-in user, so Admins
+     can see per-user simulation activity on the dashboard. The Unity build
+     reads this from the iframe's own query string (Application.absoluteURL). */
   const src = session ? `/simulation/index.html?uid=${session.sub}` : '/simulation/index.html';
 
   return (

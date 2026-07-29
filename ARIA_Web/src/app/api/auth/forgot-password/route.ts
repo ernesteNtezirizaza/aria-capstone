@@ -6,8 +6,8 @@ import { sendOtpEmail } from '@/lib/mailer';
 
 const schema = z.object({ email: z.string().email() });
 
-// Always returns the same generic message regardless of whether the email
-// exists or is eligible, to avoid leaking which addresses have accounts.
+/* Always returns the same generic message regardless of whether the email
+   exists or is eligible, to avoid leaking which addresses have accounts. */
 const GENERIC_MESSAGE = 'If that email has an active ARIA account, a password reset code has been sent.';
 
 export async function POST(req: Request) {

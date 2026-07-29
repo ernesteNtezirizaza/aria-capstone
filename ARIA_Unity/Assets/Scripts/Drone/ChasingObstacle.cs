@@ -105,7 +105,7 @@ namespace ARIA.Drone
                 if (animator != null) animator.Play(0, 0, 0f);
             }
 
-            // Start well clear of the drone so the approach is visible, not instant.
+            /* Start well clear of the drone so the approach is visible, not instant. */
             Vector3 startOffset = new Vector3(Random.Range(-1f, 1f), 0.3f, Random.Range(-1f, 1f)).normalized * (dodgeTriggerDistance * 2f);
             _chaser.transform.position = drone.transform.position + startOffset + Vector3.up * 4f;
 

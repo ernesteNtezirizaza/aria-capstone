@@ -9,10 +9,10 @@ import { LayoutDashboard, Rocket, UserCog, Skull, BarChart3, Database, LogOut, M
 type SessionInfo = { name: string; role: 'ADMIN' | 'FORESTER' } | null;
 
 const NAV_ITEMS = [
-  // exact: true for '/dashboard' -- otherwise every sibling sub-page below
-  // (failures/activity/episodes, which all share the '/dashboard' prefix
-  // but are NOT children of the overview page) would prefix-match it too,
-  // highlighting "Dashboard" simultaneously with whichever page is active.
+  /* exact: true for '/dashboard' -- otherwise every sibling sub-page below
+     (failures/activity/episodes, which all share the '/dashboard' prefix
+     but are NOT children of the overview page) would prefix-match it too,
+     highlighting "Dashboard" simultaneously with whichever page is active. */
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, exact: true },
   { href: '/dashboard/failures', label: 'Failures & Reseeds', icon: Skull, adminOnly: false },
   { href: '/dashboard/activity', label: 'User Activity', icon: BarChart3, adminOnly: true },

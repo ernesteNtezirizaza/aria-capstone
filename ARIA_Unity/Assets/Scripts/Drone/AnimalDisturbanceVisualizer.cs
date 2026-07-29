@@ -6,7 +6,7 @@ using ARIA.Systems;
 
 namespace ARIA.Drone
 {
-    // Cosmetic goat layer, purely reactive to real DisturbanceEngine kills.
+    /* Cosmetic goat layer, purely reactive to real DisturbanceEngine kills. */
     public class AnimalDisturbanceVisualizer : MonoBehaviour
     {
         [Tooltip("Assign the same DroneController driving the episode.")]
@@ -63,7 +63,7 @@ namespace ARIA.Drone
                 return;
             }
 
-            // Replay any disturbance kills that happened since we last looked.
+            /* Replay any disturbance kills that happened since we last looked. */
             var events = d.State.Disturbance.Events;
             for (int i = _processedEventCount; i < events.Count; i++)
                 TriggerEating(events[i]);
@@ -112,7 +112,7 @@ namespace ARIA.Drone
             goat.WanderCenter = GroundPos(seed.X, seed.Y);
         }
 
-        // Prefer Seedling/Mature seeds (a visible tree mesh) over tiny Dropped/Germinating markers.
+        /* Prefer Seedling/Mature seeds (a visible tree mesh) over tiny Dropped/Germinating markers. */
         private Seed PickWanderTarget(List<Seed> alive)
         {
             List<Seed> visible = null;
@@ -145,7 +145,7 @@ namespace ARIA.Drone
         {
             Vector3 seedPos = GroundPos(e.X, e.Y);
 
-            // Reuse the nearest idle goat; spawn one on the spot if none are free.
+            /* Reuse the nearest idle goat; spawn one on the spot if none are free. */
             Goat chosen = null;
             float best = float.MaxValue;
             foreach (var goat in _goats)
@@ -179,7 +179,7 @@ namespace ARIA.Drone
                 yield return null;
             }
 
-            // A few big scale pulses so the "attack" reads clearly, not a subtle twitch.
+            /* A few big scale pulses so the "attack" reads clearly, not a subtle twitch. */
             Vector3 baseScale = goat.Go.transform.localScale;
             for (int i = 0; i < 4; i++)
             {
@@ -274,7 +274,7 @@ namespace ARIA.Drone
             SetGoatMat(go, new Color(0.07f, 0.07f, 0.08f));
         }
 
-        // Vertical leg from the body down to the ground.
+        /* Vertical leg from the body down to the ground. */
         private void AddLeg(GameObject parent, float x, float z, float topY, float length, float radius, Color col)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -286,7 +286,7 @@ namespace ARIA.Drone
             SetGoatMat(go, col);
         }
 
-        // Angled thin appendage (horn/beard/tail) anchored at a point and swept along its own axis.
+        /* Angled thin appendage (horn/beard/tail) anchored at a point and swept along its own axis. */
         private void AddAppendage(GameObject parent, Vector3 pos, Vector3 eulerAngles, float length, float radius, Color col)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -307,7 +307,7 @@ namespace ARIA.Drone
             var mat = MaterialHelper.GetDefaultMaterial();
             mat.color = col;
             mat.EnableKeyword("_EMISSION");
-            // Fixed rim tint, not a multiply -- a near-black coat would otherwise emit nothing.
+            /* Fixed rim tint, not a multiply -- a near-black coat would otherwise emit nothing. */
             mat.SetColor("_EmissionColor", col * 0.9f + new Color(0.10f, 0.10f, 0.12f));
             rend.material = mat;
         }

@@ -26,9 +26,9 @@ from configs.config import METRICS_DIR, N_EVAL_EPISODES, ZONE_DEFINITIONS, CHECK
 from env.rwanda_env import RwandaReforestEnv
 from training.train_ppo import SHARED_SPECIES_RECOMMENDER
 
-# Matches ARIA_Unity/Assets/StreamingAssets/zone_manifest.json exactly --
-# the 3 train-split zones actually shipped in the demo, by array_index
-# within the train split (same convention as ARIA_ML/utils/export_zone.py).
+""" Matches ARIA_Unity/Assets/StreamingAssets/zone_manifest.json exactly --
+   the 3 train-split zones actually shipped in the demo, by array_index
+   within the train split (same convention as ARIA_ML/utils/export_zone.py). """
 TRAIN_ZONES_IN_DEMO = [0, 17, 29]
 
 
@@ -79,8 +79,8 @@ def run():
             rows.append(metrics)
             print(f"pct_suitable_seeded = {metrics.get('pct_suitable_seeded', 0):.3f}")
 
-    # Fold in the already-computed eval-zone results so this file is a
-    # single, complete 9-zone record, not just the 3 new train zones.
+    """ Fold in the already-computed eval-zone results so this file is a
+       single, complete 9-zone record, not just the 3 new train zones. """
     gen_csv = os.path.join(METRICS_DIR, "generalisation.csv")
     if os.path.exists(gen_csv):
         with open(gen_csv) as f:

@@ -2,14 +2,14 @@ namespace ARIA.Core
 {
     public static class ARIAConstants
     {
-        // Zone / grid
+        /* Zone / grid */
         public const int ZONE_SIZE   = 120;   // each zone = 120x120 cells
         public const int OBS_WINDOW  = 11;    // local terrain patch size
         public const int N_CHANNELS  = 5;     // terrain_window channels
         public const int N_SPECIES   = 5;
         public const int N_ACTIONS   = 47;
 
-        // Action indices
+        /* Action indices */
         public const int HOVER_ACTION  = 40;
         public const int ABORT_ACTION  = 41;
         public const int COVER_DEPLOY  = 42;
@@ -18,7 +18,7 @@ namespace ARIA.Core
         public const int ALT_DOWN      = 45;
         public const int EMERGENCY     = 46;
 
-        // Drone state machine
+        /* Drone state machine */
         public const int STATE_GROUNDED   = 0;
         public const int STATE_TAKEOFF    = 1;
         public const int STATE_NAVIGATING = 2;
@@ -28,26 +28,26 @@ namespace ARIA.Core
         public const int STATE_OBSTACLE   = 6;
         public const int N_STATES         = 7;
 
-        // Episode length matches configs/config.py exactly (found drifted
-        // during a full parity audit against rwanda_env.py: was 1000 here
-        // vs. the real 1800 the deployed policy was trained under).
+        /* Episode length matches configs/config.py exactly (found drifted
+           during a full parity audit against rwanda_env.py: was 1000 here
+           vs. the real 1800 the deployed policy was trained under). */
         public const int   MAX_STEPS     = 1800;
 
-        // Deliberately kept at 500 rather than matching config.py's real
-        // 1000 -- a product decision, not a parity bug. Also used to
-        // normalise seeds_remaining in drone_vector, so the policy still
-        // sees a valid 1.0 -> 0.0 depletion signal either way; it just
-        // reaches empty in half the placements.
+        /* Deliberately kept at 500 rather than matching config.py's real
+           1000 -- a product decision, not a parity bug. Also used to
+           normalise seeds_remaining in drone_vector, so the policy still
+           sees a valid 1.0 -> 0.0 depletion signal either way; it just
+           reaches empty in half the placements. */
         public const float INITIAL_SEEDS = 500f;
 
-        // Battery / energy -- BATTERY_RETURN_THRESH/BATTERY_CRITICAL also
-        // found drifted from configs/config.py's real 0.10/0.05 during the
-        // same audit. BATTERY_NET_DRAIN_SUNNY (a Unity-only workaround
-        // constant) is gone -- EnergySystem now uses WeatherSystem's real
-        // rainfall-proportional SolarRate directly, matching
-        // energy_system.py's actual formula, which fixes the same frozen-
-        // battery bug that constant existed to patch around, without
-        // diverging from the real formula to do it.
+        /* Battery / energy -- BATTERY_RETURN_THRESH/BATTERY_CRITICAL also
+           found drifted from configs/config.py's real 0.10/0.05 during the
+           same audit. BATTERY_NET_DRAIN_SUNNY (a Unity-only workaround
+           constant) is gone -- EnergySystem now uses WeatherSystem's real
+           rainfall-proportional SolarRate directly, matching
+           energy_system.py's actual formula, which fixes the same frozen-
+           battery bug that constant existed to patch around, without
+           diverging from the real formula to do it. */
         public const float BATTERY_MAX           = 1.0f;
         public const float BATTERY_INIT          = 1.0f;
         public const float BATTERY_DRAIN_SUNNY   = 0.002f;   // per step in sun
@@ -57,45 +57,45 @@ namespace ARIA.Core
         public const float BATTERY_CRITICAL      = 0.05f;    // emergency land below this
         public const int   RETURN_DESCENT_RANGE  = 8;         // start descending this many cells out from base
 
-        // Weather
+        /* Weather */
         public const int WEATHER_SUNNY = 0;
         public const int WEATHER_RAINY = 1;
 
         public const float RAINFALL_SUNNY_THRESH = 0.266f;
         public const float ZONE_MIN_SOIL         = 0.358f;
 
-        // Mirrors configs.config.ZONE_SUITABILITY_WEIGHTS in the Python
-        // training side -- soil/rain/slope combine into one zone-level
-        // suitability score with these weights, both here and in the
-        // reward function ZoneData.ZoneSuitability() feeds.
+        /* Mirrors configs.config.ZONE_SUITABILITY_WEIGHTS in the Python
+           training side -- soil/rain/slope combine into one zone-level
+           suitability score with these weights, both here and in the
+           reward function ZoneData.ZoneSuitability() feeds. */
         public const float ZONE_SUIT_W_SOIL  = 3.0f;
         public const float ZONE_SUIT_W_RAIN  = 2.0f;
         public const float ZONE_SUIT_W_SLOPE = 1.0f;
 
-        // Mirrors configs.config.ZONE_MIN_SUITABILITY (P25 of the composite
-        // soil+rain-slope score over the real raw dataset). This value is
-        // ESTIMATED, not derived from your actual full-resolution dataset
-        // the way ZONE_MIN_SOIL above was -- this sandbox could only run
-        // the real pipeline against a downsampled copy of your rasters
-        // (full resolution ran out of memory here). After your next Kaggle
-        // run, Cell 6 of the notebook now prints the real
-        // config.ZONE_MIN_SUITABILITY value -- replace this constant with
-        // that number.
+        /* Mirrors configs.config.ZONE_MIN_SUITABILITY (P25 of the composite
+           soil+rain-slope score over the real raw dataset). This value is
+           ESTIMATED, not derived from your actual full-resolution dataset
+           the way ZONE_MIN_SOIL above was -- this sandbox could only run
+           the real pipeline against a downsampled copy of your rasters
+           (full resolution ran out of memory here). After your next Kaggle
+           run, Cell 6 of the notebook now prints the real
+           config.ZONE_MIN_SUITABILITY value -- replace this constant with
+           that number. */
         public const float ZONE_MIN_SUITABILITY = 0.24f;
 
         public const int MIN_SEED_SPACING = 5; // matches configs/config.py exactly (was 3 -- found drifted during parity audit)
 
-        // Mirrors configs.config.MAX_SLOPE_DEG's real-dataset fallback value
-        // (P95 of Rwanda slope) -- used by the reward function's slope
-        // penalty term, same fallback-vs-real-dataset caveat as
-        // ZONE_MIN_SUITABILITY above.
+        /* Mirrors configs.config.MAX_SLOPE_DEG's real-dataset fallback value
+           (P95 of Rwanda slope) -- used by the reward function's slope
+           penalty term, same fallback-vs-real-dataset caveat as
+           ZONE_MIN_SUITABILITY above. */
         public const float MAX_SLOPE_DEG = 17.7f;
 
-        // Reward weights -- mirrors configs/config.py's REWARD dict exactly
-        // (w_soil/w_rain/w_slope already exist above as ZONE_SUIT_W_*).
-        // Used by ActionDispatcher.Step() to compute a real per-step reward
-        // matching env/reward_function.py + rwanda_env.py's step(), not the
-        // earlier flat +1.0/-0.5-style approximation this replaced.
+        /* Reward weights -- mirrors configs/config.py's REWARD dict exactly
+           (w_soil/w_rain/w_slope already exist above as ZONE_SUIT_W_*).
+           Used by ActionDispatcher.Step() to compute a real per-step reward
+           matching env/reward_function.py + rwanda_env.py's step(), not the
+           earlier flat +1.0/-0.5-style approximation this replaced. */
         public const float REWARD_STEP_PENALTY         = 0.4f;
         public const float REWARD_W_SPACING            = 3.5f;
         public const float REWARD_W_PROTECTED          = 10.0f;
@@ -112,11 +112,11 @@ namespace ARIA.Core
         public const float REWARD_OBSTACLE_HIT         = -3.0f;
         public const float REWARD_COVER_CORRECT        = 0.0f;
         public const float REWARD_COVER_WRONG          = -0.1f;
-        // rwanda_env.py's ABORT_ACTION branch uses a hardcoded -1.0 for a bad
-        // abort, NOT REWARD["bad_abort"] (-20.0, defined in config.py but
-        // never actually referenced from real step() code) -- mirrored here
-        // as the literal -1.0 to match real trained-policy behaviour rather
-        // than the unused config value.
+        /* rwanda_env.py's ABORT_ACTION branch uses a hardcoded -1.0 for a bad
+           abort, NOT REWARD["bad_abort"] (-20.0, defined in config.py but
+           never actually referenced from real step() code) -- mirrored here
+           as the literal -1.0 to match real trained-policy behaviour rather
+           than the unused config value. */
         public const float REWARD_BAD_ABORT_ACTUAL     = -1.0f;
 
         public const int N_SEASONS = 6;

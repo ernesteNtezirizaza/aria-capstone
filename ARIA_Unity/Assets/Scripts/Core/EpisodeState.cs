@@ -29,9 +29,9 @@ namespace ARIA.Core
         public int   DroneState;
         public int   BaseX, BaseY;
         public bool  AbortTriggered;
-        // Mirrors rwanda_env.py's self.valid_abort_rewarded: a valid abort
-        // only pays REWARD_BATTERY_SAVE the first time per episode, so a
-        // policy can't camp on repeated free-abort attempts for reward.
+        /* Mirrors rwanda_env.py's self.valid_abort_rewarded: a valid abort
+           only pays REWARD_BATTERY_SAVE the first time per episode, so a
+           policy can't camp on repeated free-abort attempts for reward. */
         public bool  ValidAbortRewarded;
         public int   MissionsCompleted;
         public int   ObstaclesAvoided;
@@ -48,12 +48,12 @@ namespace ARIA.Core
         public HashSet<(int y, int x)> ReseedingTargets;
         public Dictionary<(int y, int x), int> ReseedSpeciesMap; // recommended species per reseed target
 
-        // Precomputed once per episode (terrain doesn't change mid-episode): a cell
-        // that's genuinely worth seeding, matching env/rwanda_env.py's suitable_mask.
-        // Python's version uses the max rainfall across all 6 seasons ("best month");
-        // Unity's zone export only carries a single rainfall snapshot per cell, not a
-        // seasonal stack, so this uses that one value instead. Same shape of signal,
-        // slightly less precise -- a real gap, not a rounding difference.
+        /* Precomputed once per episode (terrain doesn't change mid-episode): a cell
+           that's genuinely worth seeding, matching env/rwanda_env.py's suitable_mask.
+           Python's version uses the max rainfall across all 6 seasons ("best month");
+           Unity's zone export only carries a single rainfall snapshot per cell, not a
+           seasonal stack, so this uses that one value instead. Same shape of signal,
+           slightly less precise -- a real gap, not a rounding difference. */
         private bool[,] _suitableMask;
 
         public ZoneData        Zone;
@@ -225,12 +225,12 @@ namespace ARIA.Core
             float abortScore = zoneScore < ARIAConstants.ZONE_MIN_SUITABILITY ? 1f : 0f;
             float isReseed    = ReseedingTargets.Count > 0 ? 1f : 0f;
 
-            // Previously the policy only ever saw a COUNT of queued reseed
-            // targets, never where they actually are -- it had no way to
-            // learn "navigate back to a failed cell", matching the same gap
-            // found and fixed on the Python training side. Must produce the
-            // exact same 11-dim mission_vector shape the exported ONNX
-            // policy was actually trained on, or live inference breaks.
+            /* Previously the policy only ever saw a COUNT of queued reseed
+               targets, never where they actually are -- it had no way to
+               learn "navigate back to a failed cell", matching the same gap
+               found and fixed on the Python training side. Must produce the
+               exact same 11-dim mission_vector shape the exported ONNX
+               policy was actually trained on, or live inference breaks. */
             float relDy = 0f, relDx = 0f, manhattanDist = 1f; // no target -> neutral direction, "far" sentinel
             if (ReseedingTargets.Count > 0)
             {
@@ -251,11 +251,11 @@ namespace ARIA.Core
             float reseedDx   = Mathf.Clamp01((relDx + 1f) / 2f);   // 0.5 = same column as drone
             float reseedDist = Mathf.Clamp01(manhattanDist);
 
-            // Same idea applied to genuine coverage: direction/distance to the
-            // nearest cell that's both suitable (_suitableMask) and not yet
-            // seeded. Same reasoning as the reseed offset above -- without a
-            // direct signal, the policy can only find unexplored suitable
-            // ground by chance CNN pattern-matching, not by steering to it.
+            /* Same idea applied to genuine coverage: direction/distance to the
+               nearest cell that's both suitable (_suitableMask) and not yet
+               seeded. Same reasoning as the reseed offset above -- without a
+               direct signal, the policy can only find unexplored suitable
+               ground by chance CNN pattern-matching, not by steering to it. */
             float covRelDy = 0f, covRelDx = 0f, covManhattanDist = 1f;
             int bestCovDist = int.MaxValue;
             for (int y = 0; y < size; y++)

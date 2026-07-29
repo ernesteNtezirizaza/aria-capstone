@@ -20,8 +20,8 @@ public static class HelicopterPrefabBuilder
         var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
         if (instance == null)
         {
-            // Fallback for the (unexpected) case where the glTF asset isn't itself
-            // recognised as a prefab-like asset by InstantiatePrefab.
+            /* Fallback for the (unexpected) case where the glTF asset isn't itself
+               recognised as a prefab-like asset by InstantiatePrefab. */
             instance = Object.Instantiate(source);
         }
         instance.name = "HelicopterHazard";

@@ -25,16 +25,16 @@ namespace ARIA.Systems
 
         public void Reset() => Events.Clear();
 
-        // Returns the real disturbance-tier reward for this tick, mirroring
-        // disturbance_engine.py's step(): each actual kill pays growth.Kill's
-        // delayed-death penalty plus an extra -w_disturbance.
+        /* Returns the real disturbance-tier reward for this tick, mirroring
+           disturbance_engine.py's step(): each actual kill pays growth.Kill's
+           delayed-death penalty plus an extra -w_disturbance. */
         public float Step(GrowthEngine growth, int timestep)
         {
             float reward = 0f;
             var alive = growth.Alive();
             if (alive.Count == 0) return reward;
 
-            // Corridor proximity is 0 for most seeds, so guarantee one real kill per check.
+            /* Corridor proximity is 0 for most seeds, so guarantee one real kill per check. */
             reward += Kill(growth, alive[_rng.Next(alive.Count)], timestep);
 
             foreach (var seed in alive)

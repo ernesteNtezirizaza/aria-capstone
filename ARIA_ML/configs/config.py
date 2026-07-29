@@ -7,9 +7,9 @@ Single source of truth for the entire ARIA ML pipeline.
 
 import os
 
-# ── Paths ─────────────────────────────────────────────────────────
-# Derived from this file's own location (configs/config.py -> ARIA_ML/) rather
-# than hardcoded, so the same config works locally and on Kaggle without editing.
+""" ── Paths ─────────────────────────────────────────────────────────
+   Derived from this file's own location (configs/config.py -> ARIA_ML/) rather
+   than hardcoded, so the same config works locally and on Kaggle without editing. """
 ROOT_DIR        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_RAW_DIR    = os.path.join(ROOT_DIR, "data", "raw")
 DATA_PROC_DIR   = os.path.join(ROOT_DIR, "data", "processed")
@@ -19,13 +19,13 @@ CHECKPOINTS_DIR = os.path.join(RESULTS_DIR, "checkpoints")
 PLOTS_DIR       = os.path.join(RESULTS_DIR, "plots")
 METRICS_DIR     = os.path.join(RESULTS_DIR, "metrics")
 
-# ── Raw dataset paths ─────────────────────────────────────────────
+""" ── Raw dataset paths ───────────────────────────────────────────── """
 DEM_PATH       = os.path.join(DATA_RAW_DIR, "dem", "Rwanda_SRTM30meters", "Rwanda_SRTM30meters.tif")
-# Soil layers are discovered dynamically (glob, not a fixed list) so adding
-# a new layer -- e.g. rwanda_soil_nitrogen.tif, rwanda_soil_carbon.tif --
-# just means dropping the file in data/raw/soil/ and re-running preprocess.py.
-# A hardcoded list here previously meant new files were silently ignored
-# until someone remembered to add them by name in two separate places.
+""" Soil layers are discovered dynamically (glob, not a fixed list) so adding
+   a new layer -- e.g. rwanda_soil_nitrogen.tif, rwanda_soil_carbon.tif --
+   just means dropping the file in data/raw/soil/ and re-running preprocess.py.
+   A hardcoded list here previously meant new files were silently ignored
+   until someone remembered to add them by name in two separate places. """
 SOIL_DIR       = os.path.join(DATA_RAW_DIR, "soil")
 RAINFALL_DIR   = os.path.join(DATA_RAW_DIR, "rainfall")
 LANDCOVER_DIR  = os.path.join(DATA_RAW_DIR, "landcover")
@@ -47,14 +47,14 @@ SPECIES_PATH   = os.path.join(
     "and Management Tool for East Africa_Rwanda Tool.xls"
 )
 
-# ── Rwanda grid ───────────────────────────────────────────────────
+""" ── Rwanda grid ─────────────────────────────────────────────────── """
 RWANDA_BOUNDS = {
     "left": 28.84, "bottom": -2.84,
     "right": 30.90, "top": -1.04,
 }
 ZONE_SIZE    = 120   # each zone = 120×120 cells = 30km×30km
 
-# ── Terrain channels ──────────────────────────────────────────────
+""" ── Terrain channels ────────────────────────────────────────────── """
 CH_ELEVATION  = 0
 CH_SLOPE      = 1
 CH_SOIL       = 2
@@ -62,20 +62,20 @@ CH_RAINFALL   = 3
 CH_LANDCOVER  = 4
 N_CHANNELS    = 5
 
-# ── Observation window ────────────────────────────────────────────
+""" ── Observation window ──────────────────────────────────────────── """
 OBS_WINDOW = 11   # 11×11 patch centred on drone
 
-# ── Zone-suitability weights ────────────────────────────────────────
-# Single source of truth for how soil / rainfall / slope combine into a
-# zone-level suitability score. Used both when deriving ZONE_MIN_SUITABILITY
-# below (from the real raw dataset) and inside REWARD further down, so the
-# per-seed placement reward and the zone-level abort/selection decision are
-# always scored with the exact same ecological weighting.
+""" ── Zone-suitability weights ────────────────────────────────────────
+   Single source of truth for how soil / rainfall / slope combine into a
+   zone-level suitability score. Used both when deriving ZONE_MIN_SUITABILITY
+   below (from the real raw dataset) and inside REWARD further down, so the
+   per-seed placement reward and the zone-level abort/selection decision are
+   always scored with the exact same ecological weighting. """
 ZONE_SUITABILITY_WEIGHTS = {"soil": 3.0, "rain": 2.0, "slope": 1.0}
 
-# ── Species ───────────────────────────────────────────────────────
+""" ── Species ─────────────────────────────────────────────────────── """
 
-# ── Species loader ────────────────────────────────────────────────
+""" ── Species loader ──────────────────────────────────────────────── """
 def _load_species_from_dataset(global_max_mm):
     """
     Load 5 species from the Rwanda Suitable Tree Species Excel dataset.
@@ -85,7 +85,7 @@ def _load_species_from_dataset(global_max_mm):
     import numpy as _np
 
     def _parse_rain_min(raw):
-        # Strip ALL whitespace to handle corrupted values like "700-1 800"
+        """ Strip ALL whitespace to handle corrupted values like "700-1 800" """
         raw = _re.sub(r"\s+", "", str(raw).strip()).replace(",", "")
         m = _re.search(r"(\d+)-\d+", raw)
         if m: return int(m.group(1))
@@ -111,7 +111,7 @@ def _load_species_from_dataset(global_max_mm):
         utils = wb.sheet_by_name("Tree_Utilities")
         print(f"[SPECIES] Bio={bio.nrows}r  Utils={utils.nrows}r x {utils.ncols}c", flush=True)
 
-        # col 1 = Kinyarwanda, col 2 = Bugesera, col 3 = Gishwati, col 35 = Woodlot
+        """ col 1 = Kinyarwanda, col 2 = Bugesera, col 3 = Gishwati, col 35 = Woodlot """
         util_data = {}
         for r in range(2, utils.nrows):
             name  = str(utils.cell(r, 0).value).strip()
@@ -125,7 +125,7 @@ def _load_species_from_dataset(global_max_mm):
                 "woodlot":     str(utils.cell(r, 35).value).strip().lower() == "x",
             }
 
-        # Build woodlot candidates from Bio_Physical_Profiles
+        """ Build woodlot candidates from Bio_Physical_Profiles """
         all_woodlot = []
         for r in range(2, bio.nrows):
             name      = str(bio.cell(r, 0).value).strip()
@@ -150,7 +150,7 @@ def _load_species_from_dataset(global_max_mm):
         for _c in all_woodlot:
             print(f"  {_c['name']:<35} rain={_c['rain_min_mm']}mm  ({_c['kinyarwanda']})", flush=True)
 
-        # Deduplicate by rain_min (one per band)
+        """ Deduplicate by rain_min (one per band) """
         seen_rain, unique, duplicates = set(), [], []
         for c in all_woodlot:
             if c["rain_min_mm"] not in seen_rain:
@@ -159,7 +159,7 @@ def _load_species_from_dataset(global_max_mm):
             else:
                 duplicates.append(c)
 
-        # Gap-fill from duplicates if < 5 unique bands
+        """ Gap-fill from duplicates if < 5 unique bands """
         if len(unique) < 5:
             for c in duplicates:
                 unique.append(c)
@@ -167,7 +167,7 @@ def _load_species_from_dataset(global_max_mm):
                     break
             unique.sort(key=lambda x: x["rain_min_mm"])
 
-        # Select 5 at P10/P30/P50/P70/P90
+        """ Select 5 at P10/P30/P50/P70/P90 """
         n       = len(unique)
         indices = [int(_np.percentile(range(n), p)) for p in [10, 30, 50, 70, 90]]
         seen_idx, final_indices = set(), []
@@ -228,7 +228,7 @@ def _derive_from_data():
         from rasterio.transform import from_bounds as _fb
         import glob as _glob
 
-        # ── 1. DEM → grid dimensions, bounds, elevation range ─────
+        """ ── 1. DEM → grid dimensions, bounds, elevation range ───── """
         dem_path = DEM_PATH
         with _rio.open(dem_path) as _src:
             _rows  = _src.height
@@ -241,17 +241,17 @@ def _derive_from_data():
         _elev_min   = float(_valid_elev.min())
         _elev_max   = float(_dem.max())
 
-        # Resolution in metres at Rwanda's mean latitude
+        """ Resolution in metres at Rwanda's mean latitude """
         import math as _math
         _lat_mid   = (_bnds.bottom + _bnds.top) / 2.0
         _res_m     = int(round(_res_deg * 111320 * _math.cos(_math.radians(_lat_mid))))
 
-        # ── 2. Slope → MAX_SLOPE_DEG (P95 of Rwanda slope) ────────
+        """ ── 2. Slope → MAX_SLOPE_DEG (P95 of Rwanda slope) ──────── """
         _dy, _dx   = _np.gradient(_dem, _res_m, _res_m)
         _slope_deg = _np.degrees(_np.arctan(_np.sqrt(_dx**2 + _dy**2)))
         _max_slope = round(float(_np.percentile(_slope_deg, 95)), 1)
 
-        # ── 3. CHIRPS rainfall → GLOBAL_MAX, thresholds ───────────
+        """ ── 3. CHIRPS rainfall → GLOBAL_MAX, thresholds ─────────── """
         _rain_files = sorted(_glob.glob(_os.path.join(RAINFALL_DIR, "chirps-v2.0.*.tif")))
         _REF_T = _fb(_bnds.left, _bnds.bottom, _bnds.right, _bnds.top, _cols, _rows)
         _stack = []
@@ -275,10 +275,10 @@ def _derive_from_data():
         _sunny_thresh = round(float(_np.percentile(_flat, 50)), 4)
         _zone_min_rain = round(float(_np.percentile(_flat, 25)), 4)
 
-        # ── 4. Soil → ZONE_MIN_SOIL (P25 of composite soil score)
+        """ ── 4. Soil → ZONE_MIN_SOIL (P25 of composite soil score) """
         _soil_paths = sorted(_glob.glob(_os.path.join(SOIL_DIR, "rwanda_soil_*.tif")))
-        # Nitrogen excluded at discovery, not later -- see the matching
-        # comment in utils/preprocess.py for why.
+        """ Nitrogen excluded at discovery, not later -- see the matching
+           comment in utils/preprocess.py for why. """
         _soil_paths = [p for p in _soil_paths if "nitrogen" not in _os.path.basename(p).lower()]
         if not _soil_paths:
             raise FileNotFoundError(f"No rwanda_soil_*.tif files found in {SOIL_DIR}")
@@ -300,15 +300,15 @@ def _derive_from_data():
                 _sd[_sd <= 0] = _np.nan
                 _valid_frac = _np.isfinite(_sd).mean()
                 if _valid_frac < 0.5:
-                    # More than half the country came back NaN after
-                    # reprojection -- a real CRS/extent mismatch (or a
-                    # genuine source-coverage gap), not something to
-                    # silently fold into the composite. Averaging a layer
-                    # that's mostly missing doesn't corrupt the composite
-                    # everywhere (nanmean already skips NaN per-pixel), but
-                    # it does mean this layer contributes almost nothing
-                    # while still being counted as "6 layers" -- excluding
-                    # it outright is more honest than pretending it helped.
+                    """ More than half the country came back NaN after
+                       reprojection -- a real CRS/extent mismatch (or a
+                       genuine source-coverage gap), not something to
+                       silently fold into the composite. Averaging a layer
+                       that's mostly missing doesn't corrupt the composite
+                       everywhere (nanmean already skips NaN per-pixel), but
+                       it does mean this layer contributes almost nothing
+                       while still being counted as "6 layers" -- excluding
+                       it outright is more honest than pretending it helped. """
                     print(f"  EXCLUDED {_os.path.basename(_sp)} from soil composite "
                           f"({100*(1-_valid_frac):.1f}% invalid)")
                     _excluded_layers.append(_os.path.basename(_sp))
@@ -320,21 +320,21 @@ def _derive_from_data():
         if _excluded_layers:
             print(f"  Soil composite built from {len(_soil_layers)} layers "
                   f"(excluded: {_excluded_layers})")
-        # Some pixels (e.g. Lake Kivu, other water bodies) are legitimately
-        # NaN in every soil layer at once -- there's no soil to measure
-        # there. nanmean's "Mean of empty slice" warning is numpy telling
-        # us exactly that, correctly, not flagging a bug. Suppressed
-        # deliberately rather than left as an unexplained warning in the log.
+        """ Some pixels (e.g. Lake Kivu, other water bodies) are legitimately
+           NaN in every soil layer at once -- there's no soil to measure
+           there. nanmean's "Mean of empty slice" warning is numpy telling
+           us exactly that, correctly, not flagging a bug. Suppressed
+           deliberately rather than left as an unexplained warning in the log. """
         with _warnings.catch_warnings():
             _warnings.filterwarnings("ignore", message="Mean of empty slice")
             _soil_comp = _np.nanmean(_np.stack(_soil_layers), axis=0)
         _zone_min_soil = round(float(_np.nanpercentile(_soil_comp, 25)), 4)
 
-        # ── 4b. Composite zone suitability → ZONE_MIN_SUITABILITY ──
-        # Combines soil + rainfall + slope with ZONE_SUITABILITY_WEIGHTS,
-        # the same weighting used for per-seed placement reward, so the
-        # zone-level abort/selection threshold is ecologically consistent
-        # with per-cell scoring rather than being soil-only.
+        """ ── 4b. Composite zone suitability → ZONE_MIN_SUITABILITY ──
+           Combines soil + rainfall + slope with ZONE_SUITABILITY_WEIGHTS,
+           the same weighting used for per-seed placement reward, so the
+           zone-level abort/selection threshold is ecologically consistent
+           with per-cell scoring rather than being soil-only. """
         _rain_mean_map = _np.nanmean(_rain_norm, axis=0)
         _slope_pen_map = _np.clip(_slope_deg / max(_max_slope, 1e-6), 0.0, 1.0)
         _w = ZONE_SUITABILITY_WEIGHTS
@@ -346,7 +346,7 @@ def _derive_from_data():
         _suit_map = _np.clip(_suit_map, 0.0, 1.0)
         _zone_min_suitability = round(float(_np.nanpercentile(_suit_map, 25)), 4)
 
-        # ── 5. Species → from Excel dataset ───────────────────────
+        """ ── 5. Species → from Excel dataset ─────────────────────── """
         _species = _load_species_from_dataset(_gmax)
 
         return {
@@ -394,7 +394,7 @@ def _derive_from_data():
 
 
 
-# -- Unpack data-derived constants --------------------------------------------------
+""" -- Unpack data-derived constants -------------------------------------------------- """
 _DERIVED              = _derive_from_data()
 GRID_ROWS             = _DERIVED["GRID_ROWS"]
 GRID_COLS             = _DERIVED["GRID_COLS"]
@@ -411,15 +411,15 @@ SPECIES               = _DERIVED["SPECIES"]
 
 N_SPECIES = len(SPECIES)
 
-# ── Actions ───────────────────────────────────────────────────────
-# 0-39  : move(8 dirs) × drop(5 species)
-# 40    : hover
-# 41    : abort mission → return to base
-# 42    : deploy rain cover
-# 43    : retract rain cover
-# 44    : increase altitude (obstacle avoidance)
-# 45    : decrease altitude
-# 46    : emergency land
+""" ── Actions ───────────────────────────────────────────────────────
+   0-39  : move(8 dirs) × drop(5 species)
+   40    : hover
+   41    : abort mission → return to base
+   42    : deploy rain cover
+   43    : retract rain cover
+   44    : increase altitude (obstacle avoidance)
+   45    : decrease altitude
+   46    : emergency land """
 N_ACTIONS     = 47
 HOVER_ACTION  = 40
 ABORT_ACTION  = 41
@@ -440,7 +440,7 @@ DIRECTIONS = {
     7: ( 1, -1),   # SW
 }
 
-# ── Drone states ──────────────────────────────────────────────────
+""" ── Drone states ────────────────────────────────────────────────── """
 STATE_GROUNDED   = 0
 STATE_TAKEOFF    = 1
 STATE_NAVIGATING = 2
@@ -449,29 +449,29 @@ STATE_RETURNING  = 4
 STATE_LANDING    = 5
 STATE_OBSTACLE   = 6
 
-# ── Episode ───────────────────────────────────────────────────────
-# Both raised together, deliberately. INITIAL_SEEDS is doubled to
-# directly raise the achievable ceiling on pct_suitable_seeded (the
-# ceiling is seed_budget / suitable_cells_in_zone, so doubling seeds
-# roughly doubles the ceiling). MAX_STEPS is raised alongside it so the
-# step cap doesn't quietly become the new binding constraint instead --
-# episodes were already reaching 400-460 steps on the old 500-seed
-# budget, so doubling seeds without more time risked the drone simply
-# running out of steps before using the extra seeds, which would measure
-# a new time constraint rather than the seed-budget effect this change
-# is meant to isolate.
+""" ── Episode ───────────────────────────────────────────────────────
+   Both raised together, deliberately. INITIAL_SEEDS is doubled to
+   directly raise the achievable ceiling on pct_suitable_seeded (the
+   ceiling is seed_budget / suitable_cells_in_zone, so doubling seeds
+   roughly doubles the ceiling). MAX_STEPS is raised alongside it so the
+   step cap doesn't quietly become the new binding constraint instead --
+   episodes were already reaching 400-460 steps on the old 500-seed
+   budget, so doubling seeds without more time risked the drone simply
+   running out of steps before using the extra seeds, which would measure
+   a new time constraint rather than the seed-budget effect this change
+   is meant to isolate. """
 MAX_STEPS           = 1800
 INITIAL_SEEDS       = 1000
 MONITORING_INTERVAL = 10
-# Raised from 3: that only prevented literal stacking in a 120x120 zone,
-# doing little to push toward genuine zone-wide spread. 5 cells still
-# leaves ample room for the full 1000-seed budget (thousands of suitable
-# cells per zone), while meaningfully widening the neighbourhood
-# w_spacing's now-larger penalty (configs/config.py REWARD) actually
-# covers.
+""" Raised from 3: that only prevented literal stacking in a 120x120 zone,
+   doing little to push toward genuine zone-wide spread. 5 cells still
+   leaves ample room for the full 1000-seed budget (thousands of suitable
+   cells per zone), while meaningfully widening the neighbourhood
+   w_spacing's now-larger penalty (configs/config.py REWARD) actually
+   covers. """
 MIN_SEED_SPACING    = 5
 
-# ── Energy system ─────────────────────────────────────────────────
+""" ── Energy system ───────────────────────────────────────────────── """
 BATTERY_MAX           = 1.0
 BATTERY_INIT          = 1.0
 BATTERY_DRAIN_SUNNY   = 0.002    # per step in sun
@@ -480,25 +480,25 @@ SOLAR_CHARGE_RATE     = 0.002   # per step when sunny
 BATTERY_RETURN_THRESH = 0.10     # return to base when below this
 BATTERY_CRITICAL      = 0.05     # emergency land when below this
 
-# ── Weather ───────────────────────────────────────────────────────
+""" ── Weather ─────────────────────────────────────────────────────── """
 WEATHER_SUNNY          = 0
 WEATHER_RAINY          = 1
 COVER_ACCURACY_PENALTY = 0.15   # 15% accuracy loss when cover on
 
-# ── Zone abort thresholds ─────────────────────────────────────────
+""" ── Zone abort thresholds ───────────────────────────────────────── """
 ZONE_MAX_SLOPE_PCT = 0.70    # abort if >70% of zone is no-plant
 ZONE_MAX_COVERED   = 0.80    # abort if >80% already seeded
 
-# ── Rainfall seasons ──────────────────────────────────────────────
-# Previously only March/April/May, repeated across 2021 and 2022 -- the
-# same season type seen twice, never Rwanda's short rains (Oct-Dec) or
-# either dry season. The originally planned fix (fetching the rest of
-# 2021) was superseded once the real files actually landed on disk: the
-# real dataset now has a full real calendar year of 2024 instead, plus
-# the original 2021/2022 March-May files still present alongside it (not
-# referenced here, but still picked up by the glob-based threshold
-# derivation above -- see CHANGES_AND_VALIDATION.md for that tradeoff).
-# WeatherSystem now cycles through a genuine full year via 2024.
+""" ── Rainfall seasons ──────────────────────────────────────────────
+   Previously only March/April/May, repeated across 2021 and 2022 -- the
+   same season type seen twice, never Rwanda's short rains (Oct-Dec) or
+   either dry season. The originally planned fix (fetching the rest of
+   2021) was superseded once the real files actually landed on disk: the
+   real dataset now has a full real calendar year of 2024 instead, plus
+   the original 2021/2022 March-May files still present alongside it (not
+   referenced here, but still picked up by the glob-based threshold
+   derivation above -- see CHANGES_AND_VALIDATION.md for that tradeoff).
+   WeatherSystem now cycles through a genuine full year via 2024. """
 RAINFALL_FILES = [
     "chirps-v2.0.2024.01.tif",
     "chirps-v2.0.2024.02.tif",
@@ -574,7 +574,7 @@ ZONE_DEFINITIONS = [
 TRAIN_ZONE_IDS = [z[0] for z in ZONE_DEFINITIONS if z[5] == "train"]
 EVAL_ZONE_IDS  = [z[0] for z in ZONE_DEFINITIONS if z[5] == "eval"]
 
-# ── Reward weights ────────────────────────────────────────────────
+""" ── Reward weights ──────────────────────────────────────────────── """
 REWARD = {
     "w_soil":          ZONE_SUITABILITY_WEIGHTS["soil"],
     "w_rain":          ZONE_SUITABILITY_WEIGHTS["rain"],
@@ -651,14 +651,14 @@ REWARD = {
 }
 DISTURBANCE_BASE_PROB = 0.30
 
-# ── Training ──────────────────────────────────────────────────────
+""" ── Training ────────────────────────────────────────────────────── """
 TOTAL_TIMESTEPS = 200_000
 N_ENVS          = 2
 EVAL_FREQ       = 5_000
 N_EVAL_EPISODES = 50
 DISCOUNT_GAMMA  = 0.99
 
-# ── Evaluation metrics ────────────────────────────────────────────
+""" ── Evaluation metrics ──────────────────────────────────────────── """
 PRIMARY_METRIC = "pct_suitable_seeded"
 EVAL_METRICS = [
     "pct_suitable_seeded",

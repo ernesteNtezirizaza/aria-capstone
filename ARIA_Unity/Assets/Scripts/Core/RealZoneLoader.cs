@@ -44,8 +44,8 @@ namespace ARIA.Core
         public List<ZoneManifestEntry> zones;
     }
 
-    // Application.streamingAssetsPath is a URL on WebGL (not a real filesystem path), so
-    // System.IO.File can never read it there -- every load must go through UnityWebRequest.
+    /* Application.streamingAssetsPath is a URL on WebGL (not a real filesystem path), so
+       System.IO.File can never read it there -- every load must go through UnityWebRequest. */
     public static class RealZoneLoader
     {
         public static IEnumerator LoadManifestAsync(string fileName, Action<List<ZoneManifestEntry>> onComplete)
@@ -118,7 +118,7 @@ namespace ARIA.Core
 
                 var zone = new ZoneData(size);
 
-                // terrainFlat index = (y*size + x)*ch + c -- matches export_zone.py exactly
+                /* terrainFlat index = (y*size + x)*ch + c -- matches export_zone.py exactly */
                 int idx = 0;
                 for (int y = 0; y < size; y++)
                 {

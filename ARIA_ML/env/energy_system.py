@@ -75,13 +75,13 @@ class EnergySystem:
                          safely reach base from here, worst case
           is_critical  — True if battery below critical threshold
         """
-        # Solar generation only when sunny
+        """ Solar generation only when sunny """
         if weather_system.is_sunny():
             self.solar_input = weather_system.solar_rate
         else:
             self.solar_input = 0.0
 
-        # Drain rate doubles in rain
+        """ Drain rate doubles in rain """
         if weather_system.is_rainy():
             drain = BATTERY_DRAIN_RAIN
         else:
@@ -99,21 +99,21 @@ class EnergySystem:
         if self.battery <= BATTERY_CRITICAL:
             self.empty_events += 1
 
-        # Distance-aware return trigger. A fixed BATTERY_RETURN_THRESH was
-        # a real bug: the 5%-battery margin between "should return" and
-        # "critical" only covers 12-25 steps of flight depending on
-        # weather, but the drone can range far further than that from
-        # base in a real zone. A drone that happened to be further out
-        # than the margin allowed when the fixed threshold fired could
-        # not physically survive the trip back, and would die to
-        # battery-critical with most of its seed budget never used --
-        # confirmed directly via instrumentation: under random actions,
-        # every single episode ended this way, using under 4% of the
-        # seed budget on average. This computes the real worst-case
-        # energy needed for the ACTUAL distance back to base (assuming
-        # rain the whole way, the safe assumption) plus a small buffer,
-        # instead of a one-size-fits-all percentage that was only ever
-        # safe for positions already close to base.
+        """ Distance-aware return trigger. A fixed BATTERY_RETURN_THRESH was
+           a real bug: the 5%-battery margin between "should return" and
+           "critical" only covers 12-25 steps of flight depending on
+           weather, but the drone can range far further than that from
+           base in a real zone. A drone that happened to be further out
+           than the margin allowed when the fixed threshold fired could
+           not physically survive the trip back, and would die to
+           battery-critical with most of its seed budget never used --
+           confirmed directly via instrumentation: under random actions,
+           every single episode ended this way, using under 4% of the
+           seed budget on average. This computes the real worst-case
+           energy needed for the ACTUAL distance back to base (assuming
+           rain the whole way, the safe assumption) plus a small buffer,
+           instead of a one-size-fits-all percentage that was only ever
+           safe for positions already close to base. """
         safe_margin = steps_to_base * BATTERY_DRAIN_RAIN + BATTERY_CRITICAL
         return_thresh = max(BATTERY_RETURN_THRESH, safe_margin)
 

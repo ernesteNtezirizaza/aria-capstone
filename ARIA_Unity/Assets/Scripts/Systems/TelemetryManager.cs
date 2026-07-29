@@ -20,17 +20,17 @@ namespace ARIA.Systems
         public int spacing_violations;
         public int protected_area_seeds;
         public int reseeding_count;
-        // Real cumulative episode reward, mirroring rwanda_env.py's
-        // episode_reward exactly (see ActionDispatcher.Step()'s per-step
-        // reward computation) -- not a training-side-only metric anymore.
+        /* Real cumulative episode reward, mirroring rwanda_env.py's
+           episode_reward exactly (see ActionDispatcher.Step()'s per-step
+           reward computation) -- not a training-side-only metric anymore. */
         public float reward;
     }
 
     [System.Serializable]
     public class TelemetrySeed
     {
-        // Seed-monitoring: lifecycle stage + failure info, so the dashboard can
-        // show what happened to each seed and why the drone rescheduled it.
+        /* Seed-monitoring: lifecycle stage + failure info, so the dashboard can
+           show what happened to each seed and why the drone rescheduled it. */
         public string stage;
         public string fail_reason;
         public int dropped_at_step;   // simulation timestep
@@ -42,9 +42,9 @@ namespace ARIA.Systems
         public TelemetryZone zone;
         public TelemetryEpisode episode;
         public List<TelemetrySeed> seeds;
-        // 0 means "no logged-in user for this session" -- JsonUtility has no
-        // clean nullable-int support, and real DB user ids start at 1
-        // (autoincrement), so 0 is a safe "none" sentinel.
+        /* 0 means "no logged-in user for this session" -- JsonUtility has no
+           clean nullable-int support, and real DB user ids start at 1
+           (autoincrement), so 0 is a safe "none" sentinel. */
         public int user_id;
     }
 
@@ -81,7 +81,7 @@ namespace ARIA.Systems
 
         private IEnumerator PostTelemetryCoroutine(EpisodeState state, RealZoneJson zoneMeta, float episodeReward)
         {
-            // Zone name/agro-zone come from the real loaded zone file when available.
+            /* Zone name/agro-zone come from the real loaded zone file when available. */
             TelemetryPayload payload = new TelemetryPayload
             {
                 zone = new TelemetryZone
@@ -124,13 +124,13 @@ namespace ARIA.Systems
             }
         }
 
-        // Real computation, mirroring rwanda_env.py's _metrics():
-        //   n_suit   = plantable cells minus cells too close to a protected area
-        //   n_seeded = seeds the drone actually dropped where IsSuitable was true
-        //   pct      = n_seeded / max(n_suit, 1)
-        // This previously returned state.ZoneSuitability() + a random jitter --
-        // a number with no connection to which seeds were actually placed well,
-        // dressed up to look like a real metric. Fixed to compute the real thing.
+        /* Real computation, mirroring rwanda_env.py's _metrics():
+             n_suit   = plantable cells minus cells too close to a protected area
+             n_seeded = seeds the drone actually dropped where IsSuitable was true
+             pct      = n_seeded / max(n_suit, 1)
+           This previously returned state.ZoneSuitability() + a random jitter --
+           a number with no connection to which seeds were actually placed well,
+           dressed up to look like a real metric. Fixed to compute the real thing. */
         private float CalculateSuitableSeededPct(EpisodeState state)
         {
             int nPlantable = 0, nNearProtected = 0;
@@ -151,14 +151,14 @@ namespace ARIA.Systems
             return Mathf.Clamp01((float)nSeeded / nSuit);
         }
 
-        // Real computation, mirroring rwanda_env.py's _metrics():
-        //   spacing_violations = count of seed PAIRS planted closer together
-        //   than MIN_SEED_SPACING (Manhattan distance)
-        // This previously returned state.Disturbance.Events.Count -- the
-        // number of ANIMAL DISTURBANCE incidents, a completely different,
-        // unrelated quantity mislabeled under the wrong metric name. The
-        // dashboard's "spacing violations" column was showing disturbance
-        // events, not seed clustering, for every live episode.
+        /* Real computation, mirroring rwanda_env.py's _metrics():
+             spacing_violations = count of seed PAIRS planted closer together
+             than MIN_SEED_SPACING (Manhattan distance)
+           This previously returned state.Disturbance.Events.Count -- the
+           number of ANIMAL DISTURBANCE incidents, a completely different,
+           unrelated quantity mislabeled under the wrong metric name. The
+           dashboard's "spacing violations" column was showing disturbance
+           events, not seed clustering, for every live episode. */
         private int CalculateSpacingViolations(EpisodeState state)
         {
             var positions = new List<(int x, int y)>();
@@ -178,11 +178,11 @@ namespace ARIA.Systems
             return violations;
         }
 
-        // Real computation, mirroring rwanda_env.py's _metrics():
-        //   protected_area_seeds = count of seeds dropped with InProtected == true
-        // This was a hardcoded 0 regardless of whether the drone actually
-        // planted inside a protected-area buffer -- Seed.InProtected was already
-        // tracked per-seed (see GrowthEngine.Register) and simply never counted.
+        /* Real computation, mirroring rwanda_env.py's _metrics():
+             protected_area_seeds = count of seeds dropped with InProtected == true
+           This was a hardcoded 0 regardless of whether the drone actually
+           planted inside a protected-area buffer -- Seed.InProtected was already
+           tracked per-seed (see GrowthEngine.Register) and simply never counted. */
         private int CalculateProtectedAreaSeeds(EpisodeState state)
         {
             int count = 0;
@@ -191,11 +191,11 @@ namespace ARIA.Systems
             return count;
         }
 
-        // Real computation, mirroring growth_engine.py's summary():
-        //   reseeding_count = number of (x, y) cells that carry both a Dead
-        //   seed AND a currently-alive seed -- i.e. cells where a failed
-        //   seed was successfully replanted, not just the size of the
-        //   pending reseed queue.
+        /* Real computation, mirroring growth_engine.py's summary():
+             reseeding_count = number of (x, y) cells that carry both a Dead
+             seed AND a currently-alive seed -- i.e. cells where a failed
+             seed was successfully replanted, not just the size of the
+             pending reseed queue. */
         private int CalculateReseedingCount(EpisodeState state)
         {
             var deadPos = new HashSet<(int, int)>();
@@ -209,10 +209,10 @@ namespace ARIA.Systems
             return deadPos.Count;
         }
 
-        // Reports every seed the drone actually dropped this episode, with its
-        // real lifecycle stage and (for dead seeds) why it failed -- sourced
-        // from the monitoring system's persistent failure log rather than
-        // fabricated placements.
+        /* Reports every seed the drone actually dropped this episode, with its
+           real lifecycle stage and (for dead seeds) why it failed -- sourced
+           from the monitoring system's persistent failure log rather than
+           fabricated placements. */
         private List<TelemetrySeed> BuildSeedList(EpisodeState state)
         {
             var seedList = new List<TelemetrySeed>();
@@ -221,8 +221,8 @@ namespace ARIA.Systems
                 string failReason = null;
                 if (seed.Stage == SeedStage.Dead)
                 {
-                    // Most recent matching log entry -- FailedCellsLog persists
-                    // across the whole run, so scan from the end for freshness.
+                    /* Most recent matching log entry -- FailedCellsLog persists
+                       across the whole run, so scan from the end for freshness. */
                     for (int i = state.Monitor.FailedCellsLog.Count - 1; i >= 0; i--)
                     {
                         var f = state.Monitor.FailedCellsLog[i];
@@ -242,10 +242,10 @@ namespace ARIA.Systems
             }
             return seedList;
         }
-        // The web app's /simulation page appends ?uid=<id> to the iframe's own
-        // src when a user is logged in (see ARIA_Web's simulation/page.tsx),
-        // so the WebGL build's own document URL carries it -- read straight
-        // off Application.absoluteURL rather than needing a JS bridge call.
+        /* The web app's /simulation page appends ?uid=<id> to the iframe's own
+           src when a user is logged in (see ARIA_Web's simulation/page.tsx),
+           so the WebGL build's own document URL carries it -- read straight
+           off Application.absoluteURL rather than needing a JS bridge call. */
         private int GetUserIdFromUrl()
         {
             string url = Application.absoluteURL;

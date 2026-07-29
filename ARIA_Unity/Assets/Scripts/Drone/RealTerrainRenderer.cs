@@ -77,31 +77,31 @@ namespace ARIA.Drone
             _groundPlane.AddComponent<MeshCollider>();
 
             _texture = new Texture2D(size, size, TextureFormat.RGB24, false);
-            // Bilinear, not Point: with Point filtering each cell reads as a
-            // hard-edged pixel (a data grid); bilinear blends between
-            // neighbouring cells' colours, which combined with the
-            // natural-earth-tone palette below is what makes this read as
-            // ground texture rather than a suitability heatmap.
+            /* Bilinear, not Point: with Point filtering each cell reads as a
+               hard-edged pixel (a data grid); bilinear blends between
+               neighbouring cells' colours, which combined with the
+               natural-earth-tone palette below is what makes this read as
+               ground texture rather than a suitability heatmap. */
             _texture.filterMode = FilterMode.Bilinear;
             _texture.wrapMode = TextureWrapMode.Clamp;
 
-            // Deliberately its own baked Unlit material asset
-            // (Assets/Resources/TerrainUnlitMaterial.mat, built by
-            // UnlitTerrainMaterialBuilder), not Shader.Find("Unlit/Texture")
-            // at runtime and not the shared MaterialHelper material every
-            // other object uses. Runtime Shader.Find works fine in the
-            // Editor (which always has every built-in shader available),
-            // but nothing else in the project references "Unlit/Texture"
-            // from a serialized asset, so the WebGL build pipeline can
-            // strip it as unused -- meaning Shader.Find would silently
-            // return null in the actual deployed build and fall back
-            // invisibly, which is suspected to be exactly why four
-            // consecutive lighting/material fixes (light+ambient, fog
-            // distance, reverting a shader change, disabling fog outright)
-            // never changed anything: the terrain was likely never actually
-            // using Unlit at all. A real asset reference guarantees the
-            // shader survives stripping, same fix already applied to
-            // DummyStandardMaterial earlier this session.
+            /* Deliberately its own baked Unlit material asset
+               (Assets/Resources/TerrainUnlitMaterial.mat, built by
+               UnlitTerrainMaterialBuilder), not Shader.Find("Unlit/Texture")
+               at runtime and not the shared MaterialHelper material every
+               other object uses. Runtime Shader.Find works fine in the
+               Editor (which always has every built-in shader available),
+               but nothing else in the project references "Unlit/Texture"
+               from a serialized asset, so the WebGL build pipeline can
+               strip it as unused -- meaning Shader.Find would silently
+               return null in the actual deployed build and fall back
+               invisibly, which is suspected to be exactly why four
+               consecutive lighting/material fixes (light+ambient, fog
+               distance, reverting a shader change, disabling fog outright)
+               never changed anything: the terrain was likely never actually
+               using Unlit at all. A real asset reference guarantees the
+               shader survives stripping, same fix already applied to
+               DummyStandardMaterial earlier this session. */
             var mat = Resources.Load<Material>("TerrainUnlitMaterial");
             if (mat == null)
             {
@@ -137,8 +137,8 @@ namespace ARIA.Drone
                 for (int x = 0; x < verts1D; x++)
                 {
                     int vi = y * verts1D + x;
-                    // Sample height from the nearest in-bounds cell (vertex
-                    // grid is one larger than the cell grid on each edge).
+                    /* Sample height from the nearest in-bounds cell (vertex
+                       grid is one larger than the cell grid on each edge). */
                     int sx = Mathf.Min(x, size - 1);
                     int sy = Mathf.Min(y, size - 1);
                     float h = heightMap[sy, sx];
@@ -195,9 +195,9 @@ namespace ARIA.Drone
                 for (int x = 0; x < size; x++)
                 {
                     pixels[y * size + x] = SampleCellColour(zone, x, y);
-                    // Channel 0 = normalised elevation [0,1] (see ZoneData.cs
-                    // channel-layout comment) -- scaled to world-space metres
-                    // by heightScale for visibility at zone scale.
+                    /* Channel 0 = normalised elevation [0,1] (see ZoneData.cs
+                       channel-layout comment) -- scaled to world-space metres
+                       by heightScale for visibility at zone scale. */
                     _heightMap[y, x] = zone.Terrain[y, x, 0] * heightScale;
                 }
             }
@@ -207,20 +207,20 @@ namespace ARIA.Drone
             BuildHeightmapMesh(size, _heightMap);
         }
 
-        // Natural earth-tone ground colour driven by the same real soil/
-        // rain/slope data the policy reasons over, rather than the raw
-        // suitability score painted directly as a blue-to-orange gradient.
-        // A suitability heatmap reads as a data visualisation; this reads
-        // as ground, which is what an audience needs to see to believe
-        // it's a real landscape and not a chart.
-        // Plantable ground reads as green -- that's where seeds actually
-        // get dropped, so it should look like it, rather than a suitability
-        // gradient that happened to land on tan/brown for a low-lushness
-        // zone. Lushness only shades which green (pale/yellow-green for
-        // marginal soil+rain, rich green for good), it never crosses over
-        // to brown -- only genuinely unplantable ground (steep/protected)
-        // does that, so green vs. brown reads directly as "plantable vs.
-        // not" at a glance.
+        /* Natural earth-tone ground colour driven by the same real soil/
+           rain/slope data the policy reasons over, rather than the raw
+           suitability score painted directly as a blue-to-orange gradient.
+           A suitability heatmap reads as a data visualisation; this reads
+           as ground, which is what an audience needs to see to believe
+           it's a real landscape and not a chart.
+           Plantable ground reads as green -- that's where seeds actually
+           get dropped, so it should look like it, rather than a suitability
+           gradient that happened to land on tan/brown for a low-lushness
+           zone. Lushness only shades which green (pale/yellow-green for
+           marginal soil+rain, rich green for good), it never crosses over
+           to brown -- only genuinely unplantable ground (steep/protected)
+           does that, so green vs. brown reads directly as "plantable vs.
+           not" at a glance. */
         private static readonly Color LushGreen = new Color(0.18f, 0.48f, 0.14f);
         private static readonly Color PaleGreen = new Color(0.40f, 0.54f, 0.20f);
         private static readonly Color Rock      = new Color(0.40f, 0.32f, 0.22f);
@@ -237,8 +237,8 @@ namespace ARIA.Drone
                 ? Rock
                 : Color.Lerp(ground, Rock, slope * 0.3f);
 
-            // Small per-cell mottling so the ground doesn't read as a flat
-            // gradient fill -- cheap stand-in for a real ground texture.
+            /* Small per-cell mottling so the ground doesn't read as a flat
+               gradient fill -- cheap stand-in for a real ground texture. */
             float n = (Mathf.PerlinNoise(x * 0.15f, y * 0.15f) - 0.5f) * 0.12f;
             return new Color(
                 Mathf.Clamp01(baseColour.r + n),

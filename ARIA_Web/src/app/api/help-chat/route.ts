@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  // Cap history sent upstream -- a help widget doesn't need unbounded context.
+  /* Cap history sent upstream -- a help widget doesn't need unbounded context. */
   const recent = messages.slice(-20);
   const contents = recent.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",

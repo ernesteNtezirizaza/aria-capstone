@@ -29,7 +29,7 @@ export default function DashboardClient({
   dataUnavailable?: boolean;
   session?: SessionInfo;
 }) {
-  // Format data for charts
+  /* Format data for charts */
   const chartData = [...episodes].reverse().map((ep) => ({
     name: `Ep ${ep.episode_id}`,
     reseeding: ep.reseeding_count || 0,

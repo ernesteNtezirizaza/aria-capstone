@@ -1,7 +1,7 @@
-// One-time script to create the first Admin account, since Admins create
-// every other account but none exist yet on a fresh database. Run once:
-//   npm run db:seed
-// (safe to re-run -- it no-ops if an active admin already exists).
+/* One-time script to create the first Admin account, since Admins create
+   every other account but none exist yet on a fresh database. Run once:
+     npm run db:seed
+   (safe to re-run -- it no-ops if an active admin already exists). */
 import { config } from 'dotenv';
 config({ path: '.env' });
 config({ path: '.env.local', override: true });

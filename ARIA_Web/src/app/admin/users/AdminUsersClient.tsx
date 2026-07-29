@@ -29,8 +29,8 @@ const ROLE_STYLES: Record<Role, string> = {
   FORESTER: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
 };
 
-// Small top-right toast for action feedback, used instead of per-row inline
-// text so success/error is equally visible regardless of scroll position.
+/* Small top-right toast for action feedback, used instead of per-row inline
+   text so success/error is equally visible regardless of scroll position. */
 const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',

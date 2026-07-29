@@ -59,7 +59,7 @@ namespace ARIA.UI
 
         private void BuildLayout()
         {
-            // Deliberately compact so it can't cover the terrain.
+            /* Deliberately compact so it can't cover the terrain. */
             var batteryPanel = MakePanel(transform, new Vector2(0, 1), new Vector2(0, 1),
                 new Vector2(10, -10), new Vector2(220, 34), new Color(0f, 0.05f, 0f, 1f));
             _batteryText = MakeText(batteryPanel, "Battery: --", 15, TextAnchor.MiddleCenter,
@@ -102,7 +102,7 @@ namespace ARIA.UI
             titleText.color = new Color(1f, 1f, 1f);
             titleText.fontStyle = FontStyle.Bold;
 
-            // Weather button -- cycles Sunny(Default) -> ForceSunny -> ForceRainy.
+            /* Weather button -- cycles Sunny(Default) -> ForceSunny -> ForceRainy. */
             var weatherBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -40), new Vector2(-24, 40), new Color(0.25f, 0.25f, 0.15f, 1f));
             var weatherBtn = weatherBtnGO.AddComponent<Button>();
@@ -119,10 +119,10 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             animalBtn.onClick.AddListener(ToggleAnimalDisturbance);
 
-            // Obstacles button -- purely a visibility toggle for the hazard
-            // markers (see DemoConditions.ShowHazardMarkers). The real hazard
-            // grid the policy reasons over is always active regardless of
-            // this button; it never gets touched by it.
+            /* Obstacles button -- purely a visibility toggle for the hazard
+               markers (see DemoConditions.ShowHazardMarkers). The real hazard
+               grid the policy reasons over is always active regardless of
+               this button; it never gets touched by it. */
             var obstaclesBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -136), new Vector2(-24, 40), new Color(0.25f, 0.1f, 0.1f, 1f));
             var obstaclesBtn = obstaclesBtnGO.AddComponent<Button>();
@@ -131,7 +131,7 @@ namespace ARIA.UI
                 new Vector2(6, 0), new Vector2(-6, 0));
             obstaclesBtn.onClick.AddListener(ToggleObstacleMarkers);
 
-            // Zone button -- cycles through every real zone in the manifest.
+            /* Zone button -- cycles through every real zone in the manifest. */
             var zoneBtnGO = MakePanel(panel.transform, new Vector2(0, 1), new Vector2(1, 1),
                 new Vector2(12, -184), new Vector2(-24, 40), new Color(0.1f, 0.16f, 0.22f, 1f));
             var zoneBtn = zoneBtnGO.AddComponent<Button>();

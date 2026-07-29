@@ -102,11 +102,11 @@ namespace ARIA.Drone
                         "Assets/Resources/ to enable it.");
             }
 
-            // Real hazards are a static, always-present terrain feature (see
-            // ActionDispatcher.Step()) -- always computed here regardless of
-            // DemoConditions.ShowHazardMarkers, which only controls whether
-            // the resulting markers are visible (see Update() below), never
-            // whether the real hazard grid exists or blocks the drone.
+            /* Real hazards are a static, always-present terrain feature (see
+               ActionDispatcher.Step()) -- always computed here regardless of
+               DemoConditions.ShowHazardMarkers, which only controls whether
+               the resulting markers are visible (see Update() below), never
+               whether the real hazard grid exists or blocks the drone. */
             _active = drone != null && drone.State != null;
             if (!_active)
             {
@@ -116,7 +116,7 @@ namespace ARIA.Drone
 
             var zone = drone.State.Zone;
             var clusters = BuildClusters(zone);
-            // Biggest hazards get the helicopter treatment first, once capped.
+            /* Biggest hazards get the helicopter treatment first, once capped. */
             clusters.Sort((a, b) => b.cellCount.CompareTo(a.cellCount));
 
             int placed = 0;
@@ -137,10 +137,10 @@ namespace ARIA.Drone
 
         void Update()
         {
-            // Cheap per-frame check for the visibility toggle changing, so
-            // it takes effect immediately rather than waiting for the next
-            // episode reset -- mirrors the lightweight static-flag pattern
-            // DemoConditions already uses elsewhere (no new event wiring).
+            /* Cheap per-frame check for the visibility toggle changing, so
+               it takes effect immediately rather than waiting for the next
+               episode reset -- mirrors the lightweight static-flag pattern
+               DemoConditions already uses elsewhere (no new event wiring). */
             if (DemoConditions.ShowHazardMarkers != _lastShownState)
             {
                 _lastShownState = DemoConditions.ShowHazardMarkers;
@@ -176,7 +176,7 @@ namespace ARIA.Drone
                     if (visited[y, x]) continue;
                     if (zone.ObsGrid[y, x] <= ARIAConstants.OBSTACLE_THRESHOLD) continue;
 
-                    // Flood fill this connected hazardous region.
+                    /* Flood fill this connected hazardous region. */
                     var stack = new Stack<(int x, int y)>();
                     stack.Push((x, y));
                     visited[y, x] = true;
@@ -219,9 +219,9 @@ namespace ARIA.Drone
             float worldZ = gy * cellSize;
             float groundY = terrainRenderer != null ? terrainRenderer.GetHeight(gy, gx) : 0f;
 
-            // Real physical extent: cellCount cells' worth of ground,
-            // approximated as a circle, so a genuinely large hazardous
-            // slope reads as visibly bigger than a single steep cell.
+            /* Real physical extent: cellCount cells' worth of ground,
+               approximated as a circle, so a genuinely large hazardous
+               slope reads as visibly bigger than a single steep cell. */
             float footprintCells = Mathf.Sqrt(cellCount);
             float visualDiameter = Mathf.Clamp(footprintCells * cellSize * 0.9f, cellSize * 1.5f, cellSize * 12f);
 
@@ -252,13 +252,13 @@ namespace ARIA.Drone
         {
             var go = Instantiate(helicopterPrefab);
             go.name = "RealTerrainHazard (Helicopter)";
-            // Imported model's own scale/orientation vary by asset -- normalise
-            // against the same visualDiameter the sphere marker uses, so a
-            // large hazard cluster still reads as visibly bigger than a small
-            // one, consistent with the marker sizing this replaced. Boosted
-            // well past that baseline (helicopterSizeBoost) since so few of
-            // these are ever on screen at once -- each one should be a
-            // clearly visible, big landmark, not a small prop in the distance.
+            /* Imported model's own scale/orientation vary by asset -- normalise
+               against the same visualDiameter the sphere marker uses, so a
+               large hazard cluster still reads as visibly bigger than a small
+               one, consistent with the marker sizing this replaced. Boosted
+               well past that baseline (helicopterSizeBoost) since so few of
+               these are ever on screen at once -- each one should be a
+               clearly visible, big landmark, not a small prop in the distance. */
             float scale = visualDiameter * 0.15f * helicopterSizeBoost;
             go.transform.position = new Vector3(worldX, groundY + markerLift + scale * 0.5f, worldZ);
             go.transform.localScale = Vector3.one * scale;
@@ -266,9 +266,9 @@ namespace ARIA.Drone
             foreach (var col in go.GetComponentsInChildren<Collider>())
                 Destroy(col);
 
-            // glTFast imports animation clips onto a Legacy Animation
-            // component by default -- play it if present so the rotor
-            // actually spins; harmless no-op if the asset has none.
+            /* glTFast imports animation clips onto a Legacy Animation
+               component by default -- play it if present so the rotor
+               actually spins; harmless no-op if the asset has none. */
             var anim = go.GetComponentInChildren<Animation>();
             if (anim != null && anim.clip != null)
             {

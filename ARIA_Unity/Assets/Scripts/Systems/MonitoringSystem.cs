@@ -24,9 +24,9 @@ namespace ARIA.Systems
         public SpeciesRecommender Recommender;
         public float Epsilon = 0.15f;
 
-        // (x, y) -> pending reseed info, mirroring Python's pending_reseeds:
-        // set in MarkReseeded, resolved in either IngestFailures (failed
-        // again) or ResolveMatured (matured).
+        /* (x, y) -> pending reseed info, mirroring Python's pending_reseeds:
+           set in MarkReseeded, resolved in either IngestFailures (failed
+           again) or ResolveMatured (matured). */
         private readonly Dictionary<(int, int), (float[] Features, int Species)> _pendingReseeds
             = new Dictionary<(int, int), (float[], int)>();
 
@@ -51,10 +51,10 @@ namespace ARIA.Systems
             {
                 var key = (fc.X, fc.Y);
 
-                // If this cell was a pending reseed, its replacement just
-                // failed too -- a real negative outcome for whichever
-                // species we recommended last time. Feed it back before
-                // recommending again for this cell.
+                /* If this cell was a pending reseed, its replacement just
+                   failed too -- a real negative outcome for whichever
+                   species we recommended last time. Feed it back before
+                   recommending again for this cell. */
                 if (_pendingReseeds.TryGetValue(key, out var pending))
                 {
                     Recommender.Update(pending.Features, 0f);
@@ -75,10 +75,10 @@ namespace ARIA.Systems
 
                     fc.RecommendedSpecies = recommended;
                     fc.PredictedSurvival  = score;
-                    // Priority IS the recommender's predicted survival score,
-                    // not a separate (soil+rain)/2 formula -- "which cell to
-                    // reseed first" and "will the species we'd plant there
-                    // survive" are the same underlying question.
+                    /* Priority IS the recommender's predicted survival score,
+                       not a separate (soil+rain)/2 formula -- "which cell to
+                       reseed first" and "will the species we'd plant there
+                       survive" are the same underlying question. */
                     fc.Priority          = score;
                     fc.RecommendFeatures = feats;
                     ReseedQueue.Add(fc);
@@ -107,9 +107,9 @@ namespace ARIA.Systems
             }
         }
 
-        // Mirrors GrowthEngine's per-species mature-step lookup (kept in
-        // sync with that file's slowed-down growth-pacing values), normalised
-        // the same way Python's SpeciesRecommender._make_features does (/150).
+        /* Mirrors GrowthEngine's per-species mature-step lookup (kept in
+           sync with that file's slowed-down growth-pacing values), normalised
+           the same way Python's SpeciesRecommender._make_features does (/150). */
         private static float SpeciesMatureStepsNorm(int speciesId)
         {
             int steps = speciesId switch

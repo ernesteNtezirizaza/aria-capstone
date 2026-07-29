@@ -10,16 +10,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Missing required data" }, { status: 400 });
     }
 
-    // 0 is Unity's "no logged-in user" sentinel (see TelemetryManager.cs);
-    // only attach a user if it's a genuinely positive id AND actually exists,
-    // so a stale/tampered value can't crash the write with an FK violation.
+    /* 0 is Unity's "no logged-in user" sentinel (see TelemetryManager.cs);
+       only attach a user if it's a genuinely positive id AND actually exists,
+       so a stale/tampered value can't crash the write with an FK violation. */
     let dbUserId: number | null = null;
     if (typeof user_id === "number" && user_id > 0) {
       const userExists = await prisma.user.findUnique({ where: { id: user_id }, select: { id: true } });
       if (userExists) dbUserId = user_id;
     }
 
-    // Find or create zone
+    /* Find or create zone */
     let dbZone = await prisma.zone.findFirst({
       where: { name: zone.name || "Default Zone" }
     });
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create episode and seeds
+    /* Create episode and seeds */
     const dbEpisode = await prisma.episode.create({
       data: {
         zone_id: dbZone.zone_id,

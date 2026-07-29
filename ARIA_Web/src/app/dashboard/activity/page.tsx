@@ -14,8 +14,8 @@ export default async function ActivityPage() {
   let dataUnavailable = false;
 
   try {
-    // Aggregated in JS rather than Prisma groupBy -- groupBy on a nullable
-    // column (user_id) errors against the pg driver adapter used here.
+    /* Aggregated in JS rather than Prisma groupBy -- groupBy on a nullable
+       column (user_id) errors against the pg driver adapter used here. */
     const taggedEpisodes = await prisma.episode.findMany({
       where: { user_id: { not: null } },
       select: { user_id: true, user: { select: { name: true, email: true } } },

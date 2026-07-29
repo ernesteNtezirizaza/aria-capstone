@@ -35,7 +35,7 @@ namespace ARIA.Systems
         public float  Slope;              // NEW -- was computed per-seed but not surfaced before
         public float  CorridorProximity;  // NEW -- ditto
 
-        // Filled in by MonitoringSystem via the learned SpeciesRecommender
+        /* Filled in by MonitoringSystem via the learned SpeciesRecommender */
         public int    RecommendedSpecies;
         public float  Priority;           // = PredictedSurvival, not a separate hardcoded formula
         public float  PredictedSurvival;
@@ -92,12 +92,12 @@ namespace ARIA.Systems
             return Mathf.Clamp(v, 0.05f, 0.95f);
         }
 
-        // Returns the (x,y) of every seed that matured THIS call, so
-        // MonitoringSystem can credit any pending reseed at that position
-        // with a real success outcome (see MonitoringSystem.ResolveMatured),
-        // plus the real delayed growth-tier reward for this tick (mirrors
-        // growth_engine.py's step(): -w_germ*0.5 per natural death,
-        // +w_germ per maturity).
+        /* Returns the (x,y) of every seed that matured THIS call, so
+           MonitoringSystem can credit any pending reseed at that position
+           with a real success outcome (see MonitoringSystem.ResolveMatured),
+           plus the real delayed growth-tier reward for this tick (mirrors
+           growth_engine.py's step(): -w_germ*0.5 per natural death,
+           +w_germ per maturity). */
         public (List<(int x, int y)> matured, float reward) Step(int timestep, float[,] rainMap)
         {
             var matured = new List<(int x, int y)>();
@@ -108,7 +108,7 @@ namespace ARIA.Systems
                 if (s.Stage == SeedStage.Dead || s.Stage == SeedStage.Mature)
                     continue;
 
-                // Update rain from current season
+                /* Update rain from current season */
                 s.RainScore = rainMap[s.Y, s.X];
 
                 int germT   = SpeciesGermSteps(s.SpeciesId);
@@ -119,7 +119,7 @@ namespace ARIA.Systems
                 float targetCumulative = 0.10f + 0.85f * quality;
                 s.SurvivalProb = Mathf.Pow(targetCumulative, 1f / Mathf.Max(matureT, 1));
 
-                // Natural mortality roll
+                /* Natural mortality roll */
                 if ((float)_rng.NextDouble() > s.SurvivalProb)
                 {
                     s.Stage = SeedStage.Dead;
@@ -160,14 +160,14 @@ namespace ARIA.Systems
             return (matured, reward);
         }
 
-        // Unlike natural mortality in Step(), this can kill a Mature tree too
-        // (goats) -- a deliberate Unity-only divergence from growth_engine.py's
-        // kill(), which no-ops on an already-mature seed (Python's living()
-        // never offers mature seeds to disturbance in the first place). Since
-        // that specific state is unreachable in the trained environment, there
-        // is no "real" reward value for it; reusing the same natural-death
-        // penalty here is the simplest consistent choice, not a parity claim.
-        // Returns the reward delta (0 if the seed was already dead).
+        /* Unlike natural mortality in Step(), this can kill a Mature tree too
+           (goats) -- a deliberate Unity-only divergence from growth_engine.py's
+           kill(), which no-ops on an already-mature seed (Python's living()
+           never offers mature seeds to disturbance in the first place). Since
+           that specific state is unreachable in the trained environment, there
+           is no "real" reward value for it; reusing the same natural-death
+           penalty here is the simplest consistent choice, not a parity claim.
+           Returns the reward delta (0 if the seed was already dead). */
         public float Kill(int seedId, int timestep, string reason = "disturbance")
         {
             if (!Seeds.TryGetValue(seedId, out var s)) return 0f;
@@ -216,7 +216,7 @@ namespace ARIA.Systems
             return result;
         }
 
-        // Everything not yet dead, including Mature -- used wherever disturbance can threaten trees.
+        /* Everything not yet dead, including Mature -- used wherever disturbance can threaten trees. */
         public List<Seed> Alive()
         {
             var result = new List<Seed>();
@@ -226,12 +226,12 @@ namespace ARIA.Systems
             return result;
         }
 
-        // Deliberately slowed down (roughly 2.5x the original steps) so
-        // growth reads as a genuine, gradual process rather than trees
-        // popping up within seconds of being planted -- a demo-pacing
-        // decision, not a training-parity value. Still comfortably inside
-        // MAX_STEPS (1800) so a normal-length episode has time to watch a
-        // seed actually reach Mature, not just Germinating/Seedling.
+        /* Deliberately slowed down (roughly 2.5x the original steps) so
+           growth reads as a genuine, gradual process rather than trees
+           popping up within seconds of being planted -- a demo-pacing
+           decision, not a training-parity value. Still comfortably inside
+           MAX_STEPS (1800) so a normal-length episode has time to watch a
+           seed actually reach Mature, not just Germinating/Seedling. */
         private static int SpeciesGermSteps(int speciesId) => speciesId switch
         {
             0 => 100,  // Eucalyptus globulus  -- fast

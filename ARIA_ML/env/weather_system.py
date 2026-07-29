@@ -12,7 +12,7 @@ from configs.config import (
     MAX_STEPS
 )
 
-# Season length derived from episode length and number of seasons
+""" Season length derived from episode length and number of seasons """
 _SEASON_LENGTH = MAX_STEPS // N_SEASONS
 
 
@@ -50,7 +50,7 @@ class WeatherSystem:
         timestep : int
             Current episode timestep — advances season every 80 steps.
         """
-        # Advance season based on episode length and number of seasons
+        """ Advance season based on episode length and number of seasons """
         self.current_season = (timestep // _SEASON_LENGTH) % N_SEASONS
 
         if rainfall_value < RAINFALL_SUNNY_THRESH:

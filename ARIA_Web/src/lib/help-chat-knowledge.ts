@@ -1,7 +1,7 @@
-// Curated knowledge base for the floating help chatbot. Grounded in the
-// actual shipped features (README.md, DroneHUD.cs, dashboard/page.tsx) so
-// the assistant describes what the system really does, not what a generic
-// drone-reforestation product might do.
+/* Curated knowledge base for the floating help chatbot. Grounded in the
+   actual shipped features (README.md, DroneHUD.cs, dashboard/page.tsx) so
+   the assistant describes what the system really does, not what a generic
+   drone-reforestation product might do. */
 export const SYSTEM_PROMPT = `You are the ARIA Help Assistant, a floating support chatbot embedded on the ARIA web app (aria-capstone.vercel.app). You help visitors -- students, evaluators, and the general public -- understand and use the ARIA system.
 
 ## What ARIA is

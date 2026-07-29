@@ -40,8 +40,8 @@ class MonitoringSystem:
         self.reseed_log    = []    # completed reseedings
         self.recommender   = recommender if recommender is not None else SpeciesRecommender()
         self.epsilon        = epsilon
-        # (x, y) -> {"features": np.ndarray, "species": int} for reseeds
-        # that have been dropped but not yet resolved (matured or died again).
+        """ (x, y) -> {"features": np.ndarray, "species": int} for reseeds
+           that have been dropped but not yet resolved (matured or died again). """
         self.pending_reseeds = {}
 
     def reset(self):
@@ -58,10 +58,10 @@ class MonitoringSystem:
         for fc in failed_cells:
             key = (fc["x"], fc["y"])
 
-            # If this cell was a pending reseed, its replacement just
-            # failed too -- that's a real (negative) outcome for the
-            # species we recommended last time. Feed it back before
-            # recommending again for this cell.
+            """ If this cell was a pending reseed, its replacement just
+               failed too -- that's a real (negative) outcome for the
+               species we recommended last time. Feed it back before
+               recommending again for this cell. """
             pending = self.pending_reseeds.pop(key, None)
             if pending is not None:
                 self.recommender.update(pending["features"], outcome=0.0)
@@ -72,12 +72,12 @@ class MonitoringSystem:
                 fc["recommended_species"] = species_id
                 fc["_recommend_features"] = feats
                 fc["predicted_survival"]  = predicted_survival
-                # Priority IS the recommender's predicted survival score for
-                # the species it just picked here, not a separate hardcoded
-                # formula. "Which cell to reseed first" and "will the species
-                # we'd plant there survive" are the same underlying question,
-                # so they now share one learned number instead of two
-                # disconnected ones (soil+rain average vs. the recommender).
+                """ Priority IS the recommender's predicted survival score for
+                   the species it just picked here, not a separate hardcoded
+                   formula. "Which cell to reseed first" and "will the species
+                   we'd plant there survive" are the same underlying question,
+                   so they now share one learned number instead of two
+                   disconnected ones (soil+rain average vs. the recommender). """
                 fc["priority"] = predicted_survival
                 self.reseed_queue.append(fc)
             self.failed_cells.append(fc)
@@ -137,9 +137,9 @@ class MonitoringSystem:
                 "features": match["_recommend_features"],
                 "species":  match.get("recommended_species"),
             }
-            # Diagnostic: this is the drone actually reaching and replanting
-            # a queued target, separate from whether that replant later
-            # resolves (see SpeciesRecommender.reseed_attempts docstring).
+            """ Diagnostic: this is the drone actually reaching and replanting
+               a queued target, separate from whether that replant later
+               resolves (see SpeciesRecommender.reseed_attempts docstring). """
             self.recommender.reseed_attempts += 1
 
         self.reseed_queue = [

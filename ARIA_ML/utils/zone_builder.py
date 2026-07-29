@@ -67,7 +67,7 @@ def run():
                      col*ZONE_SIZE:col*ZONE_SIZE+ZONE_SIZE]
         np_p = extract(no_plant, col, row)
 
-        # Pad rainfall if needed
+        """ Pad rainfall if needed """
         if rp.shape[1] < ZONE_SIZE or rp.shape[2] < ZONE_SIZE:
             tmp = np.zeros((rain.shape[0], ZONE_SIZE, ZONE_SIZE), dtype=rain.dtype)
             tmp[:, :rp.shape[1], :rp.shape[2]] = rp
@@ -98,7 +98,7 @@ def run():
               f"soil={tp[:,:,2].mean():.2f} slope={tp[:,:,1].mean():.2f} "
               f"rain={rp.mean():.2f} dist={dp.mean():.2f}")
 
-    # Save
+    """ Save """
     for prefix, tl, dl, ol, rl, nl in [
         ("train", tr_t, tr_d, tr_o, tr_r, tr_n),
         ("eval",  ev_t, ev_d, ev_o, ev_r, ev_n),

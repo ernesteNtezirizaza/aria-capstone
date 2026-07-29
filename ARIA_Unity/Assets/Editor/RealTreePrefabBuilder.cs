@@ -27,12 +27,12 @@ public static class RealTreePrefabBuilder
         var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
         if (instance == null) instance = Object.Instantiate(source);
 
-        // InstantiatePrefab keeps a live prefab-instance connection, which
-        // restricts structural changes like detaching a child onto a new
-        // root -- SetParent silently no-ops on the connected instance
-        // instead of erroring, which is why the first attempt at this
-        // produced prefabs with zero children. Unpacking fully severs that
-        // connection so normal reparenting actually takes effect.
+        /* InstantiatePrefab keeps a live prefab-instance connection, which
+           restricts structural changes like detaching a child onto a new
+           root -- SetParent silently no-ops on the connected instance
+           instead of erroring, which is why the first attempt at this
+           produced prefabs with zero children. Unpacking fully severs that
+           connection so normal reparenting actually takes effect. */
         PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
 
         bool anyFailed = false;

@@ -27,15 +27,15 @@ from configs.config import ZONES_DIR
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# The Unity Editor/WebGL build reads its StreamingAssets straight from the
-# project source, not from the already-built output under ARIA_Web/public --
-# writing there would only update a stale copy the next build immediately
-# overwrites. Assets/StreamingAssets/ is the one that actually matters.
+""" The Unity Editor/WebGL build reads its StreamingAssets straight from the
+   project source, not from the already-built output under ARIA_Web/public --
+   writing there would only update a stale copy the next build immediately
+   overwrites. Assets/StreamingAssets/ is the one that actually matters. """
 STREAMING_ASSETS_DIR = os.path.join(REPO_ROOT, "ARIA_Unity", "Assets", "StreamingAssets")
 
-# (split, array_index, output fileName) -- matches the existing deployed
-# zone_manifest.json exactly, so the demo's zone-switch button keeps cycling
-# through the same named zones after re-export.
+""" (split, array_index, output fileName) -- matches the existing deployed
+   zone_manifest.json exactly, so the demo's zone-switch button keeps cycling
+   through the same named zones after re-export. """
 TARGET_ZONES = [
     ("eval",  0, "aria_zone_eval_0.json"),
     ("eval",  1, "aria_zone_eval_1.json"),

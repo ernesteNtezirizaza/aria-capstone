@@ -52,8 +52,8 @@ plt.rcParams.update({
     "figure.dpi": 200, "savefig.dpi": 200, "axes.titleweight": "bold",
 })
 
-# A moderate common grid -- enough resolution for clear plots without the
-# memory cost of reprojecting every layer at full native resolution.
+""" A moderate common grid -- enough resolution for clear plots without the
+   memory cost of reprojecting every layer at full native resolution. """
 COLS, ROWS = 500, 430
 EXTENT = [RWANDA_BOUNDS["left"], RWANDA_BOUNDS["right"],
           RWANDA_BOUNDS["bottom"], RWANDA_BOUNDS["top"]]
@@ -88,8 +88,8 @@ def load_layers():
 
     print("Discovering soil layers (same glob as preprocess.py)...")
     soil_paths = sorted(glob.glob(os.path.join(SOIL_DIR, "rwanda_soil_*.tif")))
-    # Nitrogen excluded at discovery -- see the matching comment in
-    # utils/preprocess.py for why.
+    """ Nitrogen excluded at discovery -- see the matching comment in
+       utils/preprocess.py for why. """
     soil_paths = [p for p in soil_paths if "nitrogen" not in os.path.basename(p).lower()]
     if not soil_paths:
         raise FileNotFoundError(f"No rwanda_soil_*.tif files found in {SOIL_DIR}")
@@ -104,9 +104,9 @@ def load_layers():
         if mx > mn:
             layer = (layer - mn) / (mx - mn)
         soil_layers.append(layer)
-    # Same expected edge case as config.py's derivation: pixels with no
-    # valid data in ANY soil layer (water bodies) are legitimately NaN --
-    # not a bug, suppressed deliberately rather than left unexplained.
+    """ Same expected edge case as config.py's derivation: pixels with no
+       valid data in ANY soil layer (water bodies) are legitimately NaN --
+       not a bug, suppressed deliberately rather than left unexplained. """
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="Mean of empty slice")
         soil_composite = np.nanmean(np.stack(soil_layers), axis=0)

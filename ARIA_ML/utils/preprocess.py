@@ -46,11 +46,11 @@ REF_TRANSFORM = from_bounds(
     GRID_COLS, GRID_ROWS,
 )
 
-# ── Named constants -----------------------------------------------------
-# ESA WorldCover class codes -> a rough [0,1] "how plantable is this
-# land cover" score. 0 = unsuitable/already built or water, 1 = ideal
-# open/grass/cropland for new tree planting. Codes match the ESA
-# WorldCover 10m v200 legend (https://esa-worldcover.org).
+""" ── Named constants -----------------------------------------------------
+   ESA WorldCover class codes -> a rough [0,1] "how plantable is this
+   land cover" score. 0 = unsuitable/already built or water, 1 = ideal
+   open/grass/cropland for new tree planting. Codes match the ESA
+   WorldCover 10m v200 legend (https://esa-worldcover.org). """
 LANDCOVER_SUITABILITY = {
     10: 0.3,   # Tree cover        -- already forested, lower priority
     20: 0.8,   # Shrubland         -- good candidate
@@ -65,37 +65,37 @@ LANDCOVER_SUITABILITY = {
     100: 0.4,  # Moss/lichen       -- marginal
 }
 
-# compute_soil(): the original 4 core soil variables keep their
-# domain-informed relative weights (soil organic carbon matters most
-# for fertility, then pH, then texture), scaled to sum to 0.85 instead
-# of 1.0 so any additional discovered layers (nitrogen, carbon, ...)
-# can share the remaining 0.15 -- see compute_soil()'s docstring for
-# the full reasoning.
+""" compute_soil(): the original 4 core soil variables keep their
+   domain-informed relative weights (soil organic carbon matters most
+   for fertility, then pH, then texture), scaled to sum to 0.85 instead
+   of 1.0 so any additional discovered layers (nitrogen, carbon, ...)
+   can share the remaining 0.15 -- see compute_soil()'s docstring for
+   the full reasoning. """
 SOIL_CORE_WEIGHTS = {"soc": 0.40, "ph": 0.25, "clay": 0.20, "sand": 0.15}
 SOIL_EXTRA_LAYER_BUDGET = 0.15  # total weight shared by any non-core layers found
 
-# SoilGrids stores pH as pH x10 (e.g. 65 = pH 6.5); after normalisation
-# to [0,1] via norm(), a pH of 6.5 (the middle of the ideal 6.0-7.0
-# range most crops/trees tolerate) sits at approximately 0.65. Distance
-# from this ideal, not the raw value, is what predicts fertility --
-# both very acidic and very alkaline soil are worse than neutral.
+""" SoilGrids stores pH as pH x10 (e.g. 65 = pH 6.5); after normalisation
+   to [0,1] via norm(), a pH of 6.5 (the middle of the ideal 6.0-7.0
+   range most crops/trees tolerate) sits at approximately 0.65. Distance
+   from this ideal, not the raw value, is what predicts fertility --
+   both very acidic and very alkaline soil are worse than neutral. """
 SOIL_IDEAL_PH_NORMALISED = 0.65
 
-# compute_disturbance(): converts distance-from-protected-area (metres)
-# into a proximity score via 1 / (1 + distance / DECAY_METRES). This
-# constant sets how quickly protection "fades" with distance -- at
-# DECAY_METRES away, proximity has already dropped to 0.5; by 5x that
-# distance it is under 0.2. 20m keeps the effect tightly local to
-# actual reserve boundaries rather than influencing placement decisions
-# kilometres away.
+""" compute_disturbance(): converts distance-from-protected-area (metres)
+   into a proximity score via 1 / (1 + distance / DECAY_METRES). This
+   constant sets how quickly protection "fades" with distance -- at
+   DECAY_METRES away, proximity has already dropped to 0.5; by 5x that
+   distance it is under 0.2. 20m keeps the effect tightly local to
+   actual reserve boundaries rather than influencing placement decisions
+   kilometres away. """
 DISTURBANCE_DECAY_METRES = 20.0
 
-# compute_obstacle(): blend weight between "terrain is too steep to
-# safely fly/land" (a hard, well-defined threshold) and "local
-# elevation is turbulent" (a softer proxy for unpredictable air/ground
-# conditions near ridges and cliffs). Weighted toward slope because
-# slope is a direct, physically-grounded hazard signal; turbulence is
-# a secondary indicator layered on top of it, not an equal partner.
+""" compute_obstacle(): blend weight between "terrain is too steep to
+   safely fly/land" (a hard, well-defined threshold) and "local
+   elevation is turbulent" (a softer proxy for unpredictable air/ground
+   conditions near ridges and cliffs). Weighted toward slope because
+   slope is a direct, physically-grounded hazard signal; turbulence is
+   a secondary indicator layered on top of it, not an equal partner. """
 OBSTACLE_SLOPE_WEIGHT = 0.7
 OBSTACLE_TURBULENCE_WEIGHT = 0.3
 
@@ -265,7 +265,7 @@ def compute_obstacle(slope_deg, elev_norm):
     Values close to 1.0 = obstacle present.
     """
     slope_obstacle = (slope_deg > MAX_SLOPE_DEG).astype(np.float32)
-    # Elevation variance in a 3x3 neighbourhood as a turbulence proxy.
+    """ Elevation variance in a 3x3 neighbourhood as a turbulence proxy. """
     elev_clean = sanitise(elev_norm)
     elev_local_mean = uniform_filter(elev_clean, size=3)
     turbulence = np.abs(elev_clean - elev_local_mean)
@@ -278,10 +278,10 @@ def compute_obstacle(slope_deg, elev_norm):
     return obstacle.astype(np.float32)
 
 
-# ── Pipeline steps --------------------------------------------------------
-# Each step function does exactly one thing and returns exactly what
-# later steps or run()'s final summary need, instead of one long
-# procedural script mixing I/O, computation, and logging together.
+""" ── Pipeline steps --------------------------------------------------------
+   Each step function does exactly one thing and returns exactly what
+   later steps or run()'s final summary need, instead of one long
+   procedural script mixing I/O, computation, and logging together. """
 
 def _load_elevation():
     """Loads and normalises the DEM. Returns (elevation_norm, elev_min,
@@ -303,11 +303,11 @@ def _load_soil():
     soil composite via compute_soil(). Returns the composite array.
     """
     soil_paths = sorted(glob.glob(os.path.join(SOIL_DIR, "rwanda_soil_*.tif")))
-    # Nitrogen excluded here at discovery, not later at composite-build
-    # time -- it's 70.9% NaN/invalid after clipping to Rwanda bounds
-    # (CRS/extent mismatch against the other soil layers) and should
-    # never be loaded, computed, or referenced anywhere in the project,
-    # not just skipped from the composite.
+    """ Nitrogen excluded here at discovery, not later at composite-build
+       time -- it's 70.9% NaN/invalid after clipping to Rwanda bounds
+       (CRS/extent mismatch against the other soil layers) and should
+       never be loaded, computed, or referenced anywhere in the project,
+       not just skipped from the composite. """
     soil_paths = [p for p in soil_paths if "nitrogen" not in os.path.basename(p).lower()]
     if not soil_paths:
         raise FileNotFoundError(f"No rwanda_soil_*.tif files found in {SOIL_DIR}")
@@ -317,19 +317,19 @@ def _load_soil():
     soil_layers = {}
     excluded_layers = []
     for path in soil_paths:
-        # "rwanda_soil_clay.tif" -> "clay", "rwanda_soil_nitrogen.tif" -> "nitrogen"
+        """ "rwanda_soil_clay.tif" -> "clay", "rwanda_soil_nitrogen.tif" -> "nitrogen" """
         key = os.path.basename(path).replace("rwanda_soil_", "").replace(".tif", "")
         raw = resample(path)
         valid_frac = np.isfinite(raw).mean()
         if valid_frac < 0.5 and key not in ("clay", "ph", "sand", "soc"):
-            # compute_soil() combines extra layers (nitrogen, carbon, ...)
-            # via plain addition, not nanmean -- it does NOT skip NaN
-            # per-pixel. A layer this sparse doesn't just "contribute
-            # less", it propagates NaN through the sum everywhere it's
-            # missing, and sanitise() later converts that NaN to 0.0 --
-            # the WORST possible soil score, not "no data". Excluding
-            # the bad layer here, before compute_soil() ever sees it,
-            # is a correctness fix, not just a cleaner warning.
+            """ compute_soil() combines extra layers (nitrogen, carbon, ...)
+               via plain addition, not nanmean -- it does NOT skip NaN
+               per-pixel. A layer this sparse doesn't just "contribute
+               less", it propagates NaN through the sum everywhere it's
+               missing, and sanitise() later converts that NaN to 0.0 --
+               the WORST possible soil score, not "no data". Excluding
+               the bad layer here, before compute_soil() ever sees it,
+               is a correctness fix, not just a cleaner warning. """
             log.info(f"  EXCLUDED soil_{key} from composite "
                       f"({100*(1-valid_frac):.1f}% invalid)")
             excluded_layers.append(key)

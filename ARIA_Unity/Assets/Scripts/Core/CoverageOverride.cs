@@ -34,12 +34,12 @@ namespace ARIA.Core
         private static int _pointer;
         private static ZoneData _plannedZone;
 
-        // Detects a reseed target the drone can't actually make progress
-        // toward (most commonly one that's obstacle-blocked from every
-        // approach angle). rwanda_env.py has no equivalent give-up logic,
-        // but nothing there can get stuck in the first place -- this is a
-        // Unity-only safety valve for a genuinely unreachable target, not a
-        // training-behavior deviation.
+        /* Detects a reseed target the drone can't actually make progress
+           toward (most commonly one that's obstacle-blocked from every
+           approach angle). rwanda_env.py has no equivalent give-up logic,
+           but nothing there can get stuck in the first place -- this is a
+           Unity-only safety valve for a genuinely unreachable target, not a
+           training-behavior deviation. */
         private static (int x, int y) _lastReseedTarget = (-1, -1);
         private static (int x, int y) _lastDronePos = (-1, -1);
         private static int _stuckSteps = 0;
@@ -80,9 +80,9 @@ namespace ARIA.Core
 
             if (s.ReseedingTargets.Count > 0)
             {
-                // Nearest queued target by Manhattan distance, matching
-                // rwanda_env.py's min(reseeding_targets, key=lambda t: abs(t[0]-y)+abs(t[1]-x))
-                // exactly -- not just the first one found in iteration order.
+                /* Nearest queued target by Manhattan distance, matching
+                   rwanda_env.py's min(reseeding_targets, key=lambda t: abs(t[0]-y)+abs(t[1]-x))
+                   exactly -- not just the first one found in iteration order. */
                 (int y, int x) target = default;
                 int bestDist = int.MaxValue;
                 foreach (var t in s.ReseedingTargets)
@@ -106,7 +106,7 @@ namespace ARIA.Core
                     s.ReseedSpeciesMap.Remove(target);
                     _stuckSteps = 0;
                     _lastReseedTarget = (-1, -1);
-                    // Fall through to the coverage sweep this step instead.
+                    /* Fall through to the coverage sweep this step instead. */
                 }
                 else
                 {
@@ -145,7 +145,7 @@ namespace ARIA.Core
             suppressSeeding = chebyshev > 1; // this move won't land exactly on the target yet
 
             int dirIdx = DirIndexFor(dy, dx);
-            // Reseed targets carry MonitoringSystem's better-suited species recommendation.
+            /* Reseed targets carry MonitoringSystem's better-suited species recommendation. */
             int speciesId = forcedSpecies ?? BestSpeciesFor(s.Zone, tx, ty);
             action = dirIdx * ARIAConstants.N_SPECIES + speciesId;
             return true;
@@ -187,10 +187,10 @@ namespace ARIA.Core
             _lastReseedTarget = (-1, -1);
             _lastDronePos = (-1, -1);
             _stuckSteps = 0;
-            // _targets/_pointer/_plannedZone deliberately NOT reset here --
-            // PlanForZone() only replans when the zone actually changes, so
-            // a mid-mission reseed-triggered Reset() shouldn't restart the
-            // sweep from the top.
+            /* _targets/_pointer/_plannedZone deliberately NOT reset here --
+               PlanForZone() only replans when the zone actually changes, so
+               a mid-mission reseed-triggered Reset() shouldn't restart the
+               sweep from the top. */
         }
     }
 }

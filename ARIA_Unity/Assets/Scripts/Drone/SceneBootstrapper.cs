@@ -132,52 +132,52 @@ namespace ARIA.Drone
             GameObject lightObj = new GameObject("Directional Light");
             var light = lightObj.AddComponent<Light>();
             light.type = LightType.Directional;
-            // Confirmed live twice now, on two different lit objects: 1.25
-            // intensity + the trilight ambient originally here washed out
-            // the terrain (since fixed by making terrain Unlit, which sidesteps
-            // this entirely), and the still-lit real tree canopies later
-            // showed the exact same white/washed-out symptom. The actual
-            // arithmetic was never fixed, only worked around for terrain:
-            // Standard shader is albedo * (direct*NdotL + ambient), and even
-            // at 0.85 intensity, direct*NdotL (~0.85*0.9 ~= 0.77) plus flat
-            // ambient (0.30) totals ~1.07 -- already past 1.0 before the
-            // albedo multiply, so anything with a moderately bright colour
-            // (like the tree species tints) clips straight to white. Cut
-            // hard enough that direct + ambient stays comfortably under 1.0
-            // even at a near-vertical NdotL.
+            /* Confirmed live twice now, on two different lit objects: 1.25
+               intensity + the trilight ambient originally here washed out
+               the terrain (since fixed by making terrain Unlit, which sidesteps
+               this entirely), and the still-lit real tree canopies later
+               showed the exact same white/washed-out symptom. The actual
+               arithmetic was never fixed, only worked around for terrain:
+               Standard shader is albedo * (direct*NdotL + ambient), and even
+               at 0.85 intensity, direct*NdotL (~0.85*0.9 ~= 0.77) plus flat
+               ambient (0.30) totals ~1.07 -- already past 1.0 before the
+               albedo multiply, so anything with a moderately bright colour
+               (like the tree species tints) clips straight to white. Cut
+               hard enough that direct + ambient stays comfortably under 1.0
+               even at a near-vertical NdotL. */
             light.intensity = 0.55f;
             light.color = new Color(1f, 0.97f, 0.92f); // warm sunlight, not flat white
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.8f;
             lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
-            // Binds the procedural skybox's sun disk to this light -- without
-            // this, the directional light casts no shadows at all (Unity's
-            // default for a freshly-added Light is LightShadows.None).
+            /* Binds the procedural skybox's sun disk to this light -- without
+               this, the directional light casts no shadows at all (Unity's
+               default for a freshly-added Light is LightShadows.None). */
             RenderSettings.sun = light;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.18f, 0.19f, 0.21f);
 
-            // Confirmed live, separately from the light/ambient fix above:
-            // the terrain was STILL washed out pale after that fix, because
-            // fogStartDistance (0.6x zone size = 72) sat almost right at the
-            // orbit camera's own distance from its target (dist = half*1.333
-            // = ~80) -- meaning most of the visible terrain was already deep
-            // into the fog gradient, blending toward the pale fog colour
-            // across the whole primary view, not just a distant horizon.
-            // Pushed both distances well past any normal viewing range so
-            // fog only fades in at the far horizon, not across the terrain
-            // actually being watched.
-            // Disabled entirely: measured actual rendered pixel colours
-            // directly from a screenshot against the logged, correct
-            // texture data (avg ~(117,112,71)) and found most on-screen
-            // terrain pixels running 180-255, nowhere close, even under a
-            // dedicated Unlit material. Root cause: Unity's built-in
-            // Unlit/Texture shader still applies fog blending in its
-            // fragment shader (UNITY_APPLY_FOG) despite having zero
-            // lighting response -- "unlit" only means no lighting, not no
-            // fog. Pushing fogStartDistance/fogEndDistance further out
-            // didn't fully solve it, so fog is off rather than tuned again.
+            /* Confirmed live, separately from the light/ambient fix above:
+               the terrain was STILL washed out pale after that fix, because
+               fogStartDistance (0.6x zone size = 72) sat almost right at the
+               orbit camera's own distance from its target (dist = half*1.333
+               = ~80) -- meaning most of the visible terrain was already deep
+               into the fog gradient, blending toward the pale fog colour
+               across the whole primary view, not just a distant horizon.
+               Pushed both distances well past any normal viewing range so
+               fog only fades in at the far horizon, not across the terrain
+               actually being watched.
+               Disabled entirely: measured actual rendered pixel colours
+               directly from a screenshot against the logged, correct
+               texture data (avg ~(117,112,71)) and found most on-screen
+               terrain pixels running 180-255, nowhere close, even under a
+               dedicated Unlit material. Root cause: Unity's built-in
+               Unlit/Texture shader still applies fog blending in its
+               fragment shader (UNITY_APPLY_FOG) despite having zero
+               lighting response -- "unlit" only means no lighting, not no
+               fog. Pushing fogStartDistance/fogEndDistance further out
+               didn't fully solve it, so fog is off rather than tuned again. */
             RenderSettings.fog = false;
         }
 
@@ -188,8 +188,8 @@ namespace ARIA.Drone
             if (cam != null)
             {
                 camObj = cam.gameObject;
-                // Strip any leftover camera-control components from
-                // earlier attempts so they don't fight this one.
+                /* Strip any leftover camera-control components from
+                   earlier attempts so they don't fight this one. */
                 var oldOrbit = camObj.GetComponent<TerrainOrbitCamera>();
                 if (oldOrbit != null) Destroy(oldOrbit);
             }
@@ -227,7 +227,7 @@ namespace ARIA.Drone
                 esObj.AddComponent<StandaloneInputModule>();
             }
 
-            // ── Canvas ──
+            /* ── Canvas ── */
             GameObject canvasObj = new GameObject("HUD Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;

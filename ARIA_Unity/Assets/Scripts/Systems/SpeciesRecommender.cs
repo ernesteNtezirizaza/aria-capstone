@@ -53,7 +53,7 @@ namespace ARIA.Systems
             NUpdates = 0;
         }
 
-        // Box-Muller, since System.Random has no built-in Gaussian sampler.
+        /* Box-Muller, since System.Random has no built-in Gaussian sampler. */
         private double NextGaussian()
         {
             double u1 = 1.0 - _rng.NextDouble();

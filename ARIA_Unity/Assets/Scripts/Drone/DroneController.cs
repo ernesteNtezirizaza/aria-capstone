@@ -87,11 +87,11 @@ namespace ARIA.Drone
         private bool  _stepLoopEnabled; // true only once intro (if any) has finished
         private bool  _switchingZone;
 
-        // Persists across every episode restart and zone switch (unlike
-        // EpisodeState/MonitoringSystem, which are recreated per episode) --
-        // this is what actually lets the reseed recommender keep learning
-        // across a whole play session instead of resetting to random
-        // weights every time StartNewEpisode() runs.
+        /* Persists across every episode restart and zone switch (unlike
+           EpisodeState/MonitoringSystem, which are recreated per episode) --
+           this is what actually lets the reseed recommender keep learning
+           across a whole play session instead of resetting to random
+           weights every time StartNewEpisode() runs. */
         private SpeciesRecommender _speciesRecommender;
 
         private Vector3 _moveFrom, _moveTo;
@@ -123,17 +123,17 @@ namespace ARIA.Drone
 
         private IEnumerator InitializeAll()
         {
-            // Load the pretrained recommender FIRST and wait for it, so that
-            // by the time InitializeZones() reaches StartNewEpisode(), a
-            // real (or explicitly default) SpeciesRecommender already
-            // exists -- StartNewEpisode() must never race ahead of this.
+            /* Load the pretrained recommender FIRST and wait for it, so that
+               by the time InitializeZones() reaches StartNewEpisode(), a
+               real (or explicitly default) SpeciesRecommender already
+               exists -- StartNewEpisode() must never race ahead of this. */
             yield return LoadSpeciesRecommender();
             yield return InitializeZones();
         }
 
-        // Application.streamingAssetsPath is a URL on WebGL (not a real filesystem
-        // path), so this goes through UnityWebRequest, same as RealZoneLoader --
-        // System.IO.File would silently fail there.
+        /* Application.streamingAssetsPath is a URL on WebGL (not a real filesystem
+           path), so this goes through UnityWebRequest, same as RealZoneLoader --
+           System.IO.File would silently fail there. */
         private IEnumerator LoadSpeciesRecommender()
         {
             string path = System.IO.Path.Combine(Application.streamingAssetsPath, speciesRecommenderFileName);
@@ -177,7 +177,7 @@ namespace ARIA.Drone
             }
             else
             {
-                // Fallback: single-zone mode, no manifest available.
+                /* Fallback: single-zone mode, no manifest available. */
                 yield return RealZoneLoader.LoadAsync(fallbackZoneFileName, (zone, meta) =>
                 {
                     _currentZoneData = zone;
@@ -292,7 +292,7 @@ namespace ARIA.Drone
             transform.rotation = Quaternion.LookRotation(climbDirection, Vector3.up);
             _moveFrom = _moveTo = transform.position;
 
-            // Phase 1: vertical liftoff, straight up
+            /* Phase 1: vertical liftoff, straight up */
             float liftoffDuration = Mathf.Max(0.6f, takeoffDuration * 0.3f);
             float liftoffHeight = 4f * cellSize;
             Vector3 liftoffPos = groundPos + Vector3.up * liftoffHeight;
@@ -306,7 +306,7 @@ namespace ARIA.Drone
             }
             transform.position = liftoffPos;
 
-            // Phase 2: forward + upward climb into hover position
+            /* Phase 2: forward + upward climb into hover position */
             float climbDuration = Mathf.Max(0.4f, takeoffDuration - liftoffDuration);
             t = 0f;
             while (t < climbDuration)
@@ -399,10 +399,10 @@ namespace ARIA.Drone
             LastResult = result;
             State.LastResult = result; // keep EpisodeState in sync for TerrainRenderer etc.
 
-            // Real per-step reward, computed in ActionDispatcher.Step() to
-            // mirror rwanda_env.py's step()/reward_function.py exactly --
-            // replaces an earlier flat +1.0/-0.5-style approximation that
-            // didn't match the trained policy's actual reward formula.
+            /* Real per-step reward, computed in ActionDispatcher.Step() to
+               mirror rwanda_env.py's step()/reward_function.py exactly --
+               replaces an earlier flat +1.0/-0.5-style approximation that
+               didn't match the trained policy's actual reward formula. */
             CumulativeReward += result.Reward;
 
             if (result.SeedDropped)
@@ -419,12 +419,12 @@ namespace ARIA.Drone
 
             if (result.EmergencyLand)
             {
-                // Battery-critical termination fires wherever the drone
-                // happens to be, matching rwanda_env.py exactly -- there is
-                // no scripted flight home first. So "return to the ground"
-                // here means descend straight down at its current grid
-                // position, not teleport to the helipad; teleporting home
-                // implied a return flight that never actually happened.
+                /* Battery-critical termination fires wherever the drone
+                   happens to be, matching rwanda_env.py exactly -- there is
+                   no scripted flight home first. So "return to the ground"
+                   here means descend straight down at its current grid
+                   position, not teleport to the helipad; teleporting home
+                   implied a return flight that never actually happened. */
                 Vector3 groundPos = GridToWorld(State.X, State.Y, 0f, minHeightFloor: false);
                 transform.position = groundPos;
                 _moveFrom = _moveTo = groundPos;
@@ -471,7 +471,7 @@ namespace ARIA.Drone
 
         private Vector3 GridToWorld(int gridX, int gridY, float altitude, bool minHeightFloor = true)
         {
-            // Skipped while returning to base so the drone actually descends to the ground.
+            /* Skipped while returning to base so the drone actually descends to the ground. */
             float y = minHeightFloor ? 10f + (altitude * altitudeWorldScale) : altitude * altitudeWorldScale;
             return new Vector3(gridX * cellSize, y, gridY * cellSize);
         }

@@ -76,7 +76,7 @@ class _Compat5Env(_gym.Env):
         return self._env.render()
 
 
-# ── Policy configuration - single source of truth ─────────────────
+""" ── Policy configuration - single source of truth ───────────────── """
 PPO_POLICY    = "MultiInputPolicy"
 PPO_NET_ARCH  = dict(pi=[256, 256], vf=[256, 256])
 PPO_VF_COEF   = 0.5
@@ -89,7 +89,7 @@ os.makedirs(CHECKPOINTS_DIR, exist_ok=True)
 os.makedirs(PLOTS_DIR,       exist_ok=True)
 os.makedirs(METRICS_DIR,     exist_ok=True)
 
-# ── Curriculum zone ordering - derived from zone registry ──────────
+""" ── Curriculum zone ordering - derived from zone registry ────────── """
 def _build_curriculum_order():
     """Sort training zone indices by composite ecological suitability
     (soil + rain - slope, same weighting as ZONE_SUITABILITY_WEIGHTS),
@@ -114,7 +114,7 @@ def _build_curriculum_order():
             slope_pen = min(z["mean_slope"] * 90.0 / MAX_SLOPE_DEG, 1.0)
             return (w["soil"]*z["mean_soil"] + w["rain"]*z["mean_rain"]
                     - w["slope"]*slope_pen) / (w["soil"]+w["rain"]+w["slope"])
-        # Old registry without rain/slope fields -- soil-only fallback.
+        """ Old registry without rain/slope fields -- soil-only fallback. """
         return z["mean_soil"] + (1.0 - z["mean_dist"])
 
     train_zones.sort(key=_score, reverse=True)
@@ -123,7 +123,7 @@ def _build_curriculum_order():
 CURRICULUM_ZONE_ORDER = _build_curriculum_order()
 
 
-# ── Curriculum environment ─────────────────────────────────────────
+""" ── Curriculum environment ───────────────────────────────────────── """
 class CurriculumEnv(RwandaReforestEnv):
     """
     Wraps RwandaReforestEnv to implement zone curriculum.
@@ -144,7 +144,7 @@ class CurriculumEnv(RwandaReforestEnv):
         return obs, info
 
 
-# ── Curriculum progress callback ───────────────────────────────────
+""" ── Curriculum progress callback ─────────────────────────────────── """
 class CurriculumCallback(BaseCallback):
     """Updates curriculum_progress on all envs every step."""
     def __init__(self, total_timesteps: int):
@@ -161,13 +161,13 @@ class CurriculumCallback(BaseCallback):
         return True
 
 
-# ── Zone-selector environment ──────────────────────────────────────
-# This is the piece that was actually missing: "which zone should the
-# drone be deployed to" is now a genuine learned decision (env/zone_selector.py),
-# not domain randomisation and not a hand-sorted curriculum list. A single
-# ZoneSelector instance is shared across all N_ENVS workers (they run in
-# the same process under DummyVecEnv), so it keeps learning across every
-# episode any worker completes.
+""" ── Zone-selector environment ──────────────────────────────────────
+   This is the piece that was actually missing: "which zone should the
+   drone be deployed to" is now a genuine learned decision (env/zone_selector.py),
+   not domain randomisation and not a hand-sorted curriculum list. A single
+   ZoneSelector instance is shared across all N_ENVS workers (they run in
+   the same process under DummyVecEnv), so it keeps learning across every
+   episode any worker completes. """
 from env.zone_selector import ZoneSelector
 from env.species_recommender import SpeciesRecommender
 
@@ -214,7 +214,7 @@ class ZoneSelectorEnv(RwandaReforestEnv):
         return obs, reward, terminated, truncated, info
 
 
-# ── Entropy tracking callback ──────────────────────────────────────
+""" ── Entropy tracking callback ────────────────────────────────────── """
 class EntropyCallback(BaseCallback):
     """
     Records policy entropy and mean reward at every rollout boundary.
@@ -252,8 +252,8 @@ class EntropyCallback(BaseCallback):
             self.reward_log.append(float(logs["rollout/ep_rew_mean"]))
             self.steps_log.append(self.num_timesteps)
         elif not self._logged_diagnostic and self.num_timesteps > 0:
-            # Only fires once per experiment, and only if we genuinely
-            # never found anything -- avoids spamming the log.
+            """ Only fires once per experiment, and only if we genuinely
+               never found anything -- avoids spamming the log. """
             self._logged_diagnostic = True
             print(f"   [EntropyCallback diagnostic] entropy/reward keys not "
                   f"found yet at timestep {self.num_timesteps}. "
@@ -271,7 +271,7 @@ class EntropyCallback(BaseCallback):
         return True
 
 
-# ── 5 Experiments ─────────────────────────────────────────────
+""" ── 5 Experiments ───────────────────────────────────────────── """
 PPO_EXPERIMENTS = [
     # ── Spacing parameter sweep ──────────────────────────────────
     # Two separate reward redesigns (a linear continuous curve, then a
@@ -399,7 +399,7 @@ def _smart_truncate(text: str, maxlen: int) -> str:
     return truncated + "..."
 
 
-# ── Single experiment training ─────────────────────────────────────
+""" ── Single experiment training ───────────────────────────────────── """
 def train_experiment(cfg: dict, output_dir: str = None) -> dict:
     """
     Train one PPO experiment and return result dict.
@@ -420,9 +420,9 @@ def train_experiment(cfg: dict, output_dir: str = None) -> dict:
     use_curriculum    = cfg.get("use_curriculum", False)
     use_zone_selector = cfg.get("use_zone_selector", False)
 
-    # Per-experiment spacing overrides for parameter sweeps -- None means
-    # "use the global config.py default", so every experiment that
-    # doesn't set these behaves exactly as it always has.
+    """ Per-experiment spacing overrides for parameter sweeps -- None means
+       "use the global config.py default", so every experiment that
+       doesn't set these behaves exactly as it always has. """
     sweep_min_spacing = cfg.get("min_seed_spacing", None)
     sweep_w_spacing    = cfg.get("w_spacing", None)
     sweep_reward_weights = None
@@ -441,7 +441,7 @@ def train_experiment(cfg: dict, output_dir: str = None) -> dict:
               f"w_spacing={sweep_w_spacing if sweep_w_spacing is not None else '(default)'}")
     print(f"   Timesteps: {TOTAL_TIMESTEPS:,}")
 
-    # ── Environment factory ────────────────────────────────────────
+    """ ── Environment factory ──────────────────────────────────────── """
     if use_zone_selector:
         def make_train_env():
             return ZoneSelectorEnv(split="train", selector=SHARED_ZONE_SELECTOR,
@@ -485,7 +485,7 @@ def train_experiment(cfg: dict, output_dir: str = None) -> dict:
     if use_curriculum:
         callbacks.append(CurriculumCallback(total_timesteps=TOTAL_TIMESTEPS))
 
-    # ── PPO model - policy and architecture defined here ──────────
+    """ ── PPO model - policy and architecture defined here ────────── """
     model = PPO(
         policy=PPO_POLICY,          # "MultiInputPolicy" for Dict obs spaces
         env=train_env,
@@ -528,11 +528,11 @@ def train_experiment(cfg: dict, output_dir: str = None) -> dict:
     train_env.close()
     eval_env.close()
 
-    # Aggressively clean intermediate checkpoints to save disk space
+    """ Aggressively clean intermediate checkpoints to save disk space """
     import glob as _glob
     for _f in _glob.glob(os.path.join(ckpt_dir, "ppo_exp*.zip")):
         os.remove(_f)
-    # Also clean from CHECKPOINTS_DIR
+    """ Also clean from CHECKPOINTS_DIR """
     for _f in _glob.glob(os.path.join(CHECKPOINTS_DIR, f"ppo_exp_{exp_id}", "ppo_exp*.zip")):
         os.remove(_f)
 
@@ -567,7 +567,7 @@ def train_experiment(cfg: dict, output_dir: str = None) -> dict:
     return result
 
 
-# ── Generalisation test ────────────────────────────────────────────
+""" ── Generalisation test ──────────────────────────────────────────── """
 def generalisation_test(best_ckpt_dir: str) -> dict:
     """Test best model on all 6 held-out eval zones. Saves CSV."""
     print("\nRunning generalisation test on 6 held-out eval zones...")
@@ -603,8 +603,8 @@ def generalisation_test(best_ckpt_dir: str) -> dict:
                 done   = False
                 info   = {}
                 while not done:
-                    # deterministic=False: stochastic policy for generalisation
-                    # prevents EMERGENCY collapse on unseen eval zones
+                    """ deterministic=False: stochastic policy for generalisation
+                       prevents EMERGENCY collapse on unseen eval zones """
                     action, _ = model.predict(obs, deterministic=False)
                     obs, _, terminated, truncated, info = env.step(int(action))
                     done = terminated or truncated
@@ -620,7 +620,7 @@ def generalisation_test(best_ckpt_dir: str) -> dict:
                 pct = results[label].get(PRIMARY_METRIC, 0.0)
                 print(f"{PRIMARY_METRIC} = {pct:.3f}")
             else:
-                # Diagnostic: find out what action the agent takes on this zone
+                """ Diagnostic: find out what action the agent takes on this zone """
                 print("no metrics - running action diagnostic...")
                 from collections import Counter as _Counter
                 _env2 = RwandaReforestEnv(zone_id=idx, split="eval", seed=42,
@@ -645,7 +645,7 @@ def generalisation_test(best_ckpt_dir: str) -> dict:
             print(f"skipped - {e}")
             continue
 
-    # Save as CSV
+    """ Save as CSV """
     csv_path = os.path.join(METRICS_DIR, "generalisation.csv")
     if results:
         fieldnames = ["zone"] + list(next(iter(results.values())).keys())
@@ -658,7 +658,7 @@ def generalisation_test(best_ckpt_dir: str) -> dict:
     return results
 
 
-# ── Plot 1 - Cumulative reward curves ─────────────────────────────
+""" ── Plot 1 - Cumulative reward curves ───────────────────────────── """
 def plot_cumulative_rewards(all_results: list):
     fig, axes = plt.subplots(1, N_EXPERIMENTS, figsize=(5.0 * N_EXPERIMENTS, 7.5), dpi=200)
     fig.suptitle(
@@ -711,14 +711,14 @@ def plot_cumulative_rewards(all_results: list):
     print(f" Plot 1 saved: {path}")
 
 
-# ── Plot 2 - Entropy curves ────────────────────────────────────────
+""" ── Plot 2 - Entropy curves ──────────────────────────────────────── """
 def plot_entropy_curves(all_results: list):
-    # Previously grouped by ent_coef == 0.0 vs > 0.0 -- stale from an earlier
-    # version of PPO_EXPERIMENTS. All 5 current experiments use ent_coef=0.10,
-    # so that grouping always left one panel empty and mislabeled the other
-    # ("ent_coef = 0.01" when the real value is 0.10). Regrouped by what
-    # actually varies now: domain randomisation vs curriculum vs learned
-    # zone selection.
+    """ Previously grouped by ent_coef == 0.0 vs > 0.0 -- stale from an earlier
+       version of PPO_EXPERIMENTS. All 5 current experiments use ent_coef=0.10,
+       so that grouping always left one panel empty and mislabeled the other
+       ("ent_coef = 0.01" when the real value is 0.10). Regrouped by what
+       actually varies now: domain randomisation vs curriculum vs learned
+       zone selection. """
     fig, ax = plt.subplots(figsize=(13, 7), dpi=200)
     fig.suptitle(
         "ARIA PPO — Policy Gradient Entropy Curves\n"
@@ -767,7 +767,7 @@ def plot_entropy_curves(all_results: list):
     print(f" Plot 2 saved: {path}")
 
 
-# ── Plot 3 - Convergence comparison ───────────────────────────────
+""" ── Plot 3 - Convergence comparison ─────────────────────────────── """
 def plot_convergence(all_results: list):
     fig, ax = plt.subplots(figsize=(15, 7.5), dpi=200)
     ax.set_title(
@@ -777,7 +777,7 @@ def plot_convergence(all_results: list):
     )
 
     colours    = plt.cm.tab10(np.linspace(0, 1, N_EXPERIMENTS))
-    # Best experiment = highest PEAK reward across all timesteps
+    """ Best experiment = highest PEAK reward across all timesteps """
     best_peak  = -np.inf
     best_exp   = ""
     best_ts    = []
@@ -800,7 +800,7 @@ def plot_convergence(all_results: list):
 
         ax.plot(ts_s, smoothed, color=col, linewidth=1.5, alpha=0.7, label=label)
 
-        # Use peak reward to identify best - not final smoothed value
+        """ Use peak reward to identify best - not final smoothed value """
         peak = max(rew) if rew else -np.inf
         if peak > best_peak:
             best_peak   = peak
@@ -811,14 +811,14 @@ def plot_convergence(all_results: list):
     if best_ts:
         ax.plot(best_ts, best_smooth, color="black", linewidth=3.5,
                 alpha=0.9, label=f"BEST: {best_exp}", zorder=10)
-        # Fixed position in axes-fraction coordinates, not anchored to the
-        # peak's data position -- an offset-from-data-point annotation can
-        # land anywhere depending on where the peak happens to fall,
-        # including directly under the figure's suptitle when the peak is
-        # near the top of the y-range (exactly what happened here: the
-        # annotation collided with "ARIA PPO — Convergence Comparison").
-        # A fixed corner guarantees this can never happen again, regardless
-        # of what the data looks like on any future run.
+        """ Fixed position in axes-fraction coordinates, not anchored to the
+           peak's data position -- an offset-from-data-point annotation can
+           land anywhere depending on where the peak happens to fall,
+           including directly under the figure's suptitle when the peak is
+           near the top of the y-range (exactly what happened here: the
+           annotation collided with "ARIA PPO — Convergence Comparison").
+           A fixed corner guarantees this can never happen again, regardless
+           of what the data looks like on any future run. """
         ax.text(
             0.02, 0.98, f"Best: {best_exp}\nPeak reward: {best_peak:.1f}",
             transform=ax.transAxes, ha="left", va="top",
@@ -843,7 +843,7 @@ def plot_convergence(all_results: list):
     print(f" Plot 3 saved: {path}")
 
 
-# ── Plot 4 - Generalisation test ──────────────────────────────────
+""" ── Plot 4 - Generalisation test ────────────────────────────────── """
 def plot_generalisation(gen_results: dict):
     if not gen_results:
         print("  No generalisation results - skipping Plot 4")
@@ -854,8 +854,8 @@ def plot_generalisation(gen_results: dict):
                "species_entropy", "seasonal_rain_score", "reseeding_count"]
     metrics = [m for m in metrics if m in gen_results[zones[0]]]
 
-    # Larger canvas + higher DPI so labels are actually readable when
-    # viewed at normal size, not just when zoomed in.
+    """ Larger canvas + higher DPI so labels are actually readable when
+       viewed at normal size, not just when zoomed in. """
     fig, axes = plt.subplots(1, len(metrics), figsize=(5.0*len(metrics), 10), dpi=200)
     if len(metrics) == 1:
         axes = [axes]
@@ -881,11 +881,11 @@ def plot_generalisation(gen_results: dict):
                     bar.get_height() + max_val*0.03,
                     f"{val:.3f}", ha="center", va="bottom",
                     fontsize=13, fontweight="bold")
-        # Mean line gives useful context without implying a pass/fail bar.
-        # Label sits in a fixed axes-fraction corner, not anchored to the
-        # last bar's position/height -- anchoring it there meant it could
-        # crowd whichever bar happened to be closest to the mean value
-        # (visible in real output: "mean = 1.575" crowding "1.597").
+        """ Mean line gives useful context without implying a pass/fail bar.
+           Label sits in a fixed axes-fraction corner, not anchored to the
+           last bar's position/height -- anchoring it there meant it could
+           crowd whichever bar happened to be closest to the mean value
+           (visible in real output: "mean = 1.575" crowding "1.597"). """
         mean_val = sum(values) / len(values)
         ax.axhline(y=mean_val, color="#444444", linestyle=":", linewidth=1.5, zorder=2)
         ax.text(0.98, 0.98, f"mean = {mean_val:.3f}", transform=ax.transAxes,
@@ -909,7 +909,7 @@ def plot_generalisation(gen_results: dict):
     print(f" Plot 4 saved: {path}")
 
 
-# ── Plot 6 - Zone selector diagnostics (drawn AFTER training) ─────
+""" ── Plot 6 - Zone selector diagnostics (drawn AFTER training) ───── """
 def plot_zone_selector_diagnostics(selector: "ZoneSelector"):
     """
     Diagnostics for the learned zone selector, built entirely from data
@@ -932,8 +932,8 @@ def plot_zone_selector_diagnostics(selector: "ZoneSelector"):
     fig.suptitle("ARIA Zone Selector — Learned From Training Episodes",
                  fontsize=17, fontweight="bold")
 
-    # (a) learned feature weights — which ecological measures the
-    #     selector ended up relying on most.
+    """ (a) learned feature weights — which ecological measures the
+           selector ended up relying on most. """
     ax = axes[0]
     colors = ["#2E7D32" if w >= 0 else "#C62828" for w in selector.w]
     ax.barh(feature_names, selector.w, color=colors, edgecolor="white")
@@ -942,7 +942,7 @@ def plot_zone_selector_diagnostics(selector: "ZoneSelector"):
     ax.set_xlabel("Weight (+ helps score, − hurts score)")
     ax.grid(True, axis="x", alpha=0.3)
 
-    # (b) predicted suitability vs realised pct_suitable_seeded
+    """ (b) predicted suitability vs realised pct_suitable_seeded """
     ax = axes[1]
     ax.scatter(pred_arr, real_arr, s=18, alpha=0.4, color="#1565C0")
     lims = [0, max(1e-3, max(pred_arr.max(), real_arr.max()))]
@@ -957,8 +957,8 @@ def plot_zone_selector_diagnostics(selector: "ZoneSelector"):
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
 
-    # (c) correlation between each ecological feature and the realised
-    #     outcome, across every zone-episode the selector saw.
+    """ (c) correlation between each ecological feature and the realised
+           outcome, across every zone-episode the selector saw. """
     ax = axes[2]
     corrs = [np.corrcoef(stats_arr[:, i], real_arr)[0, 1]
              if np.std(stats_arr[:, i]) > 1e-9 else 0.0
@@ -979,7 +979,7 @@ def plot_zone_selector_diagnostics(selector: "ZoneSelector"):
     print(f" Plot 6 saved: {path}  ({len(selector.history)} episodes)")
 
 
-# ── Plot 7 - Species recommender diagnostics (drawn AFTER training) ──
+""" ── Plot 7 - Species recommender diagnostics (drawn AFTER training) ── """
 def plot_species_recommender_diagnostics(recommender: "SpeciesRecommender"):
     """
     Diagnostics for the learned reseed species recommender, built from its
@@ -1004,7 +1004,7 @@ def plot_species_recommender_diagnostics(recommender: "SpeciesRecommender"):
     fig.suptitle("ARIA Species Recommender — Learned From Reseed Outcomes",
                  fontsize=17, fontweight="bold")
 
-    # (a) learned feature weights
+    """ (a) learned feature weights """
     ax = axes[0]
     colors = ["#2E7D32" if w >= 0 else "#C62828" for w in recommender.w]
     ax.barh(feature_names, recommender.w, color=colors, edgecolor="white")
@@ -1013,7 +1013,7 @@ def plot_species_recommender_diagnostics(recommender: "SpeciesRecommender"):
     ax.set_xlabel("Weight (+ helps predicted survival, − hurts it)")
     ax.grid(True, axis="x", alpha=0.3)
 
-    # (b) predicted survival probability vs realised outcome (0/1)
+    """ (b) predicted survival probability vs realised outcome (0/1) """
     ax = axes[1]
     jitter = np.random.default_rng(0).normal(0, 0.02, size=len(real))
     ax.scatter(pred, real + jitter, s=14, alpha=0.35, color="#1565C0")
@@ -1026,7 +1026,7 @@ def plot_species_recommender_diagnostics(recommender: "SpeciesRecommender"):
                 fontsize=12, fontweight="bold")
     ax.grid(True, alpha=0.3)
 
-    # (c) survival rate achieved over the course of training (rolling mean)
+    """ (c) survival rate achieved over the course of training (rolling mean) """
     ax = axes[2]
     window = max(5, len(real) // 30)
     if len(real) >= window:
@@ -1047,7 +1047,7 @@ def plot_species_recommender_diagnostics(recommender: "SpeciesRecommender"):
     print(f" Plot 7 saved: {path}  ({len(recommender.history)} reseed outcomes)")
 
 
-# ── Plot 8 - Seeding efficiency vs ceiling ─────────────────────────
+""" ── Plot 8 - Seeding efficiency vs ceiling ───────────────────────── """
 def plot_seeding_efficiency(gen_results: dict):
     """
     pct_suitable_seeded's denominator is every suitable cell in the WHOLE
@@ -1081,7 +1081,7 @@ def plot_seeding_efficiency(gen_results: dict):
     fig.suptitle("ARIA Seeding Efficiency — Actual vs Achievable Ceiling",
                  fontsize=17, fontweight="bold")
 
-    # (a) actual vs ceiling, grouped bars
+    """ (a) actual vs ceiling, grouped bars """
     ax = axes[0]
     x = np.arange(len(zones))
     width = 0.35
@@ -1098,16 +1098,16 @@ def plot_seeding_efficiency(gen_results: dict):
     ax.set_xticklabels(zone_labels, rotation=25, fontsize=10)
     ax.set_ylabel("pct_suitable_seeded")
     ax.set_title("Actual vs Ceiling per Zone", fontsize=14, fontweight="bold")
-    # Real headroom above the tallest bar + its label, then the legend
-    # pinned into that guaranteed-empty band -- loc="best" was landing
-    # directly on top of a bar's ceiling label when bars were this tall
-    # and uniform, since there was no genuinely free space for it to find.
+    """ Real headroom above the tallest bar + its label, then the legend
+       pinned into that guaranteed-empty band -- loc="best" was landing
+       directly on top of a bar's ceiling label when bars were this tall
+       and uniform, since there was no genuinely free space for it to find. """
     ax.set_ylim(0, max(ceiling) * 1.22)
     ax.legend(fontsize=10, loc="upper center", bbox_to_anchor=(0.5, 1.0),
               ncol=2, framealpha=0.95)
     ax.grid(True, axis="y", alpha=0.3)
 
-    # (b) efficiency ratio (actual / ceiling), the real "how good" number
+    """ (b) efficiency ratio (actual / ceiling), the real "how good" number """
     ax = axes[1]
     colors = plt.cm.RdYlGn(np.clip(efficiency, 0, 1))
     bars = ax.bar(zone_labels, efficiency, color=colors, edgecolor="white")
@@ -1128,7 +1128,7 @@ def plot_seeding_efficiency(gen_results: dict):
     print(f" Plot 8 saved: {path}")
 
 
-# ── Plot 5 - Hyperparameter summary table ─────────────────────────
+""" ── Plot 5 - Hyperparameter summary table ───────────────────────── """
 def plot_hyperparameter_table(all_results: list):
     fig, ax = plt.subplots(figsize=(20, 8), dpi=200)
     ax.axis("off")
@@ -1191,7 +1191,7 @@ def plot_hyperparameter_table(all_results: list):
     print(f" Plot 5 saved: {path}")
 
 
-# ── Save experiment summary as CSV ────────────────────────────────
+""" ── Save experiment summary as CSV ──────────────────────────────── """
 def save_experiment_csv(all_results: list):
     csv_path = os.path.join(METRICS_DIR, "all_experiments.csv")
     with open(csv_path, "w", newline="") as f:
@@ -1213,7 +1213,7 @@ def save_experiment_csv(all_results: list):
     print(f" Experiments summary saved to {csv_path}")
 
 
-# ── Main pipeline (for running train_ppo.py directly) ─────────────
+""" ── Main pipeline (for running train_ppo.py directly) ───────────── """
 def run():
     print("=" * 60)
     print("ARIA - PPO Training - Generalisation Experiments")
@@ -1241,18 +1241,18 @@ def run():
     plot_convergence(all_results)
     plot_hyperparameter_table(all_results)
 
-    # Select the final model by real generalisation efficiency, not by
-    # raw training reward. These are not the same thing: a policy can
-    # earn more reward through behaviour (denser, more repeated
-    # placement on already-good ground) that scores worse on the
-    # ceiling-relative efficiency metric that actually matters for the
-    # project's stated goal. Confirmed directly in a real run: the
-    # checkpoint that won on reward (2402.92) reached only 41.3% average
-    # efficiency, while a reward-losing configuration in an earlier run
-    # reached 55.8%. Every candidate is evaluated here so the checkpoint
-    # actually reported and saved is the one that is genuinely best on
-    # the metric the project is judged on, with reward kept alongside
-    # it for context rather than as the deciding factor.
+    """ Select the final model by real generalisation efficiency, not by
+       raw training reward. These are not the same thing: a policy can
+       earn more reward through behaviour (denser, more repeated
+       placement on already-good ground) that scores worse on the
+       ceiling-relative efficiency metric that actually matters for the
+       project's stated goal. Confirmed directly in a real run: the
+       checkpoint that won on reward (2402.92) reached only 41.3% average
+       efficiency, while a reward-losing configuration in an earlier run
+       reached 55.8%. Every candidate is evaluated here so the checkpoint
+       actually reported and saved is the one that is genuinely best on
+       the metric the project is judged on, with reward kept alongside
+       it for context rather than as the deciding factor. """
     print("\n" + "=" * 60)
     print("Selecting final model by generalisation efficiency, not raw reward...")
     best_dir = None

@@ -45,7 +45,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "You can't remove your own admin access." }, { status: 400 });
   }
 
-  // Prevent the system from ending up with zero active admins.
+  /* Prevent the system from ending up with zero active admins. */
   const wouldLoseAdminRole = target.role === 'ADMIN' && role === 'FORESTER';
   const wouldBeDisabled = target.status === 'ACTIVE' && status === 'DISABLED';
   if ((wouldLoseAdminRole || wouldBeDisabled) && target.role === 'ADMIN' && target.status === 'ACTIVE') {
@@ -92,8 +92,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Episodes created by this user are kept for historical dashboard stats;
-  // only the FK is cleared rather than cascading the delete.
+  /* Episodes created by this user are kept for historical dashboard stats;
+     only the FK is cleared rather than cascading the delete. */
   await prisma.episode.updateMany({ where: { user_id: targetId }, data: { user_id: null } });
   await prisma.user.updateMany({ where: { createdById: targetId }, data: { createdById: null } });
   await prisma.user.delete({ where: { id: targetId } });

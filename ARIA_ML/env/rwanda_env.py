@@ -92,11 +92,11 @@ class RwandaReforestEnv(gym.Env):
         self.rng            = np.random.default_rng(seed)
         self._min_seed_spacing = min_seed_spacing
 
-        # Load zone data
+        """ Load zone data """
         self._load_zones()
 
-        # ── Observation space ──────────────────────────────────────
-        # terrain_stats (6,) is new — global features for generalisation
+        """ ── Observation space ──────────────────────────────────────
+           terrain_stats (6,) is new — global features for generalisation """
         self.observation_space = spaces.Dict({
             "terrain_window":  spaces.Box(0.0, 1.0,
                 (OBS_WINDOW, OBS_WINDOW, N_CHANNELS), np.float32),
@@ -114,10 +114,10 @@ class RwandaReforestEnv(gym.Env):
             "terrain_stats":   spaces.Box(0.0, 1.0, (6,), np.float32),
         })
 
-        # Action space: 47 discrete actions
+        """ Action space: 47 discrete actions """
         self.action_space = spaces.Discrete(N_ACTIONS)
 
-        # Background systems
+        """ Background systems """
         self.growth      = GrowthEngine(ZONE_SIZE, self.rng)
         self.disturbance = DisturbanceEngine(self.rng)
         self.monitor     = MonitoringSystem(recommender=species_recommender)
@@ -125,10 +125,10 @@ class RwandaReforestEnv(gym.Env):
         self.energy      = EnergySystem()
         self.reward_fn   = RewardFunction(reward_weights, min_seed_spacing=self._min_seed_spacing)
 
-        # Episode state
+        """ Episode state """
         self._init_episode_state()
 
-    # ── Data loading ───────────────────────────────────────────────
+    """ ── Data loading ─────────────────────────────────────────────── """
     def _load_zones(self):
         p = ZONES_DIR
         self.all_terrain  = np.nan_to_num(
@@ -147,7 +147,7 @@ class RwandaReforestEnv(gym.Env):
             os.path.join(p, f"{self.split}_noplant.npy"))
         self.n_zones      = self.all_terrain.shape[0]
 
-        # Will be set per episode
+        """ Will be set per episode """
         self.terrain = self.dist_grid = self.obs_grid = None
         self.rain_stack = self.no_plant = None
 
@@ -165,34 +165,34 @@ class RwandaReforestEnv(gym.Env):
         self.missions_completed  = 0
         self.obstacles_avoided   = 0
         self.abort_triggered     = False
-        # Recognizing "this zone is bad, I should head back" is genuinely
-        # useful information once. It should not pay out again for
-        # repeating the same observation. Confirmed directly by testing:
-        # without this flag, spamming ABORT in a below-threshold zone
-        # nets +0.6 reward per action, forever, at zero cost -- no seeds
-        # spent, no travel required, no risk. This is what was inflating
-        # landings to 114,000+ in the last real training run (Exp 04/05).
+        """ Recognizing "this zone is bad, I should head back" is genuinely
+           useful information once. It should not pay out again for
+           repeating the same observation. Confirmed directly by testing:
+           without this flag, spamming ABORT in a below-threshold zone
+           nets +0.6 reward per action, forever, at zero cost -- no seeds
+           spent, no travel required, no risk. This is what was inflating
+           landings to 114,000+ in the last real training run (Exp 04/05). """
         self.valid_abort_rewarded = False
         self.base_x              = ZONE_SIZE // 2
         self.base_y              = ZONE_SIZE // 2
         self.active_zone_idx     = None
         self.reseeding_targets   = {}  # (y, x) -> recommended species_id
 
-    # ── Gymnasium API ──────────────────────────────────────────────
+    """ ── Gymnasium API ────────────────────────────────────────────── """
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         rng_seed = int(self.np_random.integers(0, 2**31 - 1))
         self.rng = np.random.default_rng(rng_seed)
 
-        # Reseed systems
+        """ Reseed systems """
         self.growth.rng      = self.rng
         self.disturbance.rng = self.rng
 
         if self.zone_id is None:
-            # Domain randomisation: new zone every episode
+            """ Domain randomisation: new zone every episode """
             self.active_zone_idx = int(self.rng.integers(0, self.n_zones))
         else:
-            # Fixed zone for evaluation — clamp to valid range
+            """ Fixed zone for evaluation — clamp to valid range """
             self.active_zone_idx = int(
                 np.clip(int(self.zone_id), 0, self.n_zones - 1)
             )
@@ -203,14 +203,14 @@ class RwandaReforestEnv(gym.Env):
         self.rain_stack = self.all_rain[self.active_zone_idx].copy()
         self.no_plant   = self.all_noplant[self.active_zone_idx].copy()
 
-        # Precomputed once per episode, reusing the exact same definition
-        # used for the real pct_suitable_seeded ceiling (see the metrics
-        # function below) -- a cell counts as achievable if it clears
-        # ZONE_MIN_SOIL and the loosest species' rain_min during its best
-        # month, not just whatever the current season happens to be. This
-        # is static per episode (terrain doesn't change mid-episode), so
-        # computing it once here and reusing it every step is both
-        # correct and cheap, rather than recomputing it 1000+ times.
+        """ Precomputed once per episode, reusing the exact same definition
+           used for the real pct_suitable_seeded ceiling (see the metrics
+           function below) -- a cell counts as achievable if it clears
+           ZONE_MIN_SOIL and the loosest species' rain_min during its best
+           month, not just whatever the current season happens to be. This
+           is static per episode (terrain doesn't change mid-episode), so
+           computing it once here and reusing it every step is both
+           correct and cheap, rather than recomputing it 1000+ times. """
         soil_layer_ep = self.terrain[:, :, 2]
         rain_layer_ep = self.rain_stack.max(axis=0)
         min_rain_req_ep = min(sp["rain_min"] for sp in SPECIES.values())
@@ -225,7 +225,7 @@ class RwandaReforestEnv(gym.Env):
         self.x, self.y = self._valid_start()
         self.base_x, self.base_y = self.x, self.y
 
-        # Reset systems
+        """ Reset systems """
         self.growth.reset(preserve_positions=set(self.monitor.pending_reseeds.keys()))
         self.disturbance.reset()
         self.monitor.reset()
@@ -246,17 +246,17 @@ class RwandaReforestEnv(gym.Env):
         total_r = 0.0
         info    = {"action": int(action)}
 
-        # ── Update weather + energy ────────────────────────────────
+        """ ── Update weather + energy ──────────────────────────────── """
         rain_val = float(self.rain_stack[self.season, self.y, self.x])
         self.weather.step(rain_val, self.timestep)
         steps_to_base = max(abs(self.base_x - self.x), abs(self.base_y - self.y))
         energy_info = self.energy.step(self.weather, steps_to_base=steps_to_base)
         self.season = self.weather.current_season
 
-        # Update rainfall channel
+        """ Update rainfall channel """
         self.terrain[:, :, 3] = self.rain_stack[self.season]
 
-        # ── Handle special actions ─────────────────────────────────
+        """ ── Handle special actions ───────────────────────────────── """
 
         if action == EMERGENCY or energy_info["is_critical"]:
             if action == EMERGENCY and not energy_info["is_critical"]:
@@ -305,7 +305,7 @@ class RwandaReforestEnv(gym.Env):
                 self.obstacles_avoided += 1
                 self.drone_state = STATE_SEEDING
                 info["obstacle_cleared"] = True
-            # else: no reward for unnecessary altitude increase
+            """ else: no reward for unnecessary altitude increase """
 
         elif action == ALT_DOWN:
             self.altitude = max(0.0, self.altitude - 0.1)
@@ -314,22 +314,22 @@ class RwandaReforestEnv(gym.Env):
             total_r += self.reward_fn.hover_penalty()
 
         else:
-            # Movement + seed drop (actions 0-39)
+            """ Movement + seed drop (actions 0-39) """
             dir_idx    = action // N_SPECIES
             species_id = action % N_SPECIES
             dy, dx     = DIRECTIONS[dir_idx]
 
-            # Reliable outbound flight to a queued reseed target: which
-            # failure to prioritize and which species to use there were
-            # already fully decided (SpeciesRecommender + priority queue,
-            # computed at the moment of failure) -- physically getting back
-            # to that exact remembered cell was the one piece with zero
-            # validated successes across ~5,000 real opportunities this
-            # session. Scripting the movement here is the same treatment
-            # return-to-base already gets, not a new kind of assistance,
-            # just the same reliability applied to the other half of the
-            # same round trip. Obstacle avoidance below still applies
-            # normally on this scripted path, same as any other movement.
+            """ Reliable outbound flight to a queued reseed target: which
+               failure to prioritize and which species to use there were
+               already fully decided (SpeciesRecommender + priority queue,
+               computed at the moment of failure) -- physically getting back
+               to that exact remembered cell was the one piece with zero
+               validated successes across ~5,000 real opportunities this
+               session. Scripting the movement here is the same treatment
+               return-to-base already gets, not a new kind of assistance,
+               just the same reliability applied to the other half of the
+               same round trip. Obstacle avoidance below still applies
+               normally on this scripted path, same as any other movement. """
             if self.reseeding_targets and self.drone_state == STATE_SEEDING:
                 ty, tx = min(self.reseeding_targets,
                              key=lambda t: abs(t[0] - self.y) + abs(t[1] - self.x))
@@ -344,30 +344,30 @@ class RwandaReforestEnv(gym.Env):
                 self.drone_state = STATE_OBSTACLE
                 info["obstacle_hit"] = True
             else:
-                # The dense per-step shaping reward that used to live here
-                # was removed. It rewarded reducing distance to a queued
-                # reseed target every step, meant to teach the policy to
-                # navigate there before that navigation was scripted
-                # (above). With navigation guaranteed regardless of reward,
-                # the shaping payout became a reliable, repeatable reward
-                # loop with no remaining teaching purpose, and real data
-                # showed it pulling the policy toward cycling back to known
-                # targets instead of covering new ground: reseed outcomes
-                # went from 0 to over 5,800 in one run while
-                # pct_suitable_seeded dropped 6 to 9x at the same time.
-                # w_reseed (reward_function.py) still rewards completing a
-                # correction once it happens.
+                """ The dense per-step shaping reward that used to live here
+                   was removed. It rewarded reducing distance to a queued
+                   reseed target every step, meant to teach the policy to
+                   navigate there before that navigation was scripted
+                   (above). With navigation guaranteed regardless of reward,
+                   the shaping payout became a reliable, repeatable reward
+                   loop with no remaining teaching purpose, and real data
+                   showed it pulling the policy toward cycling back to known
+                   targets instead of covering new ground: reseed outcomes
+                   went from 0 to over 5,800 in one run while
+                   pct_suitable_seeded dropped 6 to 9x at the same time.
+                   w_reseed (reward_function.py) still rewards completing a
+                   correction once it happens. """
                 self.x, self.y = new_x, new_y
 
             if (self.drone_state == STATE_SEEDING
                     and self.seeds_remaining > 0):
 
-                # If the drone has arrived at a queued reseed target, use
-                # the species already recommended for that specific failed
-                # cell, computed by SpeciesRecommender when the failure was
-                # first recorded, rather than the per-step action's species
-                # choice, which was never meant to relitigate a decision
-                # that's already been made.
+                """ If the drone has arrived at a queued reseed target, use
+                   the species already recommended for that specific failed
+                   cell, computed by SpeciesRecommender when the failure was
+                   first recorded, rather than the per-step action's species
+                   choice, which was never meant to relitigate a decision
+                   that's already been made. """
                 recommended = self.reseeding_targets.get((self.y, self.x))
                 if recommended is not None:
                     species_id = recommended
@@ -389,10 +389,10 @@ class RwandaReforestEnv(gym.Env):
 
                 is_reseed  = (self.y, self.x) in self.reseeding_targets
 
-                # Restored as part of reverting to Run A's proven
-                # configuration (55.8% average seeding efficiency, the
-                # best result this session) -- see the matching comment
-                # in env/reward_function.py for the full history of why.
+                """ Restored as part of reverting to Run A's proven
+                   configuration (55.8% average seeding efficiency, the
+                   best result this session) -- see the matching comment
+                   in env/reward_function.py for the full history of why. """
                 already_covered = bool(self.coverage_map[self.y, self.x] > 0)
                 if not is_reseed:
                     if already_covered:
@@ -428,7 +428,7 @@ class RwandaReforestEnv(gym.Env):
                 info["is_suitable"]   = is_suitable
                 info["breakdown"]     = breakdown
 
-        # ── Return to base logic ───────────────────────────────────
+        """ ── Return to base logic ─────────────────────────────────── """
         if (energy_info["should_return"] and
                 self.drone_state == STATE_SEEDING):
             self.drone_state = STATE_RETURNING
@@ -442,43 +442,43 @@ class RwandaReforestEnv(gym.Env):
             self.y = int(np.clip(self.y + dy, 0, ZONE_SIZE - 1))
 
             if self.x == self.base_x and self.y == self.base_y:
-                # BUG FIX: this used to set STATE_LANDING and never transition
-                # back to STATE_SEEDING anywhere in the file. Since seed
-                # placement (env/rwanda_env.py's movement+drop branch) is
-                # gated on drone_state == STATE_SEEDING, that meant the drone
-                # became permanently unable to place ANY seed, including a
-                # reseed attempt, for the rest of the episode the moment it
-                # first returned to base -- confirmed directly: 50 steps of
-                # every possible action after a forced landing produced zero
-                # seed drops. This is a more fundamental, upstream explanation
-                # for reseed_attempts staying at 0 than anything navigation-
-                # related: the drone could never drop ANY seed again after
-                # its first landing, so it could never have succeeded at a
-                # reseed regardless of how well it navigated.
+                """ BUG FIX: this used to set STATE_LANDING and never transition
+                   back to STATE_SEEDING anywhere in the file. Since seed
+                   placement (env/rwanda_env.py's movement+drop branch) is
+                   gated on drone_state == STATE_SEEDING, that meant the drone
+                   became permanently unable to place ANY seed, including a
+                   reseed attempt, for the rest of the episode the moment it
+                   first returned to base -- confirmed directly: 50 steps of
+                   every possible action after a forced landing produced zero
+                   seed drops. This is a more fundamental, upstream explanation
+                   for reseed_attempts staying at 0 than anything navigation-
+                   related: the drone could never drop ANY seed again after
+                   its first landing, so it could never have succeeded at a
+                   reseed regardless of how well it navigated. """
                 self.drone_state = STATE_SEEDING
                 self.energy.recharge(0.5)
                 self.missions_completed += 1
-                # Diagnostic: confirms the scripted return-to-base handoff
-                # itself fires, and whether any reseed targets are waiting
-                # at this exact moment (queueing itself now happens
-                # continuously below, not only here -- see the monitoring
-                # step further down).
+                """ Diagnostic: confirms the scripted return-to-base handoff
+                   itself fires, and whether any reseed targets are waiting
+                   at this exact moment (queueing itself now happens
+                   continuously below, not only here -- see the monitoring
+                   step further down). """
                 self.monitor.recommender.landings_completed += 1
                 if self.reseeding_targets:
                     self.monitor.recommender.landings_with_targets += 1
                 info["landed"] = True
 
-        # ── Monitoring step ────────────────────────────────────────
+        """ ── Monitoring step ──────────────────────────────────────── """
         if self.timestep % MONITORING_INTERVAL == 0 and self.timestep > 0:
             rain_map = self.rain_stack[self.season]
             growth_events, gr = self.growth.step(self.timestep, rain_map)
             _, dr    = self.disturbance.step(self.growth, self.timestep)
             total_r += gr + dr
 
-            # Close the reseed feedback loop: any seed that matured this
-            # step, at a position that was a pending reseed, is a real
-            # success outcome for whichever species SpeciesRecommender
-            # picked there -- feed it back before ingesting new failures.
+            """ Close the reseed feedback loop: any seed that matured this
+               step, at a position that was a pending reseed, is a real
+               success outcome for whichever species SpeciesRecommender
+               picked there -- feed it back before ingesting new failures. """
             matured_positions = [(e["x"], e["y"]) for e in growth_events
                                   if e.get("type") == "mature"]
             self.monitor.resolve_matured(matured_positions)
@@ -486,14 +486,14 @@ class RwandaReforestEnv(gym.Env):
             self.monitor.ingest_failures(self.growth.failed_cells.copy())
             self.growth.failed_cells.clear()
 
-            # Queue reseed targets continuously as failures come in, rather
-            # than only once per full return-to-base cycle. A cell already
-            # queued (not yet visited) simply gets its entry refreshed, not
-            # duplicated, since reseeding_targets is keyed by (y, x).
+            """ Queue reseed targets continuously as failures come in, rather
+               than only once per full return-to-base cycle. A cell already
+               queued (not yet visited) simply gets its entry refreshed, not
+               duplicated, since reseeding_targets is keyed by (y, x). """
             for t in self.monitor.get_top_targets(3):
                 self.reseeding_targets[(t["y"], t["x"])] = t.get("recommended_species")
 
-        # ── Timestep ───────────────────────────────────────────────
+        """ ── Timestep ─────────────────────────────────────────────── """
         total_r             += -REWARD["step_penalty"]
         self.timestep        += 1
         self.episode_reward  += total_r
@@ -510,7 +510,7 @@ class RwandaReforestEnv(gym.Env):
 
         return self._obs(), float(total_r), terminated, truncated, info
 
-    # ── Helpers ────────────────────────────────────────────────────
+    """ ── Helpers ──────────────────────────────────────────────────── """
     def _valid_start(self):
         for _ in range(100):
             x = int(self.rng.integers(5, ZONE_SIZE - 5))
@@ -688,28 +688,28 @@ class RwandaReforestEnv(gym.Env):
         abort_score = float(zone_score < ZONE_MIN_SUITABILITY)
         is_reseed   = float(len(self.reseeding_targets) > 0)
 
-        # Previously the policy only ever saw a COUNT of queued reseed
-        # targets (reseed_n above), never where they actually are. It had
-        # no way to learn "navigate back to a failed cell" -- it could only
-        # stumble onto one by chance during ordinary exploration, which is
-        # why SHARED_SPECIES_RECOMMENDER.n_updates stayed at 0 across full
-        # 200k-timestep training runs. Adding the nearest target's relative
-        # position gives the policy an actual signal to steer by, the same
-        # way it already has for terrain features.
+        """ Previously the policy only ever saw a COUNT of queued reseed
+           targets (reseed_n above), never where they actually are. It had
+           no way to learn "navigate back to a failed cell" -- it could only
+           stumble onto one by chance during ordinary exploration, which is
+           why SHARED_SPECIES_RECOMMENDER.n_updates stayed at 0 across full
+           200k-timestep training runs. Adding the nearest target's relative
+           position gives the policy an actual signal to steer by, the same
+           way it already has for terrain features. """
         rel_dy, rel_dx, manhattan_dist = self._nearest_reseed_offset(self.x, self.y)
 
         reseed_dy   = np.clip((rel_dy + 1.0) / 2.0, 0.0, 1.0)  # 0.5 = same row as drone
         reseed_dx   = np.clip((rel_dx + 1.0) / 2.0, 0.0, 1.0)  # 0.5 = same column as drone
         reseed_dist = np.clip(manhattan_dist, 0.0, 1.0)
 
-        # Same idea, applied to genuine coverage instead of reseed
-        # correction: direction/distance to the nearest cell that is both
-        # suitable and not yet seeded, computed once per step from the
-        # per-episode suitable_mask precomputed in reset(). Without this,
-        # the policy has no more direct way to find unexplored suitable
-        # ground than it had to find a reseed target before that feature
-        # was added -- which is exactly the gap that kept reseed success
-        # near zero until it was closed the same way.
+        """ Same idea, applied to genuine coverage instead of reseed
+           correction: direction/distance to the nearest cell that is both
+           suitable and not yet seeded, computed once per step from the
+           per-episode suitable_mask precomputed in reset(). Without this,
+           the policy has no more direct way to find unexplored suitable
+           ground than it had to find a reseed target before that feature
+           was added -- which is exactly the gap that kept reseed success
+           near zero until it was closed the same way. """
         cov_rel_dy, cov_rel_dx, cov_dist = self._nearest_unseeded_suitable_offset(self.x, self.y)
         coverage_dy   = np.clip((cov_rel_dy + 1.0) / 2.0, 0.0, 1.0)
         coverage_dx   = np.clip((cov_rel_dx + 1.0) / 2.0, 0.0, 1.0)
@@ -742,31 +742,31 @@ class RwandaReforestEnv(gym.Env):
         if not seeds:
             return {m: 0.0 for m in EVAL_METRICS}
 
-        # n_suit previously only checked "not blocked, not protected", a
-        # much looser bar than is_suitable actually requires (also soil
-        # above ZONE_MIN_SOIL and rain above a species' rain_min). That
-        # meant the ceiling counted nearly every plantable cell as
-        # achievable -- roughly the whole non-protected zone -- when a
-        # huge share of those cells could never pass the real suitability
-        # check no matter how good the policy is. The ceiling was never
-        # truly reachable, which is exactly why efficiency numbers looked
-        # stuck in the 30-40% range even as absolute performance improved.
-        # Fixed to use the identical four conditions is_suitable checks,
-        # and the most lenient species' rain_min (a smart policy picks
-        # whichever species matches a given cell, so a cell only needs to
-        # clear the EASIEST species' bar to genuinely be achievable).
+        """ n_suit previously only checked "not blocked, not protected", a
+           much looser bar than is_suitable actually requires (also soil
+           above ZONE_MIN_SOIL and rain above a species' rain_min). That
+           meant the ceiling counted nearly every plantable cell as
+           achievable -- roughly the whole non-protected zone -- when a
+           huge share of those cells could never pass the real suitability
+           check no matter how good the policy is. The ceiling was never
+           truly reachable, which is exactly why efficiency numbers looked
+           stuck in the 30-40% range even as absolute performance improved.
+           Fixed to use the identical four conditions is_suitable checks,
+           and the most lenient species' rain_min (a smart policy picks
+           whichever species matches a given cell, so a cell only needs to
+           clear the EASIEST species' bar to genuinely be achievable). """
         soil_layer  = self.terrain[:, :, 2]
-        # Uses each cell's BEST month across the full year (self.rain_stack
-        # has one layer per month), not just whatever single season happens
-        # to be active the instant this runs. Checking only self.season
-        # here was a real bug: if that one sampled month was unusually dry
-        # for a zone, the suitable-cell count could collapse toward zero
-        # while real seed placements, made across many different months
-        # during the actual episode, stayed legitimately high -- producing
-        # mathematically impossible ratios (a real run showed 9.763 for
-        # one zone, where a fraction can never exceed 1.0). A cell counts
-        # as achievable here if it could be suitable during its best month,
-        # since a smart policy can time a visit to any cell accordingly.
+        """ Uses each cell's BEST month across the full year (self.rain_stack
+           has one layer per month), not just whatever single season happens
+           to be active the instant this runs. Checking only self.season
+           here was a real bug: if that one sampled month was unusually dry
+           for a zone, the suitable-cell count could collapse toward zero
+           while real seed placements, made across many different months
+           during the actual episode, stayed legitimately high -- producing
+           mathematically impossible ratios (a real run showed 9.763 for
+           one zone, where a fraction can never exceed 1.0). A cell counts
+           as achievable here if it could be suitable during its best month,
+           since a smart policy can time a visit to any cell accordingly. """
         rain_layer  = self.rain_stack.max(axis=0)
         min_rain_req = min(sp["rain_min"] for sp in SPECIES.values())
         real_suitable_mask = (
@@ -777,21 +777,21 @@ class RwandaReforestEnv(gym.Env):
         )
         n_suit   = int(real_suitable_mask.sum())
         n_seeded = sum(1 for s in seeds if s.is_suitable)
-        # Clamped defensively: pct_suitable_seeded is a fraction of suitable
-        # cells and can never legitimately exceed 1.0. Without this, an
-        # underestimated n_suit for any reason produces a mathematically
-        # impossible value (a real run showed 9.763 for one zone before
-        # the rain_layer fix above) instead of a clear, bounded signal
-        # that something needs investigating.
+        """ Clamped defensively: pct_suitable_seeded is a fraction of suitable
+           cells and can never legitimately exceed 1.0. Without this, an
+           underestimated n_suit for any reason produces a mathematically
+           impossible value (a real run showed 9.763 for one zone before
+           the rain_layer fix above) instead of a clear, bounded signal
+           that something needs investigating. """
         pct      = min(1.0, n_seeded / max(n_suit, 1))
 
-        # pct_suitable_seeded's denominator is every suitable cell in the
-        # WHOLE zone, but the drone only carries INITIAL_SEEDS per episode,
-        # so even perfect placement of every seed can't exceed this ceiling.
-        # seeding_efficiency = how close the policy got to that ceiling,
-        # which is the more honest number for comparing zones/experiments
-        # against each other (raw pct_suitable_seeded will always look
-        # small if n_suit is large, regardless of policy quality).
+        """ pct_suitable_seeded's denominator is every suitable cell in the
+           WHOLE zone, but the drone only carries INITIAL_SEEDS per episode,
+           so even perfect placement of every seed can't exceed this ceiling.
+           seeding_efficiency = how close the policy got to that ceiling,
+           which is the more honest number for comparing zones/experiments
+           against each other (raw pct_suitable_seeded will always look
+           small if n_suit is large, regardless of policy quality). """
         ceiling    = min(1.0, INITIAL_SEEDS / max(n_suit, 1))
         efficiency = pct / ceiling if ceiling > 0 else 0.0
 

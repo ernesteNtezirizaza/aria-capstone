@@ -45,8 +45,8 @@ namespace ARIA.Drone
             if (d.State == null) return;
             var live = d.State.ReseedingTargets;
 
-            // Remove markers for anything no longer queued (just got
-            // successfully replanted, or the episode moved on).
+            /* Remove markers for anything no longer queued (just got
+               successfully replanted, or the episode moved on). */
             List<(int y, int x)> toRemove = null;
             foreach (var key in _markers.Keys)
             {
@@ -62,15 +62,15 @@ namespace ARIA.Drone
                     _markers.Remove(key);
                 }
 
-            // Add markers for anything newly queued.
+            /* Add markers for anything newly queued. */
             foreach (var t in live)
             {
                 if (_markers.ContainsKey(t)) continue;
                 _markers[t] = BuildMarker(t.y, t.x);
             }
 
-            // Gentle pulse so the markers read as "needs attention"
-            // rather than a static decal.
+            /* Gentle pulse so the markers read as "needs attention"
+               rather than a static decal. */
             float pulse = 0.6f + 0.4f * Mathf.Sin(Time.time * 3f);
             foreach (var m in _markers.Values)
             {
@@ -89,8 +89,8 @@ namespace ARIA.Drone
             go.name = $"ReseedMarker_{y}_{x}";
             Destroy(go.GetComponent<Collider>());
             go.transform.position = new Vector3(worldX, groundY + 0.03f, worldZ);
-            // Flat glowing ring/disc on the ground -- a beacon, not a
-            // solid obstacle-looking shape.
+            /* Flat glowing ring/disc on the ground -- a beacon, not a
+               solid obstacle-looking shape. */
             go.transform.localScale = new Vector3(1.1f * cellSize, 0.03f, 1.1f * cellSize);
 
             var mat = MaterialHelper.GetDefaultMaterial();

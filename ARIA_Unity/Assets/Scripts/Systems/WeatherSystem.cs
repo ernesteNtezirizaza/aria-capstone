@@ -14,7 +14,7 @@ namespace ARIA.Systems
             Reset();
         }
 
-        // weather_system.py __init__ / reset()
+        /* weather_system.py __init__ / reset() */
         public void Reset()
         {
             CurrentSeason = 0;
@@ -31,13 +31,13 @@ namespace ARIA.Systems
         /// <param name="timestep">Current episode timestep.</param>
         public void Step(float rainfallValue, int timestep)
         {
-            // self.current_season = (timestep // _SEASON_LENGTH) % N_SEASONS
+            /* self.current_season = (timestep // _SEASON_LENGTH) % N_SEASONS */
             CurrentSeason = (timestep / ARIAConstants.SEASON_LENGTH) % ARIAConstants.N_SEASONS;
 
             if (rainfallValue < ARIAConstants.RAINFALL_SUNNY_THRESH)
             {
                 WeatherState = ARIAConstants.WEATHER_SUNNY;
-                // solar_rate = SOLAR_CHARGE_RATE * (1 - rainfall/THRESH)
+                /* solar_rate = SOLAR_CHARGE_RATE * (1 - rainfall/THRESH) */
                 SolarRate = ARIAConstants.SOLAR_CHARGE_RATE *
                     (1f - rainfallValue / ARIAConstants.RAINFALL_SUNNY_THRESH);
                 ExtraDrain = 0f;
